@@ -26,7 +26,7 @@ export default function AuthLoginPage() {
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Welcome back. Sign in to your account.">
+    <AuthShell title="Sign in" subtitle="Choose your workspace and sign in to continue.">
       <LoginForm />
     </AuthShell>
   );

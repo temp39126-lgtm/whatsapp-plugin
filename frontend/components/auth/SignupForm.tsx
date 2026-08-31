@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { AuthField } from '@/components/auth/AuthField';
+import { RoleSelector } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 
@@ -29,54 +31,47 @@ export function SignupForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="signup-name" className="mb-1 block text-sm font-medium">
-            Full name
-          </label>
-          <input
-            id="signup-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-whatsapp focus:ring-2"
-            required
-            autoComplete="name"
-            minLength={2}
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <RoleSelector value="USER" onChange={() => undefined} disabledRoles={['ADMIN']} />
 
-        <div>
-          <label htmlFor="signup-email" className="mb-1 block text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="signup-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-whatsapp focus:ring-2"
-            required
-            autoComplete="email"
-          />
-        </div>
+        <AuthField
+          id="signup-name"
+          label="Full name"
+          type="text"
+          value={name}
+          onChange={setName}
+          placeholder="Enter your name"
+          autoComplete="name"
+          required
+          minLength={2}
+        />
 
-        <div>
-          <label htmlFor="signup-password" className="mb-1 block text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="signup-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-whatsapp focus:ring-2"
-            required
-            autoComplete="new-password"
-            minLength={6}
-          />
-          <p className="mt-1 text-xs text-muted-foreground">At least 6 characters</p>
-        </div>
+        <AuthField
+          id="signup-email"
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+
+        <AuthField
+          id="signup-password"
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          placeholder="Enter your password"
+          autoComplete="new-password"
+          required
+          minLength={6}
+        />
+
+        <p className="text-xs text-muted-foreground">
+          Admin accounts are managed separately. Sign up creates a User workspace.
+        </p>
 
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
@@ -85,9 +80,9 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-whatsapp px-4 py-2.5 text-sm font-medium text-white hover:bg-whatsapp-dark disabled:opacity-60"
+          className="w-full rounded-xl bg-whatsapp px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-whatsapp-dark disabled:opacity-60"
         >
-          {submitting ? 'Creating account...' : 'Create account'}
+          {submitting ? 'Creating account...' : 'Create User account'}
         </button>
       </form>
 
@@ -96,10 +91,6 @@ export function SignupForm() {
         <Link href={AUTH_ROUTES.login} className="font-medium text-whatsapp-dark hover:underline">
           Sign in
         </Link>
-      </p>
-
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        New accounts are created with the User role.
       </p>
     </>
   );

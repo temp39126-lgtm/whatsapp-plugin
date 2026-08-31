@@ -8,11 +8,20 @@ import { getAuthToken, initHostAuthListener, requestHostAuth, setAuthToken } fro
 import { resetSocket } from '@/lib/socket';
 import type { AuthUser } from '@/types';
 
+interface LoginOptions {
+  keepSignedIn?: boolean;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    options?: LoginOptions
+  ) => Promise<{ token: string; user: AuthUser }>;
+  completeLogin: (token: string, user: AuthUser) => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -21,22 +30,11 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAdmin: false,
-  login: async () => undefined,
+  login: async () => ({ token: '', user: null as unknown as AuthUser }),
+  completeLogin: () => undefined,
   signup: async () => undefined,
   logout: () => undefined,
 });
-
-function applyAuthSession(
-  token: string,
-  user: AuthUser,
-  setUser: (user: AuthUser) => void,
-  router: ReturnType<typeof useRouter>
-) {
-  setAuthToken(token);
-  setUser(user);
-  resetSocket();
-  router.replace(getDashboardPath(user.role));
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -62,16 +60,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const result = await authApi.post<{ token: string; user: AuthUser }>('/login', {
-        email,
-        password,
-      });
-      applyAuthSession(result.token, result.user, setUser, router);
+  const completeLogin = useCallback(
+    (token: string, authUser: AuthUser) => {
+      setAuthToken(token);
+      setUser(authUser);
+      resetSocket();
+      router.replace(getDashboardPath(authUser.role));
     },
     [router]
   );
+
+  const login = useCallback(async (email: string, password: string, _options?: LoginOptions) => {
+    return authApi.post<{ token: string; user: AuthUser }>('/login', {
+      email,
+      password,
+    });
+  }, []);
 
   const signup = useCallback(
     async (name: string, email: string, password: string) => {
@@ -80,9 +84,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-      applyAuthSession(result.token, result.user, setUser, router);
+      completeLogin(result.token, result.user);
     },
-    [router]
+    [completeLogin]
   );
 
   const logout = useCallback(() => {
@@ -116,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAdmin: user?.role === 'ADMIN',
         login,
+        completeLogin,
         signup,
         logout,
       }}

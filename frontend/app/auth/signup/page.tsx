@@ -26,7 +26,7 @@ export default function AuthSignupPage() {
   }
 
   return (
-    <AuthShell title="Sign up" subtitle="Create your account to get started.">
+    <AuthShell title="Sign up" subtitle="Create your User workspace to get started.">
       <SignupForm />
     </AuthShell>
   );
