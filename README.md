@@ -9,20 +9,39 @@ A production-ready, modular **WhatsApp CRM Plugin** designed to integrate into a
 - `backend/` — Express + TypeScript API (port 5000) with MongoDB models, RBAC, Meta webhooks, Socket.IO, S3 media
 - `frontend/` — Next.js App Router UI (port 3000) with three-column inbox, chat, contacts, tags, analytics, settings
 - `shared/` — Shared TypeScript types and constants
-- `docker-compose.yml` — MongoDB + MinIO for local development
+- `docker-compose.yml` — **Optional** MongoDB + MinIO for local development (requires Docker)
 
 ### Quick Start
 
+#### Option A — With Docker (local machine with Docker installed)
+
 ```bash
-# Infrastructure
 docker compose up -d
-
-# Backend
 cd backend && cp .env.example .env && npm install && npm run seed && npm run dev
-
-# Frontend (separate terminal)
 cd frontend && cp .env.example .env.local && npm install && npm run dev
 ```
+
+#### Option B — Without Docker (Cloud Agent / no Docker available)
+
+Docker is **not available** in Cursor Cloud Agent VMs. Use a local MongoDB binary instead:
+
+```bash
+# 1. Start MongoDB (one-time download, then reuse)
+mkdir -p /tmp/mongo-data
+curl -fsSL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.16.tgz -o /tmp/mongo.tgz
+tar -xzf /tmp/mongo.tgz -C /tmp
+/tmp/mongodb-linux-x86_64-ubuntu2204-7.0.16/bin/mongod \
+  --dbpath /tmp/mongo-data --port 27017 --bind_ip 127.0.0.1 \
+  --logpath /tmp/mongod.log --fork
+
+# 2. Backend
+cd backend && cp .env.example .env && npm install && npm run seed && npm run dev
+
+# 3. Frontend (separate terminal)
+cd frontend && cp .env.example .env.local && npm install && npm run dev
+```
+
+> **Note:** MinIO/S3 is optional for local dev. Media uploads need S3 or MinIO; text messaging works without it. For production, use AWS S3 or any S3-compatible storage.
 
 Open http://localhost:3000/whatsapp/inbox
 
