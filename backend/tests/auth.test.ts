@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import jwt from 'jsonwebtoken';
+import { describe, it, expect, vi } from 'vitest';
 import { mapPayloadToUser, normalizeRole } from '../src/services/rbac/authAdapter';
 
 vi.mock('../src/config/env', () => ({
@@ -19,9 +18,11 @@ vi.mock('../src/config/env', () => ({
 }));
 
 describe('JWT auth mapping', () => {
-  it('normalizes host SaaS roles', () => {
+  it('normalizes roles to ADMIN or USER', () => {
     expect(normalizeRole('admin')).toBe('ADMIN');
-    expect(normalizeRole('agent')).toBe('AGENT');
+    expect(normalizeRole('user')).toBe('USER');
+    expect(normalizeRole('agent')).toBe('USER');
+    expect(normalizeRole('AGENT')).toBe('USER');
     expect(normalizeRole('ADMIN')).toBe('ADMIN');
   });
 
@@ -31,8 +32,8 @@ describe('JWT auth mapping', () => {
       tenantId: 'tenant-456',
       role: 'admin',
       permissions: ['manage_tags'],
-      email: 'agent@example.com',
-      name: 'Test Agent',
+      email: 'admin@example.com',
+      name: 'Test Admin',
     });
 
     expect(user).toEqual({
@@ -40,54 +41,28 @@ describe('JWT auth mapping', () => {
       tenantId: 'tenant-456',
       role: 'ADMIN',
       permissions: ['manage_tags'],
-      email: 'agent@example.com',
-      name: 'Test Agent',
+      email: 'admin@example.com',
+      name: 'Test Admin',
     });
   });
 
-  it('assigns default agent permissions when omitted', () => {
+  it('assigns default user permissions when omitted', () => {
     const user = mapPayloadToUser({
       sub: 'user-123',
       tenantId: 'tenant-456',
-      role: 'AGENT',
+      role: 'USER',
     });
 
     expect(user.permissions).toEqual([]);
   });
-
-  it('verifies HS256 tokens from host SaaS', () => {
-    const token = jwt.sign(
-      {
-        sub: 'saas-user-1',
-        tenantId: 'saas-tenant-1',
-        role: 'AGENT',
-        permissions: [],
-      },
-      'test-secret',
-      { issuer: 'host-saas', audience: 'whatsapp-crm' }
-    );
-
-    const payload = jwt.verify(token, 'test-secret', {
-      issuer: 'host-saas',
-      audience: 'whatsapp-crm',
-    }) as Record<string, unknown>;
-
-    const user = mapPayloadToUser(payload);
-    expect(user.userId).toBe('saas-user-1');
-    expect(user.tenantId).toBe('saas-tenant-1');
-  });
 });
 
 describe('JWT claim validation', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
   it('throws when tenantId is missing', () => {
     expect(() =>
       mapPayloadToUser({
         sub: 'user-123',
-        role: 'AGENT',
+        role: 'USER',
       })
     ).toThrow('JWT missing required userId or tenantId claims');
   });

@@ -20,14 +20,14 @@ describe('RBAC conversation access', () => {
   const agent: AuthUser = {
     userId: 'agent-1',
     tenantId: 'tenant-a',
-    role: 'AGENT',
+    role: 'USER',
     permissions: [],
   };
 
   const otherAgent: AuthUser = {
     userId: 'agent-2',
     tenantId: 'tenant-a',
-    role: 'AGENT',
+    role: 'USER',
     permissions: [],
   };
 
@@ -116,7 +116,7 @@ describe('Tenant isolation with database', () => {
     const agent: AuthUser = {
       userId: 'agent-2',
       tenantId: 'tenant-a',
-      role: 'AGENT',
+      role: 'USER',
       permissions: [],
     };
 

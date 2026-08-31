@@ -5,7 +5,7 @@ import { UserDashboard } from '@/components/whatsapp/dashboard/UserDashboard';
 
 export default function UserDashboardPage() {
   return (
-    <DashboardRoleGuard allowedRole="AGENT">
+    <DashboardRoleGuard allowedRole="USER">
       <UserDashboard />
     </DashboardRoleGuard>
   );

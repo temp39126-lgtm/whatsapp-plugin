@@ -13,8 +13,11 @@ function getNestedClaim(payload: Record<string, unknown>, path: string): unknown
 }
 
 function normalizeRole(role: unknown): AuthUser['role'] {
-  const value = String(role ?? 'AGENT').toUpperCase();
-  return value === 'ADMIN' ? 'ADMIN' : 'AGENT';
+  const value = String(role ?? 'USER').toUpperCase();
+  if (value === 'ADMIN') return 'ADMIN';
+  // Backward compatibility for older tokens/host SaaS payloads
+  if (value === 'AGENT' || value === 'USER') return 'USER';
+  return 'USER';
 }
 
 function normalizePermissions(
@@ -137,7 +140,8 @@ export async function resolveAuthUser(
   cookie?: string
 ): Promise<AuthUser> {
   switch (env.AUTH_ADAPTER) {
-    case 'jwt': {
+    case 'jwt':
+    case 'local': {
       if (!authorization?.startsWith('Bearer ')) {
         throw new Error('Missing bearer token');
       }
@@ -148,8 +152,9 @@ export async function resolveAuthUser(
       return resolveSessionUser(cookie);
     }
     case 'mock':
-    default:
       return resolveMockUser();
+    default:
+      throw new Error(`Unknown auth adapter: ${env.AUTH_ADAPTER}`);
   }
 }
 

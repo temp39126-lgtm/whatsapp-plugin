@@ -1,5 +1,6 @@
 import { connectDatabase, disconnectDatabase } from '../config/database';
 import { seedDefaultTags } from '../services/tags/tagService';
+import { seedDefaultUsers } from '../services/auth/authService';
 import { Contact } from '../models/Contact';
 import { Conversation } from '../models/Conversation';
 import { Message } from '../models/Message';
@@ -11,7 +12,13 @@ async function seed() {
   await connectDatabase();
 
   const tenantId = env.MOCK_TENANT_ID;
-  await seedDefaultTags(tenantId, env.MOCK_USER_ID);
+  await seedDefaultUsers(tenantId);
+  const supportUser = await (await import('../models/User')).User.findOne({
+    email: 'user@example.com',
+    tenantId,
+  });
+  const supportUserId = supportUser?._id.toString() ?? env.MOCK_USER_ID;
+  await seedDefaultTags(tenantId, supportUserId);
 
   const { WhatsAppAccount: WA } = await import('../models/WhatsAppAccount');
 
@@ -52,7 +59,7 @@ async function seed() {
           name: 'Mike Wilson',
           phone: '+15555555555',
           whatsappId: '15555555555',
-          assignedUserId: env.MOCK_USER_ID,
+          assignedUserId: supportUserId,
         },
       ]);
 
@@ -88,7 +95,7 @@ async function seed() {
             type: 'TEXT',
             content: { text: 'Hi! I would be happy to help you with that.' },
             status: 'READ',
-            sentByUserId: env.MOCK_USER_ID,
+            sentByUserId: supportUserId,
             createdAt: new Date(Date.now() - 1800000),
           },
         ]);

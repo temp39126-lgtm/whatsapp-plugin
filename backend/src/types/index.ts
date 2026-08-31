@@ -5,7 +5,7 @@ import type { ICall } from '../models/Call';
 export interface AuthUser {
   userId: string;
   tenantId: string;
-  role: 'ADMIN' | 'AGENT';
+  role: 'ADMIN' | 'USER';
   permissions: string[];
   email?: string;
   name?: string;

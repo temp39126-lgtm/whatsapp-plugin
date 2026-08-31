@@ -11,6 +11,7 @@ import { initSocketServer } from './services/realtime/socketService';
 import { authenticate, errorHandler } from './middleware/authenticate';
 import { apiRateLimiter } from './middleware/rateLimiter';
 
+import authRoutes from './routes/auth.routes';
 import conversationRoutes from './routes/conversation.routes';
 import messageRoutes from './routes/message.routes';
 import callRoutes from './routes/call.routes';
@@ -31,6 +32,8 @@ app.use(pinoHttp({ logger }));
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/api/auth', authRoutes);
 
 app.use('/api/whatsapp/webhook', webhookRoutes);
 

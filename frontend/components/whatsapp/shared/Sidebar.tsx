@@ -11,25 +11,26 @@ import {
   BarChart3,
   Settings,
   UserCog,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
 
 const navItems = [
   { href: '/whatsapp/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
-  { href: '/whatsapp/user', label: 'Dashboard', icon: LayoutDashboard, roles: ['AGENT'] },
-  { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'AGENT'] },
-  { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'AGENT'] },
-  { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'AGENT'] },
+  { href: '/whatsapp/user', label: 'Dashboard', icon: LayoutDashboard, roles: ['USER'] },
+  { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'USER'] },
+  { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'USER'] },
+  { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/team', label: 'Team', icon: UserCog, roles: ['ADMIN'] },
-  { href: '/whatsapp/tags', label: 'Tags', icon: Tags, roles: ['ADMIN', 'AGENT'] },
+  { href: '/whatsapp/tags', label: 'Tags', icon: Tags, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/analytics', label: 'Analytics', icon: BarChart3, roles: ['ADMIN'] },
-  { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'AGENT'] },
+  { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'USER'] },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
   const filteredItems = navItems.filter(
     (item) => user && item.roles.includes(user.role)
@@ -74,6 +75,14 @@ export function Sidebar() {
           <div className="px-2">
             <p className="truncate text-sm font-medium text-white">{user.name}</p>
             <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'User'}</p>
+            <button
+              type="button"
+              onClick={logout}
+              className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
           </div>
         </div>
       )}

@@ -16,7 +16,7 @@ export function DashboardRoleGuard({
   allowedRole,
   children,
 }: {
-  allowedRole: 'ADMIN' | 'AGENT';
+  allowedRole: 'ADMIN' | 'USER';
   children: React.ReactNode;
 }) {
   const { user, isLoading, isAdmin } = useAuth();
@@ -27,7 +27,7 @@ export function DashboardRoleGuard({
 
     if (allowedRole === 'ADMIN' && !isAdmin) {
       router.replace('/whatsapp/user');
-    } else if (allowedRole === 'AGENT' && isAdmin) {
+    } else if (allowedRole === 'USER' && isAdmin) {
       router.replace('/whatsapp/admin');
     }
   }, [allowedRole, isAdmin, isLoading, router, user]);
@@ -37,22 +37,14 @@ export function DashboardRoleGuard({
   }
 
   if (!user) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-        <p className="font-medium">Unable to load your session</p>
-        <p className="max-w-md text-sm text-muted-foreground">
-          The app could not reach the API. Refresh the page or check that the backend tunnel is
-          running.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   if (allowedRole === 'ADMIN' && !isAdmin) {
     return null;
   }
 
-  if (allowedRole === 'AGENT' && isAdmin) {
+  if (allowedRole === 'USER' && isAdmin) {
     return null;
   }
 

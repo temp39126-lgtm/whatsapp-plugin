@@ -71,5 +71,5 @@ class ApiClient {
 }
 
 export const api = new ApiClient(`${API_URL}/api/whatsapp`);
-
+export const authApi = new ApiClient(`${API_URL}/api/auth`);
 export const healthApi = new ApiClient(API_URL);

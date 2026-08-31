@@ -1,4 +1,4 @@
-export const ROLES = ['ADMIN', 'AGENT'] as const;
+export const ROLES = ['ADMIN', 'USER'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = {
@@ -14,4 +14,4 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ADMIN_PERMISSIONS: Permission[] = Object.values(PERMISSIONS);
 
-export const AGENT_PERMISSIONS: Permission[] = [];
+export const USER_PERMISSIONS: Permission[] = [];
