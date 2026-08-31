@@ -73,3 +73,13 @@ class ApiClient {
 export const api = new ApiClient(`${API_URL}/api/whatsapp`);
 export const authApi = new ApiClient(`${API_URL}/api/auth`);
 export const healthApi = new ApiClient(API_URL);
+
+export function getWhatsAppMediaUrl(messageId: string): string {
+  return `/api/whatsapp/messages/${messageId}/media`;
+}
+
+export function resolveMediaUrl(pathOrUrl: string): string {
+  if (pathOrUrl.startsWith('http')) return pathOrUrl;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  return `${base}${pathOrUrl}`;
+}

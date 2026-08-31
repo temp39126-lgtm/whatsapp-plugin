@@ -6,10 +6,26 @@ import { IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { sendOutgoingMessage } from '../whatsapp/whatsappService';
-import { getPresignedUrl } from '../media/mediaService';
+import { getMessageMediaPath, readMediaFile } from '../media/mediaService';
+import { getAccessibleConversation } from '../rbac/conversationAccess';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
+
+async function enrichMessageRecord(message: Record<string, unknown>) {
+  const media = await MessageMedia.findOne({ messageId: message._id }).lean();
+  const reactions = await MessageReaction.find({ messageId: message._id }).lean();
+  return {
+    ...message,
+    media: media
+      ? {
+          ...media,
+          url: getMessageMediaPath(String(message._id)),
+        }
+      : undefined,
+    reactions,
+  };
+}
 
 export async function listMessages(
   user: AuthUser,
@@ -25,18 +41,7 @@ export async function listMessages(
     .limit(lim)
     .lean();
 
-  const enriched = await Promise.all(
-    messages.map(async (msg) => {
-      const media = await MessageMedia.findOne({ messageId: msg._id }).lean();
-      const reactions = await MessageReaction.find({ messageId: msg._id }).lean();
-      let mediaWithUrl: Record<string, unknown> | undefined = media ? { ...media } : undefined;
-      if (media?.storageKey) {
-        const url = await getPresignedUrl(media.storageKey);
-        mediaWithUrl = { ...media, url };
-      }
-      return { ...msg, media: mediaWithUrl, reactions };
-    })
-  );
+  const enriched = await Promise.all(messages.map((msg) => enrichMessageRecord(msg)));
 
   const total = await Message.countDocuments({ tenantId: user.tenantId, conversationId });
   return paginatedResponse(enriched.reverse(), total, page, lim);
@@ -67,12 +72,14 @@ export async function createMessage(
     replyToMetaMessageId = replyMsg?.metaMessageId;
   }
 
-  return sendOutgoingMessage(account, conversation, contact, {
+  const message = await sendOutgoingMessage(account, conversation, contact, {
     ...data,
     sentByUserId: user.userId,
     replyToMessageId: data.replyToMessageId,
     replyToMetaMessageId,
   });
+
+  return enrichMessageRecord(message.toObject());
 }
 
 export async function addReaction(
@@ -138,4 +145,19 @@ export async function getMessageById(user: AuthUser, messageId: string): Promise
   const message = await Message.findOne({ _id: messageId, tenantId: user.tenantId });
   if (!message) throw new AppError(404, 'Message not found');
   return message;
+}
+
+export async function downloadMessageMedia(user: AuthUser, messageId: string) {
+  const message = await getMessageById(user, messageId);
+  await getAccessibleConversation(user, message.conversationId.toString());
+
+  const media = await MessageMedia.findOne({ messageId: message._id });
+  if (!media) throw new AppError(404, 'Media not found');
+
+  const { body, mimeType } = await readMediaFile(media.storageKey);
+  return {
+    body,
+    mimeType: media.mimeType || mimeType,
+    fileName: media.fileName ?? 'download',
+  };
 }

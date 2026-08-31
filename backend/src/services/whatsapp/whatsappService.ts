@@ -15,6 +15,7 @@ import {
   downloadFromUrl,
   generateStorageKey,
   getPresignedUrl,
+  storeMediaFile,
 } from '../media/mediaService';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { logger } from '../../config/logger';
@@ -288,7 +289,36 @@ export async function sendOutgoingMessage(
   const preview =
     params.type === 'TEXT'
       ? (params.content as { text: string }).text
-      : `[${params.type}]`;
+      : params.fileName
+        ? `📎 ${params.fileName}`
+        : `[${params.type}]`;
+
+  async function persistMediaAttachment() {
+    if (!params.mediaBuffer || !params.mimeType) return;
+
+    const storageKey = generateStorageKey(
+      account.tenantId,
+      account._id.toString(),
+      params.fileName ?? 'media'
+    );
+    await storeMediaFile(storageKey, params.mediaBuffer, params.mimeType);
+    await MessageMedia.create({
+      tenantId: account.tenantId,
+      messageId: message._id,
+      metaMediaId: `local-${message._id}`,
+      mediaType: params.type,
+      mimeType: params.mimeType,
+      fileName: params.fileName,
+      fileSize: params.mediaBuffer.length,
+      storageKey,
+    });
+
+    message.content = {
+      ...(typeof params.content === 'object' && params.content !== null ? params.content : {}),
+      fileName: params.fileName,
+    };
+    await message.save();
+  }
 
   async function finalizeMessage(status: IMessage['status'], metaMessageId?: string) {
     message.status = status;
@@ -314,6 +344,7 @@ export async function sendOutgoingMessage(
   }
 
   if (isDemoWhatsAppAccount(account)) {
+    await persistMediaAttachment();
     return finalizeMessage('READ', `demo-out-${message._id}`);
   }
 
@@ -351,7 +382,7 @@ export async function sendOutgoingMessage(
         account._id.toString(),
         params.fileName ?? 'media'
       );
-      await uploadToS3(storageKey, params.mediaBuffer, params.mimeType);
+      await storeMediaFile(storageKey, params.mediaBuffer, params.mimeType);
       await MessageMedia.create({
         tenantId: account.tenantId,
         messageId: message._id,

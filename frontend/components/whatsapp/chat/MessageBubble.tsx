@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Pin, Star, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DeliveryStatus } from './DeliveryStatus';
+import { MessageMediaContent } from './MessageMediaContent';
 import { Button } from '@/components/ui/button';
 import type { MessageDTO } from '@/types';
 
@@ -23,10 +24,6 @@ export function MessageBubble({
   onRetry,
 }: MessageBubbleProps) {
   const isOutgoing = message.direction === 'OUTGOING';
-  const text =
-    message.type === 'TEXT'
-      ? (message.content as { text?: string })?.text
-      : `[${message.type}]`;
 
   return (
     <div className={cn('group flex', isOutgoing ? 'justify-end' : 'justify-start')}>
@@ -40,15 +37,7 @@ export function MessageBubble({
           <Pin className="absolute -top-2 -right-2 h-3 w-3 text-whatsapp" />
         )}
 
-        <p className="whitespace-pre-wrap break-words text-sm">{text}</p>
-
-        {message.media?.url && message.type === 'IMAGE' && (
-          <img
-            src={message.media.url}
-            alt="Media"
-            className="mt-2 max-h-48 rounded object-cover"
-          />
-        )}
+        <MessageMediaContent message={message} />
 
         <div className="mt-1 flex items-center justify-end gap-1">
           {message.isStarred && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />}

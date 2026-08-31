@@ -85,6 +85,17 @@ export async function retryMessage(req: AuthenticatedRequest, res: Response, nex
   }
 }
 
+export async function downloadMedia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const media = await messageService.downloadMessageMedia(req.user!, getParam(req.params.id));
+    res.setHeader('Content-Type', media.mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${media.fileName.replace(/"/g, '')}"`);
+    res.send(media.body);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getPinned(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const messages = await messageService.getPinnedMessages(req.user!, getParam(req.params.id));
