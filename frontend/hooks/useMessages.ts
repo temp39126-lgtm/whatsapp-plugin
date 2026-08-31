@@ -63,6 +63,33 @@ export function useAddReaction() {
   });
 }
 
+export function useSendMediaMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      conversationId,
+      file,
+      caption,
+      replyToMessageId,
+    }: {
+      conversationId: string;
+      file: File;
+      caption?: string;
+      replyToMessageId?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (caption) formData.append('caption', caption);
+      if (replyToMessageId) formData.append('replyToMessageId', replyToMessageId);
+      return api.upload<MessageDTO>(`/conversations/${conversationId}/messages/media`, formData);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
 export function useRetryMessage() {
   const queryClient = useQueryClient();
   return useMutation({

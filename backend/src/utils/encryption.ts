@@ -30,5 +30,6 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
     .update(payload)
     .digest('hex');
   const received = signature.replace('sha256=', '');
+  if (expected.length !== received.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received));
 }

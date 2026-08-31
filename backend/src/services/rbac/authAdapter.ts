@@ -1,18 +1,101 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload, VerifyOptions } from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { AuthUser } from '../../types';
 import { ADMIN_PERMISSIONS } from '../../constants/permissions';
 
-async function resolveJwtUser(token: string): Promise<AuthUser> {
-  const payload = jwt.verify(token, env.JWT_SECRET) as Record<string, unknown>;
+function getNestedClaim(payload: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, payload);
+}
+
+function normalizeRole(role: unknown): AuthUser['role'] {
+  const value = String(role ?? 'AGENT').toUpperCase();
+  return value === 'ADMIN' ? 'ADMIN' : 'AGENT';
+}
+
+function normalizePermissions(
+  permissions: unknown,
+  role: AuthUser['role']
+): string[] {
+  if (Array.isArray(permissions)) {
+    return permissions.map(String);
+  }
+  return role === 'ADMIN' ? [...ADMIN_PERMISSIONS] : [];
+}
+
+function mapPayloadToUser(payload: Record<string, unknown>): AuthUser {
+  const userId = getNestedClaim(payload, env.JWT_USER_ID_CLAIM);
+  const tenantId = getNestedClaim(payload, env.JWT_TENANT_ID_CLAIM);
+  const role = normalizeRole(getNestedClaim(payload, env.JWT_ROLE_CLAIM));
+  const permissions = normalizePermissions(
+    getNestedClaim(payload, env.JWT_PERMISSIONS_CLAIM),
+    role
+  );
+
+  if (!userId || !tenantId) {
+    throw new Error('JWT missing required userId or tenantId claims');
+  }
+
   return {
-    userId: String(payload.sub ?? payload.userId),
-    tenantId: String(payload.tenantId),
-    role: (payload.role as AuthUser['role']) ?? 'AGENT',
-    permissions: (payload.permissions as string[]) ?? [],
+    userId: String(userId),
+    tenantId: String(tenantId),
+    role,
+    permissions,
     email: payload.email as string | undefined,
-    name: payload.name as string | undefined,
+    name: (payload.name as string | undefined) ?? (payload.fullName as string | undefined),
   };
+}
+
+function getVerifyOptions(): VerifyOptions {
+  const options: VerifyOptions = { algorithms: [env.JWT_ALGORITHM] };
+  if (env.JWT_ISSUER) options.issuer = env.JWT_ISSUER;
+  if (env.JWT_AUDIENCE) options.audience = env.JWT_AUDIENCE;
+  return options;
+}
+
+function getVerificationKey(): string {
+  if (env.JWT_ALGORITHM === 'RS256') {
+    if (!env.JWT_PUBLIC_KEY) {
+      throw new Error('JWT_PUBLIC_KEY is required for RS256');
+    }
+    return env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
+  }
+  return env.JWT_SECRET;
+}
+
+async function resolveJwtUser(token: string): Promise<AuthUser> {
+  if (env.JWT_INTROSPECTION_URL) {
+    return resolveJwtViaIntrospection(token);
+  }
+
+  const payload = jwt.verify(token, getVerificationKey(), getVerifyOptions()) as JwtPayload;
+  return mapPayloadToUser(payload as Record<string, unknown>);
+}
+
+async function resolveJwtViaIntrospection(token: string): Promise<AuthUser> {
+  const response = await fetch(env.JWT_INTROSPECTION_URL!, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    throw new Error('JWT introspection failed');
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  if (data.active === false) {
+    throw new Error('JWT token is not active');
+  }
+
+  return mapPayloadToUser(data);
 }
 
 async function resolveSessionUser(cookie: string): Promise<AuthUser> {
@@ -24,11 +107,12 @@ async function resolveSessionUser(cookie: string): Promise<AuthUser> {
   });
   if (!response.ok) throw new Error('Session introspection failed');
   const data = (await response.json()) as Record<string, unknown>;
+  const role = normalizeRole(data.role);
   return {
     userId: String(data.userId ?? data.id),
     tenantId: String(data.tenantId),
-    role: (data.role as AuthUser['role']) ?? 'AGENT',
-    permissions: (data.permissions as string[]) ?? [],
+    role,
+    permissions: normalizePermissions(data.permissions, role),
     email: data.email as string | undefined,
     name: data.name as string | undefined,
   };
@@ -68,3 +152,5 @@ export async function resolveAuthUser(
       return resolveMockUser();
   }
 }
+
+export { mapPayloadToUser, normalizeRole };

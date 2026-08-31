@@ -1,3 +1,5 @@
+import { getAuthHeaders } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface RequestOptions extends RequestInit {
@@ -26,11 +28,13 @@ class ApiClient {
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { params, ...fetchOptions } = options;
     const url = this.buildUrl(path, params);
+    const authHeaders = getAuthHeaders();
 
     const response = await fetch(url, {
       ...fetchOptions,
       headers: {
-        'Content-Type': 'application/json',
+        ...(fetchOptions.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...authHeaders,
         ...fetchOptions.headers,
       },
       credentials: 'include',
@@ -59,6 +63,10 @@ class ApiClient {
 
   delete<T>(path: string) {
     return this.request<T>(path, { method: 'DELETE' });
+  }
+
+  upload<T>(path: string, formData: FormData) {
+    return this.request<T>(path, { method: 'POST', body: formData });
   }
 }
 

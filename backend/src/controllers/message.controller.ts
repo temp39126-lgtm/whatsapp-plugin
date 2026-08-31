@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest, getParam } from '../types';
+import { AuthenticatedRequest, AppError, getParam } from '../types';
 import * as messageService from '../services/messages/messageService';
 
 export async function listMessages(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -16,6 +16,29 @@ export async function listMessages(req: AuthenticatedRequest, res: Response, nex
 export async function createMessage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const message = await messageService.createMessage(req.user!, req.conversation!, req.body);
+    res.status(201).json(message);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createMediaMessage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const file = req.file;
+    if (!file) {
+      next(new AppError(400, 'No file uploaded'));
+      return;
+    }
+
+    const message = await messageService.createMessage(req.user!, req.conversation!, {
+      type: (await import('../utils/mediaType')).mimeToMessageType(file.mimetype),
+      content: { caption: req.body.caption ?? '' },
+      replyToMessageId: req.body.replyToMessageId,
+      mediaBuffer: file.buffer,
+      mimeType: file.mimetype,
+      fileName: file.originalname,
+    });
+
     res.status(201).json(message);
   } catch (error) {
     next(error);

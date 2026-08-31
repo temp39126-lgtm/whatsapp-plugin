@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/authenticate';
 import { tenantAccess } from '../middleware/tenantAccess';
 import { conversationAccess } from '../middleware/conversationAccess';
 import { validateBody } from '../middleware/validate';
+import { uploadMiddleware } from '../middleware/upload';
 import { createMessageSchema, reactionSchema } from '../validators/message.validator';
 import * as conversationController from '../controllers/conversation.controller';
 import * as messageController from '../controllers/message.controller';
@@ -17,6 +18,12 @@ router.post(
   conversationAccess(),
   validateBody(createMessageSchema),
   messageController.createMessage
+);
+router.post(
+  '/conversations/:id/messages/media',
+  conversationAccess(),
+  uploadMiddleware.single('file'),
+  messageController.createMediaMessage
 );
 router.get('/conversations/:id/pinned', conversationAccess(), messageController.getPinned);
 router.get('/conversations/:id/starred', conversationAccess(), messageController.getStarred);

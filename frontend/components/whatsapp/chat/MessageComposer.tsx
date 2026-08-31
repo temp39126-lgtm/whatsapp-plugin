@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Send, Paperclip, Smile, X } from 'lucide-react';
+import { Send, Paperclip, Smile, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { MessageDTO } from '@/types';
@@ -11,6 +11,7 @@ const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 interface MessageComposerProps {
   onSend: (text: string, replyTo?: string) => void;
+  onSendMedia?: (file: File, caption?: string, replyTo?: string) => void;
   replyTo?: MessageDTO | null;
   onCancelReply?: () => void;
   disabled?: boolean;
@@ -18,15 +19,27 @@ interface MessageComposerProps {
 
 export function MessageComposer({
   onSend,
+  onSendMedia,
   replyTo,
   onCancelReply,
   disabled,
 }: MessageComposerProps) {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
+    if (selectedFile && onSendMedia) {
+      onSendMedia(selectedFile, text.trim() || undefined, replyTo?._id);
+      setSelectedFile(null);
+      setText('');
+      onCancelReply?.();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (!text.trim() || disabled) return;
     onSend(text.trim(), replyTo?._id);
     setText('');
@@ -38,6 +51,11 @@ export function MessageComposer({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setSelectedFile(file);
   };
 
   return (
@@ -53,8 +71,43 @@ export function MessageComposer({
         </div>
       )}
 
+      {selectedFile && (
+        <div className="mb-2 flex items-center justify-between rounded border border-whatsapp/30 bg-whatsapp-light px-3 py-2 text-sm">
+          <div className="flex items-center gap-2 truncate">
+            {selectedFile.type.startsWith('image/') ? (
+              <ImageIcon className="h-4 w-4 shrink-0 text-whatsapp-dark" />
+            ) : (
+              <FileText className="h-4 w-4 shrink-0 text-whatsapp-dark" />
+            )}
+            <span className="truncate">{selectedFile.name}</span>
+          </div>
+          <button
+            onClick={() => {
+              setSelectedFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-end gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+          onChange={handleFileChange}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          disabled={disabled}
+          onClick={() => fileInputRef.current?.click()}
+        >
           <Paperclip className="h-5 w-5" />
         </Button>
 
@@ -64,7 +117,7 @@ export function MessageComposer({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={selectedFile ? 'Add a caption (optional)...' : 'Type a message...'}
             disabled={disabled}
             className="pr-10"
           />
@@ -91,7 +144,7 @@ export function MessageComposer({
           variant="whatsapp"
           size="icon"
           onClick={handleSend}
-          disabled={!text.trim() || disabled}
+          disabled={(!text.trim() && !selectedFile) || disabled}
           className="shrink-0"
         >
           <Send className="h-5 w-5" />

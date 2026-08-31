@@ -9,6 +9,15 @@ const envSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/whatsapp_crm'),
   AUTH_ADAPTER: z.enum(['jwt', 'session', 'mock']).default('mock'),
   JWT_SECRET: z.string().default('dev-secret'),
+  JWT_PUBLIC_KEY: z.string().optional(),
+  JWT_ALGORITHM: z.enum(['HS256', 'RS256']).default('HS256'),
+  JWT_ISSUER: z.string().optional(),
+  JWT_AUDIENCE: z.string().optional(),
+  JWT_USER_ID_CLAIM: z.string().default('sub'),
+  JWT_TENANT_ID_CLAIM: z.string().default('tenantId'),
+  JWT_ROLE_CLAIM: z.string().default('role'),
+  JWT_PERMISSIONS_CLAIM: z.string().default('permissions'),
+  JWT_INTROSPECTION_URL: z.string().optional(),
   SESSION_INTROSPECTION_URL: z.string().optional(),
   MOCK_USER_ID: z.string().default('user-001'),
   MOCK_TENANT_ID: z.string().default('tenant-001'),
@@ -31,6 +40,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
+  MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),
 });
 
 export const env = envSchema.parse(process.env);

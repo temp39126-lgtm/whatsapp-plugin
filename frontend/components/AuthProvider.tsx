@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { initHostAuthListener, requestHostAuth } from '@/lib/auth';
+import { resetSocket } from '@/lib/socket';
 import type { AuthUser } from '@/types';
 
 interface AuthContextType {
@@ -20,12 +22,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadUser = () => {
+    setIsLoading(true);
     api
       .get<AuthUser>('/me')
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    const cleanupHostAuth = initHostAuthListener();
+    requestHostAuth();
+    loadUser();
+
+    const onAuthChanged = () => {
+      resetSocket();
+      loadUser();
+    };
+
+    window.addEventListener('whatsapp-crm-auth-changed', onAuthChanged);
+    return () => {
+      cleanupHostAuth();
+      window.removeEventListener('whatsapp-crm-auth-changed', onAuthChanged);
+    };
   }, []);
 
   return (

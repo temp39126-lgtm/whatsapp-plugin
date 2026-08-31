@@ -8,6 +8,7 @@ import { MessageComposer } from './MessageComposer';
 import {
   useMessages,
   useSendMessage,
+  useSendMediaMessage,
   useTogglePin,
   useToggleStar,
   useRetryMessage,
@@ -27,6 +28,7 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
 
   const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null);
   const sendMessage = useSendMessage();
+  const sendMediaMessage = useSendMediaMessage();
   const togglePin = useTogglePin();
   const toggleStar = useToggleStar();
   const retryMessage = useRetryMessage();
@@ -65,6 +67,15 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
     sendMessage.mutate({
       conversationId: conversation._id,
       text,
+      replyToMessageId,
+    });
+  };
+
+  const handleSendMedia = (file: File, caption?: string, replyToMessageId?: string) => {
+    sendMediaMessage.mutate({
+      conversationId: conversation._id,
+      file,
+      caption,
       replyToMessageId,
     });
   };
@@ -113,9 +124,10 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
 
       <MessageComposer
         onSend={handleSend}
+        onSendMedia={handleSendMedia}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
-        disabled={sendMessage.isPending}
+        disabled={sendMessage.isPending || sendMediaMessage.isPending}
       />
     </div>
   );
