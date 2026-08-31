@@ -17,7 +17,7 @@ import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
 import { getInitials } from '@/lib/utils';
 
-export function AgentDashboard() {
+export function UserDashboard() {
   const { user } = useAuth();
 
   const { data: myConversations, isLoading } = useConversations({ mine: true });
@@ -43,9 +43,9 @@ export function AgentDashboard() {
       <div className="border-b bg-background/80 px-6 py-6 backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-whatsapp-dark">Agent Dashboard</p>
+            <p className="text-sm font-medium text-whatsapp-dark">User Dashboard</p>
             <h1 className="mt-1 text-2xl font-bold">
-              Hello, {user?.name ?? 'Agent'}
+              Hello, {user?.name ?? 'User'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Your assigned conversations and tasks

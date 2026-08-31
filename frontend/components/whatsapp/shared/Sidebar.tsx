@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
 
 const navItems = [
-  { href: '/whatsapp', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'AGENT'] },
+  { href: '/whatsapp/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
+  { href: '/whatsapp/user', label: 'Dashboard', icon: LayoutDashboard, roles: ['AGENT'] },
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'AGENT'] },
   { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'AGENT'] },
   { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'AGENT'] },
@@ -49,8 +50,8 @@ export function Sidebar() {
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const isActive =
-            item.href === '/whatsapp'
-              ? pathname === '/whatsapp'
+            item.href === '/whatsapp/admin' || item.href === '/whatsapp/user'
+              ? pathname === item.href
               : pathname.startsWith(item.href);
           return (
             <Link
@@ -72,7 +73,7 @@ export function Sidebar() {
         <div className="mt-auto hidden border-t border-white/10 pt-4 lg:block">
           <div className="px-2">
             <p className="truncate text-sm font-medium text-white">{user.name}</p>
-            <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'Agent'}</p>
+            <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'User'}</p>
           </div>
         </div>
       )}
