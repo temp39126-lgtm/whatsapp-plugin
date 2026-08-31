@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
 import pinoHttp from 'pino-http';
+import { corsOptions } from './config/cors';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { connectDatabase } from './config/database';
@@ -23,7 +24,7 @@ const app = express();
 const httpServer = createServer(app);
 
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(pinoHttp({ logger }));
 

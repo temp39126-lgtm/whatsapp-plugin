@@ -1,5 +1,6 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import { corsOptions } from '../../config/cors';
 import { env } from '../../config/env';
 import { AuthUser } from '../../types';
 import { resolveAuthUser } from '../rbac/authAdapter';
@@ -11,7 +12,7 @@ let io: SocketServer | null = null;
 
 export function initSocketServer(httpServer: HttpServer): SocketServer {
   io = new SocketServer(httpServer, {
-    cors: { origin: env.CORS_ORIGIN, credentials: true },
+    cors: corsOptions,
   });
 
   io.use(async (socket, next) => {

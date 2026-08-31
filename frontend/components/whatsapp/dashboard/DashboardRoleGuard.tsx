@@ -37,7 +37,15 @@ export function DashboardRoleGuard({
   }
 
   if (!user) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+        <p className="font-medium">Unable to load your session</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          The app could not reach the API. Refresh the page or check that the backend tunnel is
+          running.
+        </p>
+      </div>
+    );
   }
 
   if (allowedRole === 'ADMIN' && !isAdmin) {

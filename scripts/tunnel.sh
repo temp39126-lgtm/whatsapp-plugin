@@ -10,27 +10,39 @@ if [[ ! -x "$CLOUDFLARED" ]]; then
   chmod +x "$CLOUDFLARED"
 fi
 
-echo "==> Ensuring MongoDB and backend are running"
+echo "==> Ensuring MongoDB is running"
 bash scripts/start-mongo.sh || true
-pgrep -f "tsx watch src/server.ts" >/dev/null || (cd backend && npm run dev &)
+
+echo "==> Starting backend (restart so CORS picks up tunnel origins)"
+pkill -f "tsx watch src/server.ts" 2>/dev/null || true
+sleep 1
+(cd backend && npm run dev > /tmp/backend-dev.log 2>&1 &)
 sleep 3
 
 echo "==> Starting backend Cloudflare tunnel"
-"$CLOUDFLARED" tunnel --url http://localhost:5000 --no-autoupdate > /tmp/cf-backend.log 2>&1 &
+pkill -f "cloudflared tunnel --url http://127.0.0.1:5000" 2>/dev/null || true
+pkill -f "cloudflared tunnel --url http://localhost:5000" 2>/dev/null || true
+"$CLOUDFLARED" tunnel --url http://127.0.0.1:5000 --no-autoupdate > /tmp/cf-backend.log 2>&1 &
 sleep 8
 BACKEND_URL=$(rg -o 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf-backend.log | head -1)
 echo "Backend tunnel: $BACKEND_URL"
 
 echo "==> Building frontend for production (CSS works through tunnels)"
+pkill -f "next start" 2>/dev/null || true
+fuser -k 3000/tcp 2>/dev/null || true
+sleep 2
 cd frontend
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
-NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run start &
-sleep 3
+NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run start > /tmp/next-prod.log 2>&1 &
+sleep 4
 
 echo "==> Starting frontend Cloudflare tunnel"
-"$CLOUDFLARED" tunnel --url http://localhost:3000 --no-autoupdate > /tmp/cf-frontend.log 2>&1 &
+pkill -f "cloudflared tunnel --url http://127.0.0.1:3000" 2>/dev/null || true
+pkill -f "cloudflared tunnel --url http://localhost:3000" 2>/dev/null || true
+"$CLOUDFLARED" tunnel --url http://127.0.0.1:3000 --no-autoupdate > /tmp/cf-frontend.log 2>&1 &
 sleep 8
 FRONTEND_URL=$(rg -o 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf-frontend.log | tail -1)
+echo "Frontend tunnel: $FRONTEND_URL"
 
 echo ""
 echo "============================================"
