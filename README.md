@@ -26,6 +26,61 @@ cd frontend && cp .env.example .env.local && npm install && npm run dev
 
 Open http://localhost:3000/whatsapp/inbox
 
+### Host SaaS JWT Integration
+
+**Backend** (`.env`):
+
+```bash
+AUTH_ADAPTER=jwt
+JWT_SECRET=your-shared-secret          # HS256
+# Or for RS256:
+JWT_ALGORITHM=RS256
+JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+JWT_ISSUER=https://your-saas.com
+JWT_AUDIENCE=whatsapp-crm
+JWT_USER_ID_CLAIM=sub
+JWT_TENANT_ID_CLAIM=tenantId
+JWT_ROLE_CLAIM=role
+JWT_PERMISSIONS_CLAIM=permissions
+# Optional token introspection instead of local verify:
+JWT_INTROSPECTION_URL=https://your-saas.com/api/auth/introspect
+```
+
+**Frontend** (`.env.local`):
+
+```bash
+NEXT_PUBLIC_HOST_SAAS_ORIGIN=https://your-saas.com
+NEXT_PUBLIC_AUTH_TOKEN_KEY=whatsapp_crm_token
+```
+
+**Embed in host SaaS (iframe):**
+
+```javascript
+// Host sends JWT to plugin
+iframe.contentWindow.postMessage(
+  { type: 'WHATSAPP_CRM_AUTH', token: userJwt },
+  'https://your-plugin-domain.com'
+);
+
+// Plugin requests auth on load
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'WHATSAPP_CRM_REQUEST_AUTH') {
+    iframe.contentWindow.postMessage(
+      { type: 'WHATSAPP_CRM_AUTH', token: getUserJwt() },
+      event.origin
+    );
+  }
+});
+```
+
+The backend never trusts `tenantId` or `userId` from the client body — only from the verified JWT.
+
+### Running Tests
+
+```bash
+cd backend && npm test
+```
+
 ---
 
 ## Phase 0 — Project Inspection
