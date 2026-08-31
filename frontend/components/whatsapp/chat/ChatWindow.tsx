@@ -1,8 +1,9 @@
 'use client';
 
-import { Phone, MoreVertical } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ConversationActionsMenu } from './ConversationActionsMenu';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import {
@@ -112,12 +113,10 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={onStartCall}>
+          <Button variant="ghost" size="icon" onClick={onStartCall} disabled={!onStartCall}>
             <Phone className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          <ConversationActionsMenu conversation={conversation} />
         </div>
       </header>
 
