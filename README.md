@@ -13,6 +13,29 @@ A production-ready, modular **WhatsApp CRM Plugin** designed to integrate into a
 
 ### Quick Start
 
+**One command — install, build, and test (single terminal):**
+
+```bash
+npm install          # installs root helper + runs check deps
+npm run check        # install backend/frontend + build + test
+```
+
+**One command — run everything (MongoDB + seed + backend + frontend in one terminal):**
+
+```bash
+npm install
+npm run start:all    # starts MongoDB, seeds data, runs both apps
+```
+
+Then open http://localhost:3000/whatsapp/inbox
+
+| Command | What it does |
+|---------|----------------|
+| `npm run check` | Install → build → test (no servers started) |
+| `npm run dev` | Backend (5000) + frontend (3000) together |
+| `npm run start:all` | MongoDB + seed + dev (best for Cloud Agent) |
+| `npm run mongo` | Start MongoDB only (no Docker needed) |
+
 #### Option A — With Docker (local machine with Docker installed)
 
 ```bash

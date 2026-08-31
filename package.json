@@ -1,0 +1,20 @@
+{
+  "name": "whatsapp-crm-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "build:all": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test:all": "npm test --prefix backend",
+    "check": "bash scripts/check.sh",
+    "seed": "npm run seed --prefix backend",
+    "mongo": "bash scripts/start-mongo.sh",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently -n backend,frontend -c green,blue \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start:all": "npm run mongo && npm run seed --prefix backend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
