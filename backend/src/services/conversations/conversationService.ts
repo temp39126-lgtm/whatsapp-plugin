@@ -6,6 +6,7 @@ import { buildConversationFilter } from '../rbac/conversationAccess';
 import { logActivity } from '../rbac/activityLog';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
+import { enrichConversations } from './conversationEnrichment';
 
 interface ConversationFilters {
   status?: string;
@@ -33,32 +34,38 @@ export async function listConversations(
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
   if (filters.unread) query.unreadCount = { $gt: 0 };
 
+  if (filters.search) {
+    const matchingContacts = await Contact.find({
+      tenantId: user.tenantId,
+      $or: [
+        { name: { $regex: filters.search, $options: 'i' } },
+        { phone: { $regex: filters.search, $options: 'i' } },
+      ],
+    }).select('_id');
+    query.contactId = { $in: matchingContacts.map((contact) => contact._id) };
+  }
+
   const filter = buildConversationFilter(user, query);
   const { skip, limit: lim } = getPagination({ page, limit });
 
-  let conversations = await Conversation.find(filter)
+  const conversations = await Conversation.find(filter)
     .sort({ lastMessageAt: -1 })
     .skip(skip)
     .limit(lim)
     .populate('contactId', 'name phone whatsappId profileImage')
+    .populate('tags', 'name')
     .lean();
 
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    conversations = conversations.filter((c) => {
-      const contact = c.contactId as { name?: string; phone?: string } | undefined;
-      return (
-        contact?.name?.toLowerCase().includes(searchLower) ||
-        contact?.phone?.includes(filters.search!)
-      );
-    });
-  }
-
   const total = await Conversation.countDocuments(filter);
-  const enriched = conversations.map((c) => ({
-    ...c,
-    contact: typeof c.contactId === 'object' && c.contactId !== null ? c.contactId : undefined,
-  }));
+  const enriched = await enrichConversations(
+    conversations.map((conversation) => ({
+      ...conversation,
+      contact:
+        typeof conversation.contactId === 'object' && conversation.contactId !== null
+          ? conversation.contactId
+          : undefined,
+    }))
+  );
 
   return paginatedResponse(enriched, total, page, lim);
 }
@@ -67,15 +74,21 @@ export async function getConversation(user: AuthUser, conversationId: string) {
   const conversation = await Conversation.findOne({
     _id: conversationId,
     tenantId: user.tenantId,
-  }).populate('contactId');
+  })
+    .populate('contactId')
+    .populate('tags', 'name');
 
   if (!conversation) return null;
 
   const obj = conversation.toObject();
-  return {
-    ...obj,
-    contact: typeof obj.contactId === 'object' && obj.contactId !== null ? obj.contactId : undefined,
-  };
+  const [enriched] = await enrichConversations([
+    {
+      ...obj,
+      contact: typeof obj.contactId === 'object' && obj.contactId !== null ? obj.contactId : undefined,
+    },
+  ]);
+
+  return enriched;
 }
 
 export async function assignConversation(
@@ -104,7 +117,7 @@ export async function assignConversation(
     assignedUserId,
   });
 
-  return conversation;
+  return getConversation(user, conversation._id.toString());
 }
 
 export async function updateConversationStatus(
@@ -124,7 +137,7 @@ export async function updateConversationStatus(
     status,
   });
 
-  return conversation;
+  return getConversation(user, conversation._id.toString());
 }
 
 export async function updateConversationPriority(
@@ -139,7 +152,12 @@ export async function updateConversationPriority(
     priority,
   });
 
-  return conversation;
+  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.updated', {
+    conversationId: conversation._id.toString(),
+    priority,
+  });
+
+  return getConversation(user, conversation._id.toString());
 }
 
 export async function updateConversationTags(
@@ -154,7 +172,12 @@ export async function updateConversationTags(
     tagIds,
   });
 
-  return conversation;
+  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.updated', {
+    conversationId: conversation._id.toString(),
+    tagIds,
+  });
+
+  return getConversation(user, conversation._id.toString());
 }
 
 export async function markConversationRead(
@@ -172,5 +195,5 @@ export async function markConversationRead(
     { upsert: true }
   );
 
-  return conversation;
+  return getConversation(user, conversation._id.toString());
 }

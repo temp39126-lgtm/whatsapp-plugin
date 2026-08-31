@@ -63,7 +63,12 @@ export function MessageComposer({
       {replyTo && (
         <div className="mb-2 flex items-center justify-between rounded bg-muted px-3 py-2 text-sm">
           <span className="truncate text-muted-foreground">
-            Replying to: {(replyTo.content as { text?: string })?.text ?? `[${replyTo.type}]`}
+            Replying to:{' '}
+            {replyTo.type === 'TEXT'
+              ? (replyTo.content as { text?: string })?.text
+              : replyTo.media?.fileName ??
+                (replyTo.content as { fileName?: string })?.fileName ??
+                replyTo.type.toLowerCase()}
           </span>
           <button onClick={onCancelReply} className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />

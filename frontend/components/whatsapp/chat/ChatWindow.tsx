@@ -24,6 +24,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
+  const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null);
@@ -64,20 +65,38 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
   }
 
   const handleSend = (text: string, replyToMessageId?: string) => {
-    sendMessage.mutate({
-      conversationId: conversation._id,
-      text,
-      replyToMessageId,
-    });
+    setSendError('');
+    sendMessage.mutate(
+      {
+        conversationId: conversation._id,
+        text,
+        replyToMessageId,
+      },
+      {
+        onError: (error) => {
+          setSendError(error instanceof Error ? error.message : 'Failed to send message');
+        },
+        onSuccess: () => setReplyTo(null),
+      }
+    );
   };
 
   const handleSendMedia = (file: File, caption?: string, replyToMessageId?: string) => {
-    sendMediaMessage.mutate({
-      conversationId: conversation._id,
-      file,
-      caption,
-      replyToMessageId,
-    });
+    setSendError('');
+    sendMediaMessage.mutate(
+      {
+        conversationId: conversation._id,
+        file,
+        caption,
+        replyToMessageId,
+      },
+      {
+        onError: (error) => {
+          setSendError(error instanceof Error ? error.message : 'Failed to send media');
+        },
+        onSuccess: () => setReplyTo(null),
+      }
+    );
   };
 
   return (
@@ -129,6 +148,9 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
         onCancelReply={() => setReplyTo(null)}
         disabled={sendMessage.isPending || sendMediaMessage.isPending}
       />
+      {sendError && (
+        <div className="border-t bg-red-50 px-4 py-2 text-sm text-red-700">{sendError}</div>
+      )}
     </div>
   );
 }

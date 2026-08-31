@@ -40,6 +40,9 @@ coverage/
 
 # Docker volumes
 data/
+backend/.data/
+
+# Compiled shared types
 shared/**/*.js
 shared/**/*.d.ts
 shared/**/*.map

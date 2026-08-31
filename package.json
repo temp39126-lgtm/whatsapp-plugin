@@ -8,6 +8,7 @@
     "test:all": "npm test --prefix backend",
     "check": "bash scripts/check.sh",
     "seed": "npm run seed --prefix backend",
+    "seed:demo": "npm run seed:demo --prefix backend",
     "mongo": "bash scripts/start-mongo.sh",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",

@@ -5,7 +5,16 @@ import * as analyticsService from '../services/analytics/analyticsService';
 
 export async function listConversations(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const result = await conversationService.listConversations(req.user!, req.query as never);
+    const query = req.query as Record<string, string | undefined>;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const { page: _page, limit: _limit, ...filters } = query;
+    const result = await conversationService.listConversations(
+      req.user!,
+      filters as never,
+      page,
+      limit
+    );
     res.json(result);
   } catch (error) {
     next(error);

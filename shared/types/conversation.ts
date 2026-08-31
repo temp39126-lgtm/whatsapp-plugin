@@ -6,10 +6,15 @@ export interface ConversationDTO {
   whatsappAccountId: string;
   contactId: string;
   assignedUserId?: string;
+  assignedUser?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
   permittedUsers: string[];
   status: ConversationStatus;
   priority: ConversationPriority;
-  tags: string[];
+  tags: Array<{ _id: string; name: string }>;
   unreadCount: number;
   lastMessage?: string;
   lastMessageAt?: string;

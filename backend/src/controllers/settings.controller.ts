@@ -87,6 +87,15 @@ export async function getTeamWorkload(req: AuthenticatedRequest, res: Response, 
   }
 }
 
+export async function listTeamUsers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const users = await analyticsService.listTeamUsers(req.user!);
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getAccountSettings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const account = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });

@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import {
   S3Client,
   PutObjectCommand,
@@ -20,6 +22,8 @@ const s3 = new S3Client({
   forcePathStyle: env.S3_FORCE_PATH_STYLE,
 });
 
+const LOCAL_MEDIA_ROOT = path.join(process.cwd(), '.data', 'media');
+
 let bucketInitialized = false;
 
 async function ensureBucket(): Promise<void> {
@@ -35,6 +39,10 @@ async function ensureBucket(): Promise<void> {
     }
   }
   bucketInitialized = true;
+}
+
+function localMediaPath(storageKey: string): string {
+  return path.join(LOCAL_MEDIA_ROOT, storageKey);
 }
 
 export function generateStorageKey(tenantId: string, whatsappAccountId: string, fileName: string): string {
@@ -59,10 +67,52 @@ export async function uploadToS3(
   return key;
 }
 
+export async function storeMediaFile(key: string, body: Buffer, mimeType: string): Promise<void> {
+  try {
+    await uploadToS3(key, body, mimeType);
+  } catch (error) {
+    logger.warn({ error, key }, 'S3 unavailable, storing media locally');
+    const filePath = localMediaPath(key);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, body);
+  }
+}
+
+export async function readMediaFile(
+  storageKey: string
+): Promise<{ body: Buffer; mimeType: string }> {
+  try {
+    await ensureBucket();
+    const response = await s3.send(
+      new GetObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: storageKey,
+      })
+    );
+    const body = Buffer.from(await response.Body!.transformToByteArray());
+    return {
+      body,
+      mimeType: response.ContentType ?? 'application/octet-stream',
+    };
+  } catch {
+    const filePath = localMediaPath(storageKey);
+    const body = await fs.readFile(filePath);
+    return { body, mimeType: 'application/octet-stream' };
+  }
+}
+
 export async function getPresignedUrl(key: string): Promise<string> {
-  await ensureBucket();
-  const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key });
-  return getSignedUrl(s3, command, { expiresIn: env.PRESIGNED_URL_EXPIRY });
+  try {
+    await ensureBucket();
+    const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key });
+    return getSignedUrl(s3, command, { expiresIn: env.PRESIGNED_URL_EXPIRY });
+  } catch {
+    return `/api/whatsapp/messages/by-storage/${encodeURIComponent(key)}`;
+  }
+}
+
+export function getMessageMediaPath(messageId: string): string {
+  return `/api/whatsapp/messages/${messageId}/media`;
 }
 
 export async function downloadFromUrl(url: string, accessToken?: string): Promise<Buffer> {

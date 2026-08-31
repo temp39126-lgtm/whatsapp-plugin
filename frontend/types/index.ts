@@ -42,8 +42,20 @@ export interface InternalNoteDTO {
   conversationId: string;
   content: string;
   createdBy: string;
+  author?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TeamUserDTO {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'USER';
 }
 
 export interface AnalyticsConversations {

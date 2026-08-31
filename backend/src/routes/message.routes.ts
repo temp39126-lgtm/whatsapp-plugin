@@ -36,5 +36,6 @@ router.post(
 router.post('/messages/:id/pin', messageController.togglePin);
 router.post('/messages/:id/star', messageController.toggleStar);
 router.post('/messages/:id/retry', messageController.retryMessage);
+router.get('/messages/:id/media', messageController.downloadMedia);
 
 export default router;

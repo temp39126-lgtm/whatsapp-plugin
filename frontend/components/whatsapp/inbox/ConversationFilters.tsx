@@ -10,9 +10,9 @@ interface ConversationFiltersProps {
 }
 
 const adminFilters = [
-  { key: 'all', label: 'All', value: {} },
-  { key: 'mine', label: 'My Conversations', value: { mine: true } },
-  { key: 'unassigned', label: 'Unassigned', value: { unassigned: true } },
+  { key: 'all', label: 'All', patch: {} as Record<string, string | boolean | undefined> },
+  { key: 'mine', label: 'My Conversations', patch: { mine: true, unassigned: undefined } },
+  { key: 'unassigned', label: 'Unassigned', patch: { unassigned: true, mine: undefined } },
 ];
 
 const statusFilters = [
@@ -36,20 +36,27 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
 
       {isAdmin && (
         <div className="flex flex-wrap gap-1">
-          {adminFilters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => onChange({ search: filters.search, ...f.value })}
-              className={cn(
-                'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                JSON.stringify(filters) === JSON.stringify({ search: filters.search, ...f.value })
-                  ? 'bg-whatsapp text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+          {adminFilters.map((f) => {
+            const active =
+              (f.key === 'all' && !filters.mine && !filters.unassigned) ||
+              (f.key === 'mine' && filters.mine === true) ||
+              (f.key === 'unassigned' && filters.unassigned === true);
+
+            return (
+              <button
+                key={f.key}
+                onClick={() => onChange({ ...filters, ...f.patch })}
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                  active
+                    ? 'bg-whatsapp text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                {f.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
