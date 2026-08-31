@@ -71,11 +71,21 @@ export function ConversationList({
                   </span>
                 )}
               </div>
-              {conversation.priority === 'HIGH' || conversation.priority === 'URGENT' ? (
-                <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-600 bg-orange-50">
-                  {conversation.priority}
-                </span>
-              ) : null}
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                {conversation.tags?.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag._id}
+                    className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+                {conversation.priority === 'HIGH' || conversation.priority === 'URGENT' ? (
+                  <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-600 bg-orange-50">
+                    {conversation.priority}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </button>
         );

@@ -70,6 +70,7 @@ export async function createMessage(
   return sendOutgoingMessage(account, conversation, contact, {
     ...data,
     sentByUserId: user.userId,
+    replyToMessageId: data.replyToMessageId,
     replyToMetaMessageId,
   });
 }

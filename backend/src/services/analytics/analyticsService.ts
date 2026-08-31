@@ -3,6 +3,7 @@ import { Conversation } from '../../models/Conversation';
 import { Message } from '../../models/Message';
 import { Call } from '../../models/Call';
 import { InternalNote } from '../../models/InternalNote';
+import { User } from '../../models/User';
 import { ActivityLog } from '../../models/ActivityLog';
 
 export async function getConversationAnalytics(user: AuthUser) {
@@ -111,7 +112,30 @@ export async function createInternalNote(
 }
 
 export async function listInternalNotes(user: AuthUser, conversationId: string) {
-  return InternalNote.find({ tenantId: user.tenantId, conversationId }).sort({ createdAt: -1 });
+  const notes = await InternalNote.find({ tenantId: user.tenantId, conversationId })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const userIds = [...new Set(notes.map((note) => note.createdBy))];
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } }, 'name email').lean()
+    : [];
+  const userMap = new Map(users.map((entry) => [entry._id.toString(), entry]));
+
+  return notes.map((note) => ({
+    ...note,
+    author: userMap.get(note.createdBy)
+      ? {
+          _id: note.createdBy,
+          name: userMap.get(note.createdBy)!.name,
+          email: userMap.get(note.createdBy)!.email,
+        }
+      : { _id: note.createdBy, name: 'Unknown', email: '' },
+  }));
+}
+
+export async function listTeamUsers(user: AuthUser) {
+  return User.find({ tenantId: user.tenantId }, 'name email role').sort({ name: 1 }).lean();
 }
 
 export async function getTeamWorkload(user: AuthUser) {

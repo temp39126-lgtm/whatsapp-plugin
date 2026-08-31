@@ -5,16 +5,16 @@ import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFil
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
-import { useConversations } from '@/hooks/useConversations';
-import type { ConversationDTO } from '@/types';
+import { useConversation, useConversations } from '@/hooks/useConversations';
 
 export default function InboxPage() {
   const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading } = useConversations(filters);
+  const { data: selectedConversation } = useConversation(selectedId);
   const conversations = data?.data ?? [];
-  const selected = conversations.find((c) => c._id === selectedId) ?? null;
+  const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
   return (
     <div className="flex h-full">

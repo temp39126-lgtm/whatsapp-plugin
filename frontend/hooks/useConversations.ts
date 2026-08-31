@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { ConversationDTO, PaginatedResponse } from '@/types';
+import type { ConversationDTO, PaginatedResponse, TagDTO, TeamUserDTO } from '@/types';
 
 interface ConversationFilters {
   status?: string;
@@ -32,13 +32,38 @@ export function useConversation(id: string | null) {
   });
 }
 
+export function useTeamUsers(enabled = true) {
+  return useQuery({
+    queryKey: ['team-users'],
+    queryFn: () => api.get<TeamUserDTO[]>('/team/users'),
+    enabled,
+  });
+}
+
+export function useTags() {
+  return useQuery({
+    queryKey: ['tags'],
+    queryFn: () => api.get<TagDTO[]>('/tags'),
+  });
+}
+
+function invalidateConversationQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  conversationId?: string
+) {
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
+  if (conversationId) {
+    queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+  }
+}
+
 export function useAssignConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, assignedUserId }: { id: string; assignedUserId: string }) =>
       api.post(`/conversations/${id}/assign`, { assignedUserId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (_data, variables) => {
+      invalidateConversationQueries(queryClient, variables.id);
     },
   });
 }
@@ -48,8 +73,30 @@ export function useUpdateConversationStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.put(`/conversations/${id}/status`, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (_data, variables) => {
+      invalidateConversationQueries(queryClient, variables.id);
+    },
+  });
+}
+
+export function useUpdateConversationPriority() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, priority }: { id: string; priority: string }) =>
+      api.put(`/conversations/${id}/priority`, { priority }),
+    onSuccess: (_data, variables) => {
+      invalidateConversationQueries(queryClient, variables.id);
+    },
+  });
+}
+
+export function useUpdateConversationTags() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tagIds }: { id: string; tagIds: string[] }) =>
+      api.put(`/conversations/${id}/tags`, { tagIds }),
+    onSuccess: (_data, variables) => {
+      invalidateConversationQueries(queryClient, variables.id);
     },
   });
 }
@@ -58,8 +105,8 @@ export function useMarkConversationRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.post(`/conversations/${id}/read`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (_data, id) => {
+      invalidateConversationQueries(queryClient, id);
     },
   });
 }

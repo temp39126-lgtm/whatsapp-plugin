@@ -37,7 +37,6 @@ router.put(
 );
 router.put(
   '/:id/priority',
-  requireRole('ADMIN'),
   conversationAccess(),
   validateBody(updatePrioritySchema),
   controller.updatePriority

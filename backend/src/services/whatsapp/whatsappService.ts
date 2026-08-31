@@ -35,6 +35,10 @@ interface IncomingTextMessage {
   context?: { id: string };
 }
 
+export function isDemoWhatsAppAccount(account: IWhatsAppAccount): boolean {
+  return account.phoneNumberId === 'demo-phone-number-id';
+}
+
 export async function findAccountByPhoneNumberId(
   phoneNumberId: string
 ): Promise<IWhatsAppAccount | null> {
@@ -244,7 +248,11 @@ export async function processStatusUpdate(
       account.tenantId,
       message.conversationId.toString(),
       'message.status.updated',
-      { messageId: message._id.toString(), status: mappedStatus }
+      {
+        messageId: message._id.toString(),
+        conversationId: message.conversationId.toString(),
+        status: mappedStatus,
+      }
     );
   }
 }
@@ -257,6 +265,7 @@ export async function sendOutgoingMessage(
     type: string;
     content: unknown;
     sentByUserId: string;
+    replyToMessageId?: string;
     replyToMetaMessageId?: string;
     mediaBuffer?: Buffer;
     mimeType?: string;
@@ -267,12 +276,46 @@ export async function sendOutgoingMessage(
     tenantId: account.tenantId,
     conversationId: conversation._id,
     contactId: contact._id,
+    metaMessageId: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     direction: 'OUTGOING',
     type: params.type,
     content: params.content,
     status: 'SENDING',
     sentByUserId: params.sentByUserId,
+    replyToMessageId: params.replyToMessageId,
   });
+
+  const preview =
+    params.type === 'TEXT'
+      ? (params.content as { text: string }).text
+      : `[${params.type}]`;
+
+  async function finalizeMessage(status: IMessage['status'], metaMessageId?: string) {
+    message.status = status;
+    if (metaMessageId) message.metaMessageId = metaMessageId;
+    await message.save();
+
+    await Conversation.findByIdAndUpdate(conversation._id, {
+      lastMessage: preview,
+      lastMessageAt: new Date(),
+    });
+
+    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'message.created', {
+      message: message.toObject(),
+      conversationId: conversation._id.toString(),
+    });
+
+    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.updated', {
+      conversationId: conversation._id.toString(),
+      lastMessage: preview,
+    });
+
+    return message;
+  }
+
+  if (isDemoWhatsAppAccount(account)) {
+    return finalizeMessage('READ', `demo-out-${message._id}`);
+  }
 
   try {
     let metaResponse: { messages: Array<{ id: string }> };
@@ -324,30 +367,12 @@ export async function sendOutgoingMessage(
     }
 
     message.metaMessageId = metaResponse.messages[0].id;
-    message.status = 'SENT';
-    await message.save();
+    return finalizeMessage('SENT');
   } catch (error) {
     message.status = 'FAILED';
     await message.save();
     throw error;
   }
-
-  const preview =
-    params.type === 'TEXT'
-      ? (params.content as { text: string }).text
-      : `[${params.type}]`;
-
-  await Conversation.findByIdAndUpdate(conversation._id, {
-    lastMessage: preview,
-    lastMessageAt: new Date(),
-  });
-
-  await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'message.created', {
-    message: message.toObject(),
-    conversationId: conversation._id.toString(),
-  });
-
-  return message;
 }
 
 export async function saveWhatsAppAccount(
