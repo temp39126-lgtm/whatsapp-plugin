@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  LayoutDashboard,
   MessageSquare,
   Phone,
   Users,
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
 
 const navItems = [
+  { href: '/whatsapp', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'AGENT'] },
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'AGENT'] },
   { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'AGENT'] },
   { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'AGENT'] },
@@ -46,7 +48,10 @@ export function Sidebar() {
       <nav className="flex flex-1 flex-col gap-1">
         {filteredItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname.startsWith(item.href);
+          const isActive =
+            item.href === '/whatsapp'
+              ? pathname === '/whatsapp'
+              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

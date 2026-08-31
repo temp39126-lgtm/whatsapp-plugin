@@ -12,6 +12,8 @@ interface ConversationFilters {
   priority?: string;
   search?: string;
   mine?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 export function useConversations(filters: ConversationFilters = {}) {
