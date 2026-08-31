@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(null);
     setUser(null);
     resetSocket();
-    router.replace('/login');
+    router.replace('/');
   }, [router]);
 
   useEffect(() => {

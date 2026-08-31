@@ -71,8 +71,8 @@ export function Sidebar() {
       </nav>
 
       {user && (
-        <div className="mt-auto hidden border-t border-white/10 pt-4 lg:block">
-          <div className="px-2">
+        <div className="mt-auto border-t border-white/10 pt-4">
+          <div className="hidden px-2 lg:block">
             <p className="truncate text-sm font-medium text-white">{user.name}</p>
             <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'User'}</p>
             <button
@@ -84,6 +84,14 @@ export function Sidebar() {
               Sign out
             </button>
           </div>
+          <button
+            type="button"
+            onClick={logout}
+            title="Sign out"
+            className="flex w-full items-center justify-center rounded-lg py-2.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
         </div>
       )}
     </aside>
