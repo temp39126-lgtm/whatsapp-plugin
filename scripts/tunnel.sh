@@ -24,7 +24,20 @@ pkill -f "cloudflared tunnel --url http://127.0.0.1:5000" 2>/dev/null || true
 pkill -f "cloudflared tunnel --url http://localhost:5000" 2>/dev/null || true
 "$CLOUDFLARED" tunnel --url http://127.0.0.1:5000 --no-autoupdate > /tmp/cf-backend.log 2>&1 &
 sleep 8
-BACKEND_URL=$(rg -o 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf-backend.log | head -1)
+extract_tunnel_url() {
+  local log_file="$1"
+  local pick="${2:-head}"
+  local url
+  url=$(strings "$log_file" 2>/dev/null | rg -o 'https://[a-z0-9-]+\.trycloudflare\.com' | if [[ "$pick" == tail ]]; then tail -1; else head -1; fi)
+  if [[ ! "$url" =~ ^https://[a-z0-9-]+\.trycloudflare\.com$ ]]; then
+    echo "ERROR: Could not parse Cloudflare URL from $log_file" >&2
+    strings "$log_file" 2>/dev/null | tail -20 >&2 || true
+    exit 1
+  fi
+  echo "$url"
+}
+
+BACKEND_URL=$(extract_tunnel_url /tmp/cf-backend.log head)
 echo "Backend tunnel: $BACKEND_URL"
 
 echo "==> Building frontend for production (CSS works through tunnels)"
@@ -41,7 +54,7 @@ pkill -f "cloudflared tunnel --url http://127.0.0.1:3000" 2>/dev/null || true
 pkill -f "cloudflared tunnel --url http://localhost:3000" 2>/dev/null || true
 "$CLOUDFLARED" tunnel --url http://127.0.0.1:3000 --no-autoupdate > /tmp/cf-frontend.log 2>&1 &
 sleep 8
-FRONTEND_URL=$(rg -o 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf-frontend.log | tail -1)
+FRONTEND_URL=$(extract_tunnel_url /tmp/cf-frontend.log tail)
 echo "Frontend tunnel: $FRONTEND_URL"
 
 echo ""
