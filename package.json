@@ -12,7 +12,8 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "concurrently -n backend,frontend -c green,blue \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "start:all": "npm run mongo && npm run seed --prefix backend && npm run dev"
+    "start:all": "npm run mongo && npm run seed --prefix backend && npm run dev",
+    "tunnel": "bash scripts/tunnel.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
