@@ -1,0 +1,36 @@
+import { z } from 'zod';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const envSchema = z.object({
+  PORT: z.coerce.number().default(5000),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  MONGODB_URI: z.string().default('mongodb://localhost:27017/whatsapp_crm'),
+  AUTH_ADAPTER: z.enum(['jwt', 'session', 'mock']).default('mock'),
+  JWT_SECRET: z.string().default('dev-secret'),
+  SESSION_INTROSPECTION_URL: z.string().optional(),
+  MOCK_USER_ID: z.string().default('user-001'),
+  MOCK_TENANT_ID: z.string().default('tenant-001'),
+  MOCK_USER_ROLE: z.enum(['ADMIN', 'AGENT']).default('ADMIN'),
+  MOCK_USER_EMAIL: z.string().default('admin@example.com'),
+  MOCK_USER_NAME: z.string().default('Admin User'),
+  META_API_VERSION: z.string().default('v21.0'),
+  META_APP_SECRET: z.string().default(''),
+  META_VERIFY_TOKEN: z.string().default('verify-token'),
+  WHATSAPP_ACCESS_TOKEN: z.string().default(''),
+  ENCRYPTION_KEY: z.string().min(64),
+  S3_ENDPOINT: z.string().default('http://localhost:9000'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().default('whatsapp-crm-media'),
+  S3_ACCESS_KEY: z.string().default('minioadmin'),
+  S3_SECRET_KEY: z.string().default('minioadmin'),
+  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+  PRESIGNED_URL_EXPIRY: z.coerce.number().default(3600),
+  CALLING_ENABLED: z.coerce.boolean().default(false),
+  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
+  RATE_LIMIT_MAX: z.coerce.number().default(200),
+});
+
+export const env = envSchema.parse(process.env);

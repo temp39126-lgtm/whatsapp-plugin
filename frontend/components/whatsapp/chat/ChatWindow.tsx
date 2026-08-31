@@ -1,0 +1,122 @@
+'use client';
+
+import { Phone, MoreVertical } from 'lucide-react';
+import { getInitials } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { MessageBubble } from './MessageBubble';
+import { MessageComposer } from './MessageComposer';
+import {
+  useMessages,
+  useSendMessage,
+  useTogglePin,
+  useToggleStar,
+  useRetryMessage,
+} from '@/hooks/useMessages';
+import { useMarkConversationRead } from '@/hooks/useConversations';
+import type { ConversationDTO, MessageDTO } from '@/types';
+import { useState, useEffect, useRef } from 'react';
+
+interface ChatWindowProps {
+  conversation: ConversationDTO | null;
+  onStartCall?: () => void;
+}
+
+export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
+  const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null);
+  const sendMessage = useSendMessage();
+  const togglePin = useTogglePin();
+  const toggleStar = useToggleStar();
+  const retryMessage = useRetryMessage();
+  const markRead = useMarkConversationRead();
+
+  const messages = messagesData?.data ?? [];
+  const contact = conversation?.contact;
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (conversation?._id && conversation.unreadCount > 0) {
+      markRead.mutate(conversation._id);
+    }
+  }, [conversation?._id, conversation?.unreadCount]);
+
+  if (!conversation) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center bg-chat-bg">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-whatsapp-light">
+            <Phone className="h-10 w-10 text-whatsapp" />
+          </div>
+          <h2 className="text-xl font-semibold text-foreground">WhatsApp CRM</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Select a conversation to start messaging
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSend = (text: string, replyToMessageId?: string) => {
+    sendMessage.mutate({
+      conversationId: conversation._id,
+      text,
+      replyToMessageId,
+    });
+  };
+
+  return (
+    <div className="flex flex-1 flex-col bg-chat-bg">
+      <header className="flex items-center justify-between border-b bg-background px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
+            {getInitials(contact?.name ?? 'U')}
+          </div>
+          <div>
+            <h2 className="font-medium">{contact?.name ?? 'Unknown'}</h2>
+            <p className="text-xs text-muted-foreground">{contact?.phone}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={onStartCall}>
+            <Phone className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
+          </div>
+        ) : (
+          messages.map((message) => (
+            <MessageBubble
+              key={message._id}
+              message={message}
+              onReply={setReplyTo}
+              onPin={(id) => togglePin.mutate(id)}
+              onStar={(id) => toggleStar.mutate(id)}
+              onRetry={(id) => retryMessage.mutate(id)}
+            />
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <MessageComposer
+        onSend={handleSend}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+        disabled={sendMessage.isPending}
+      />
+    </div>
+  );
+}

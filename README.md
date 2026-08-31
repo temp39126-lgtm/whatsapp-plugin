@@ -2,6 +2,30 @@
 
 A production-ready, modular **WhatsApp CRM Plugin** designed to integrate into an existing SaaS application. The plugin provides a shared team inbox, messaging, contacts, tags, analytics, voice calling (Meta-supported), and realtime updates — with strict multi-tenant isolation and backend-enforced RBAC.
 
+## Implementation Status
+
+**Phase 1–8 initial implementation is complete.** The repository contains:
+
+- `backend/` — Express + TypeScript API (port 5000) with MongoDB models, RBAC, Meta webhooks, Socket.IO, S3 media
+- `frontend/` — Next.js App Router UI (port 3000) with three-column inbox, chat, contacts, tags, analytics, settings
+- `shared/` — Shared TypeScript types and constants
+- `docker-compose.yml` — MongoDB + MinIO for local development
+
+### Quick Start
+
+```bash
+# Infrastructure
+docker compose up -d
+
+# Backend
+cd backend && cp .env.example .env && npm install && npm run seed && npm run dev
+
+# Frontend (separate terminal)
+cd frontend && cp .env.example .env.local && npm install && npm run dev
+```
+
+Open http://localhost:3000/whatsapp/inbox
+
 ---
 
 ## Phase 0 — Project Inspection
@@ -810,13 +834,9 @@ docker compose up -d  # MongoDB + MinIO
 
 ---
 
-## Approval Required
+## Approval
 
-> **Phase 0 is complete.** This document is the architecture proposal and implementation plan.
->
-> Implementation will **not begin** until you reply: **`GO AHEAD`**
-
----
+Architecture approved. Implementation complete for V1 scaffold.
 
 ## License
 
