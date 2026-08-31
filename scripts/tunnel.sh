@@ -42,12 +42,23 @@ echo "Backend tunnel: $BACKEND_URL"
 
 echo "==> Building frontend for production (CSS works through tunnels)"
 pkill -f "next start" 2>/dev/null || true
+pkill -f "next-server" 2>/dev/null || true
 fuser -k 3000/tcp 2>/dev/null || true
 sleep 2
+if lsof -i :3000 >/dev/null 2>&1; then
+  echo "ERROR: Port 3000 is still in use; cannot start production frontend" >&2
+  lsof -i :3000 >&2 || true
+  exit 1
+fi
 cd frontend
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run start > /tmp/next-prod.log 2>&1 &
 sleep 4
+if ! lsof -i :3000 >/dev/null 2>&1; then
+  echo "ERROR: Production frontend failed to start on port 3000" >&2
+  tail -30 /tmp/next-prod.log >&2 || true
+  exit 1
+fi
 
 echo "==> Starting frontend Cloudflare tunnel"
 pkill -f "cloudflared tunnel --url http://127.0.0.1:3000" 2>/dev/null || true
