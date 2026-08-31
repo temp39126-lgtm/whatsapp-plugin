@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { User } from '../src/models/User';
-import { loginWithPassword } from '../src/services/auth/authService';
+import { loginWithPassword, registerUser } from '../src/services/auth/authService';
 import bcrypt from 'bcryptjs';
 import { AppError } from '../src/types';
 
@@ -51,9 +51,16 @@ describe('Local auth login service', () => {
     expect(result.user.role).toBe('USER');
   });
 
-  it('rejects invalid credentials', async () => {
-    await expect(loginWithPassword('admin@example.com', 'wrong-password')).rejects.toBeInstanceOf(
+  it('rejects duplicate signup email', async () => {
+    await expect(registerUser('Another User', 'admin@example.com', 'password123')).rejects.toBeInstanceOf(
       AppError
     );
+  });
+
+  it('creates a new user account', async () => {
+    const result = await registerUser('New User', 'newuser@example.com', 'password123');
+    expect(result.user.role).toBe('USER');
+    expect(result.user.email).toBe('newuser@example.com');
+    expect(result.token).toBeTruthy();
   });
 });

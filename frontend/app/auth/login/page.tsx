@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { WelcomeScreen } from '@/components/auth/WelcomeScreen';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { LoginForm } from '@/components/auth/LoginForm';
 import { useAuth } from '@/components/AuthProvider';
 import { getDashboardPath } from '@/lib/auth-routes';
 
-export function HomePageClient() {
+export default function AuthLoginPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
@@ -25,8 +26,8 @@ export function HomePageClient() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-whatsapp-light/30 via-background to-background px-4 py-10">
-      <WelcomeScreen />
-    </div>
+    <AuthShell title="Sign in" subtitle="Welcome back. Sign in to your account.">
+      <LoginForm />
+    </AuthShell>
   );
 }

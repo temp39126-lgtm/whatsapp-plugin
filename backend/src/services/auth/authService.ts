@@ -45,6 +45,36 @@ export function signAuthToken(user: AuthUser): string {
   );
 }
 
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string
+): Promise<{ token: string; user: AuthUser }> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const tenantId = env.DEFAULT_TENANT_ID;
+
+  const existing = await User.findOne({ email: normalizedEmail, tenantId });
+  if (existing) {
+    throw new AppError(409, 'An account with this email already exists');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({
+    email: normalizedEmail,
+    passwordHash,
+    name: name.trim(),
+    role: 'USER',
+    tenantId,
+    isActive: true,
+  });
+
+  const authUser = userToAuthUser(user);
+  return {
+    token: signAuthToken(authUser),
+    user: authUser,
+  };
+}
+
 export async function loginWithPassword(
   email: string,
   password: string
@@ -71,6 +101,7 @@ export async function loginWithPassword(
 }
 
 export async function seedDefaultUsers(tenantId: string): Promise<void> {
+  const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
   const defaults = [
     {
       email: 'admin@example.com',
@@ -87,7 +118,7 @@ export async function seedDefaultUsers(tenantId: string): Promise<void> {
   ];
 
   for (const entry of defaults) {
-    const existing = await User.findOne({ email: entry.email, tenantId });
+    const existing = await User.findOne({ email: entry.email, tenantId: targetTenant });
     if (existing) continue;
 
     const passwordHash = await bcrypt.hash(entry.password, 10);
@@ -96,7 +127,7 @@ export async function seedDefaultUsers(tenantId: string): Promise<void> {
       passwordHash,
       name: entry.name,
       role: entry.role,
-      tenantId,
+      tenantId: targetTenant,
       isActive: true,
     });
   }

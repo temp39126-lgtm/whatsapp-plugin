@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AUTH_ROUTES } from '@/lib/auth-routes';
 import { useAuth } from '@/components/AuthProvider';
 
 function LoadingSpinner() {
@@ -18,7 +19,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/?login=1');
+      router.replace(AUTH_ROUTES.login);
     }
   }, [isLoading, router, user]);
 

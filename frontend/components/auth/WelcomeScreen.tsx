@@ -1,12 +1,10 @@
 'use client';
 
-import { ArrowRight, Inbox, MessageSquare, Users } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Inbox, MessageSquare, UserPlus, Users } from 'lucide-react';
+import { AUTH_ROUTES } from '@/lib/auth-routes';
 
-interface WelcomeScreenProps {
-  onLoginClick: () => void;
-}
-
-export function WelcomeScreen({ onLoginClick }: WelcomeScreenProps) {
+export function WelcomeScreen() {
   return (
     <div className="w-full max-w-2xl text-center">
       <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg">
@@ -31,18 +29,22 @@ export function WelcomeScreen({ onLoginClick }: WelcomeScreenProps) {
         </span>
       </div>
 
-      <button
-        type="button"
-        onClick={onLoginClick}
-        className="mt-10 inline-flex items-center gap-2 rounded-xl bg-whatsapp px-8 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-whatsapp-dark"
-      >
-        Login
-        <ArrowRight className="h-5 w-5" />
-      </button>
-
-      <p className="mt-4 text-sm text-muted-foreground">
-        Click Login to open the sign-in form
-      </p>
+      <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <Link
+          href={AUTH_ROUTES.login}
+          className="inline-flex items-center gap-2 rounded-xl bg-whatsapp px-8 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-whatsapp-dark"
+        >
+          Sign in
+          <ArrowRight className="h-5 w-5" />
+        </Link>
+        <Link
+          href={AUTH_ROUTES.signup}
+          className="inline-flex items-center gap-2 rounded-xl border border-whatsapp/30 bg-card px-8 py-3.5 text-base font-semibold text-whatsapp-dark transition hover:bg-whatsapp-light/40"
+        >
+          <UserPlus className="h-5 w-5" />
+          Sign up
+        </Link>
+      </div>
     </div>
   );
 }

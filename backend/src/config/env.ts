@@ -25,6 +25,7 @@ const envSchema = z.object({
   MOCK_USER_ROLE: z.enum(['ADMIN', 'USER']).default('ADMIN'),
   MOCK_USER_EMAIL: z.string().default('admin@example.com'),
   MOCK_USER_NAME: z.string().default('Admin User'),
+  DEFAULT_TENANT_ID: z.string().default('tenant-001'),
   META_API_VERSION: z.string().default('v21.0'),
   META_APP_SECRET: z.string().default(''),
   META_VERIFY_TOKEN: z.string().default('verify-token'),

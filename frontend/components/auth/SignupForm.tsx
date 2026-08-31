@@ -5,10 +5,11 @@ import { useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 
-export function LoginForm() {
-  const { login } = useAuth();
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('admin123');
+export function SignupForm() {
+  const { signup } = useAuth();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,9 +19,9 @@ export function LoginForm() {
     setSubmitting(true);
 
     try {
-      await login(email, password);
+      await signup(name, email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Sign up failed');
     } finally {
       setSubmitting(false);
     }
@@ -30,11 +31,27 @@ export function LoginForm() {
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="login-email" className="mb-1 block text-sm font-medium">
+          <label htmlFor="signup-name" className="mb-1 block text-sm font-medium">
+            Full name
+          </label>
+          <input
+            id="signup-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-whatsapp focus:ring-2"
+            required
+            autoComplete="name"
+            minLength={2}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="signup-email" className="mb-1 block text-sm font-medium">
             Email
           </label>
           <input
-            id="login-email"
+            id="signup-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -45,18 +62,20 @@ export function LoginForm() {
         </div>
 
         <div>
-          <label htmlFor="login-password" className="mb-1 block text-sm font-medium">
+          <label htmlFor="signup-password" className="mb-1 block text-sm font-medium">
             Password
           </label>
           <input
-            id="login-password"
+            id="signup-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-whatsapp focus:ring-2"
             required
-            autoComplete="current-password"
+            autoComplete="new-password"
+            minLength={6}
           />
+          <p className="mt-1 text-xs text-muted-foreground">At least 6 characters</p>
         </div>
 
         {error && (
@@ -68,22 +87,20 @@ export function LoginForm() {
           disabled={submitting}
           className="w-full rounded-lg bg-whatsapp px-4 py-2.5 text-sm font-medium text-white hover:bg-whatsapp-dark disabled:opacity-60"
         >
-          {submitting ? 'Signing in...' : 'Sign in'}
+          {submitting ? 'Creating account...' : 'Create account'}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
-        <Link href={AUTH_ROUTES.signup} className="font-medium text-whatsapp-dark hover:underline">
-          Sign up
+        Already have an account?{' '}
+        <Link href={AUTH_ROUTES.login} className="font-medium text-whatsapp-dark hover:underline">
+          Sign in
         </Link>
       </p>
 
-      <div className="mt-6 rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">Demo accounts</p>
-        <p className="mt-2">Admin: admin@example.com / admin123</p>
-        <p>User: user@example.com / user123</p>
-      </div>
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        New accounts are created with the User role.
+      </p>
     </>
   );
 }
