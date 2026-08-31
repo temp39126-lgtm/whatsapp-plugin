@@ -111,7 +111,27 @@ export async function createInternalNote(
   });
 }
 
-export async function listInternalNotes(user: AuthUser, conversationId: string) {
+type NoteAuthor = {
+  _id: string;
+  name: string;
+  email: string;
+};
+
+export type InternalNoteWithAuthor = {
+  _id: string;
+  tenantId: string;
+  conversationId: string;
+  content: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author: NoteAuthor;
+};
+
+export async function listInternalNotes(
+  user: AuthUser,
+  conversationId: string
+): Promise<InternalNoteWithAuthor[]> {
   const notes = await InternalNote.find({ tenantId: user.tenantId, conversationId })
     .sort({ createdAt: -1 })
     .lean();
@@ -123,7 +143,13 @@ export async function listInternalNotes(user: AuthUser, conversationId: string) 
   const userMap = new Map(users.map((entry) => [entry._id.toString(), entry]));
 
   return notes.map((note) => ({
-    ...note,
+    _id: note._id.toString(),
+    tenantId: note.tenantId,
+    conversationId: note.conversationId.toString(),
+    content: note.content,
+    createdBy: note.createdBy,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
     author: userMap.get(note.createdBy)
       ? {
           _id: note.createdBy,

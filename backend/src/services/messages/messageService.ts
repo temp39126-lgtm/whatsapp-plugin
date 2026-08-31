@@ -12,7 +12,9 @@ import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
 
-async function enrichMessageRecord(message: Record<string, unknown>) {
+export type EnrichedMessage = Record<string, unknown>;
+
+async function enrichMessageRecord(message: Record<string, unknown>): Promise<EnrichedMessage> {
   const media = await MessageMedia.findOne({ messageId: message._id }).lean();
   const reactions = await MessageReaction.find({ messageId: message._id }).lean();
   return {
@@ -58,7 +60,7 @@ export async function createMessage(
     mimeType?: string;
     fileName?: string;
   }
-) {
+): Promise<EnrichedMessage> {
   const [account, contact] = await Promise.all([
     WhatsAppAccount.findById(conversation.whatsappAccountId),
     Contact.findById(conversation.contactId),
@@ -115,7 +117,10 @@ export async function toggleStar(user: AuthUser, message: IMessage) {
   return message;
 }
 
-export async function retryMessage(user: AuthUser, message: IMessage) {
+export async function retryMessage(
+  user: AuthUser,
+  message: IMessage
+): Promise<EnrichedMessage> {
   if (message.status !== 'FAILED') throw new AppError(400, 'Only failed messages can be retried');
 
   const conversation = await import('../../models/Conversation').then((m) =>
