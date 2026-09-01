@@ -115,26 +115,6 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
                 status: filters.status,
                 unread: filters.unread,
                 groups: filters.groups,
-                mine: true,
-              })
-            }
-            className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              filters.mine
-                ? 'bg-whatsapp text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            My Conversations
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onChange({
-                search: filters.search,
-                status: filters.status,
-                unread: filters.unread,
-                groups: filters.groups,
                 assigned: true,
               })
             }
@@ -166,26 +146,6 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             )}
           >
             Unassigned
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onChange({
-                search: filters.search,
-                status: filters.status,
-                unread: filters.unread,
-                groups: filters.groups,
-                newToday: true,
-              })
-            }
-            className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              filters.newToday
-                ? 'bg-whatsapp text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            New Today
           </button>
         </div>
       )}
