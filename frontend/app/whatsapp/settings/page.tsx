@@ -106,7 +106,7 @@ export default function SettingsPage() {
         <SettingsMenuItem
           icon={Bell}
           title="Notifications"
-          subtitle="Message alerts, sounds, assignment emails"
+          subtitle="Message alerts, sounds, and SMTP (admin)"
           onClick={() => setPanel('notifications')}
         />
         <SettingsMenuItem

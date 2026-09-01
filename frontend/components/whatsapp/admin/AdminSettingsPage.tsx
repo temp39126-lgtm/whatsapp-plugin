@@ -2,20 +2,20 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Cloud, Mail } from 'lucide-react';
+import { ArrowLeft, Bell, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminMetaCloudPanel } from '@/components/whatsapp/admin/AdminMetaCloudPanel';
 import { AdminEmailSettingsPanel } from '@/components/whatsapp/admin/AdminEmailSettingsPanel';
 
-type AdminSettingsTab = 'meta' | 'email';
+type AdminSettingsTab = 'meta' | 'email' | 'notifications';
 
 const tabs: Array<{ id: AdminSettingsTab; label: string; icon: typeof Cloud }> = [
   { id: 'meta', label: 'Meta Cloud API', icon: Cloud },
-  { id: 'email', label: 'Email', icon: Mail },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
 ];
 
 function resolveTab(tabParam: string | null): AdminSettingsTab {
-  if (tabParam === 'email' || tabParam === 'notifications') return 'email';
+  if (tabParam === 'email' || tabParam === 'notifications') return 'notifications';
   return 'meta';
 }
 
@@ -63,7 +63,7 @@ export function AdminSettingsPage() {
           })}
         </div>
 
-        {activeTab === 'email' ? <AdminEmailSettingsPanel /> : <AdminMetaCloudPanel />}
+        {activeTab === 'notifications' ? <AdminEmailSettingsPanel /> : <AdminMetaCloudPanel />}
       </div>
     </div>
   );

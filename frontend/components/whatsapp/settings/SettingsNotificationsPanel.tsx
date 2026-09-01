@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import type { UserProfile } from '@/types';
+import { useAuth } from '@/components/AuthProvider';
 import { SettingsToggle } from './SettingsToggle';
+import { TenantEmailSettingsSection } from './TenantEmailSettingsSection';
 import { useUpdatePreferences } from '@/hooks/useProfile';
 
 interface SettingsNotificationsPanelProps {
@@ -10,6 +12,7 @@ interface SettingsNotificationsPanelProps {
 }
 
 export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPanelProps) {
+  const { isAdmin } = useAuth();
   const [message, setMessage] = useState('');
   const updatePreferences = useUpdatePreferences(() => setMessage('Notification settings saved'));
   const notifications = profile.preferences.notifications;
@@ -29,43 +32,51 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
   }
 
   return (
-    <div className="divide-y px-4">
-      <SettingsToggle
-        label="Message notifications"
-        description="Alert when a new customer message arrives"
-        checked={notifications.messageAlerts}
-        disabled={isSaving}
-        onChange={(checked) => updateNotification('messageAlerts', checked)}
-      />
-      <SettingsToggle
-        label="Notification sounds"
-        description="Play a sound for new messages"
-        checked={notifications.sound}
-        disabled={isSaving}
-        onChange={(checked) => updateNotification('sound', checked)}
-      />
-      <SettingsToggle
-        label="Desktop notifications"
-        description="Show browser notifications while the app is open"
-        checked={notifications.desktopNotifications}
-        disabled={isSaving}
-        onChange={(checked) => updateNotification('desktopNotifications', checked)}
-      />
-      <SettingsToggle
-        label="Email on assignment"
-        description="Receive an email when an admin assigns you a conversation"
-        checked={notifications.emailOnAssignment}
-        disabled={isSaving}
-        onChange={(checked) => updateNotification('emailOnAssignment', checked)}
-      />
-      <SettingsToggle
-        label="Email summary"
-        description="Receive a daily email digest of unread conversations"
-        checked={notifications.emailSummary}
-        disabled={isSaving}
-        onChange={(checked) => updateNotification('emailSummary', checked)}
-      />
-      {message && <p className="py-3 text-sm text-whatsapp-dark">{message}</p>}
+    <div className="overflow-y-auto">
+      <div className="divide-y px-4">
+        <SettingsToggle
+          label="Message notifications"
+          description="Alert when a new customer message arrives"
+          checked={notifications.messageAlerts}
+          disabled={isSaving}
+          onChange={(checked) => updateNotification('messageAlerts', checked)}
+        />
+        <SettingsToggle
+          label="Notification sounds"
+          description="Play a sound for new messages"
+          checked={notifications.sound}
+          disabled={isSaving}
+          onChange={(checked) => updateNotification('sound', checked)}
+        />
+        <SettingsToggle
+          label="Desktop notifications"
+          description="Show browser notifications while the app is open"
+          checked={notifications.desktopNotifications}
+          disabled={isSaving}
+          onChange={(checked) => updateNotification('desktopNotifications', checked)}
+        />
+        <SettingsToggle
+          label="Email on assignment"
+          description="Receive an email when an admin assigns you a conversation"
+          checked={notifications.emailOnAssignment}
+          disabled={isSaving}
+          onChange={(checked) => updateNotification('emailOnAssignment', checked)}
+        />
+        <SettingsToggle
+          label="Email summary"
+          description="Receive a daily email digest of unread conversations"
+          checked={notifications.emailSummary}
+          disabled={isSaving}
+          onChange={(checked) => updateNotification('emailSummary', checked)}
+        />
+        {message && <p className="py-3 text-sm text-whatsapp-dark">{message}</p>}
+      </div>
+
+      {isAdmin && (
+        <div className="mt-2 border-t">
+          <TenantEmailSettingsSection compact />
+        </div>
+      )}
     </div>
   );
 }
