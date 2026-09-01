@@ -32,8 +32,8 @@ export default function TagsPage() {
       <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
         Tags label conversations (for example Complaint, VIP, Refund).{' '}
         {isAdmin
-          ? 'As an admin, create tags here or from the right panel while viewing any chat.'
-          : 'Only admins can create tags. You can assign existing tags from the right panel in Inbox.'}
+          ? 'Create and manage all workspace tags here, or add tags from the inbox side panel.'
+          : 'Create and assign tags from the inbox side panel while viewing a chat.'}
       </p>
 
       {isAdmin && (

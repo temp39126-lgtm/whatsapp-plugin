@@ -292,32 +292,28 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Tags
           </h4>
           <p className="mb-2 text-[10px] text-muted-foreground">
-            {isAdmin
-              ? 'Create a new tag below or manage all tags from the admin Tags page.'
-              : 'Click a tag to assign it to this chat. Ask an admin to create new tags.'}
+            Click a tag to assign it to this chat, or create a new tag below.
             {isAdmin && (
               <>
                 {' '}
                 <Link href="/whatsapp/tags" className="text-whatsapp underline">
-                  Tags page
+                  Manage all tags
                 </Link>
               </>
             )}
           </p>
-          {isAdmin && (
-            <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
-              <Input
-                value={newTagName}
-                onChange={(event) => setNewTagName(event.target.value)}
-                placeholder="New tag name..."
-                className="h-8 text-sm"
-                maxLength={50}
-              />
-              <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
-                {createTag.isPending ? 'Adding...' : 'Create'}
-              </Button>
-            </form>
-          )}
+          <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
+            <Input
+              value={newTagName}
+              onChange={(event) => setNewTagName(event.target.value)}
+              placeholder="New tag name..."
+              className="h-8 text-sm"
+              maxLength={50}
+            />
+            <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
+              {createTag.isPending ? 'Adding...' : 'Create'}
+            </Button>
+          </form>
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => {
               const selected = selectedTagIds.includes(tag._id);
