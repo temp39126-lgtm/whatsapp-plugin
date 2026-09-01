@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import {
   ArrowLeft,
   Bell,
+  Cloud,
   KeyRound,
   MessageCircle,
   Shield,
@@ -19,13 +19,16 @@ import { SettingsProfileHeader } from '@/components/whatsapp/settings/SettingsPr
 import { SettingsAccountPanel } from '@/components/whatsapp/settings/SettingsAccountPanel';
 import { SettingsNotificationsPanel } from '@/components/whatsapp/settings/SettingsNotificationsPanel';
 import { SettingsPrivacyPanel } from '@/components/whatsapp/settings/SettingsPrivacyPanel';
+import { SettingsMetaCloudPanel } from '@/components/whatsapp/settings/SettingsMetaCloudPanel';
+
 import { SettingsWhatsAppPanel } from '@/components/whatsapp/settings/SettingsWhatsAppPanel';
 
-type SettingsPanel = 'home' | 'account' | 'notifications' | 'privacy' | 'whatsapp';
+type SettingsPanel = 'home' | 'account' | 'notifications' | 'metaCloudApi' | 'privacy' | 'whatsapp';
 
 const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   account: 'Account',
   notifications: 'Notifications',
+  metaCloudApi: 'Meta Cloud API',
   privacy: 'Privacy',
   whatsapp: 'WhatsApp',
 };
@@ -68,6 +71,7 @@ export default function SettingsPage() {
 
         {panel === 'account' && <SettingsAccountPanel profile={profile} />}
         {panel === 'notifications' && <SettingsNotificationsPanel profile={profile} />}
+        {isAdmin && panel === 'metaCloudApi' && <SettingsMetaCloudPanel />}
         {!isAdmin && panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
         {!isAdmin && panel === 'whatsapp' && (
           <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
@@ -82,11 +86,7 @@ export default function SettingsPage() {
         <h1 className="text-xl font-semibold">Settings</h1>
         {isAdmin && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Personal account settings. Meta Cloud API and SMTP email are managed in{' '}
-            <Link href="/whatsapp/admin/settings" className="text-whatsapp-dark hover:underline">
-              Admin Settings
-            </Link>
-            .
+            Personal account settings. Meta Cloud API and SMTP email have their own sections below.
           </p>
         )}
       </div>
@@ -112,6 +112,14 @@ export default function SettingsPage() {
           }
           onClick={() => setPanel('notifications')}
         />
+        {isAdmin && (
+          <SettingsMenuItem
+            icon={Cloud}
+            title="Meta Cloud API"
+            subtitle="Meta credentials and webhook setup"
+            onClick={() => setPanel('metaCloudApi')}
+          />
+        )}
         {!isAdmin && (
           <SettingsMenuItem
             icon={Shield}

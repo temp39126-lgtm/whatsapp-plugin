@@ -145,9 +145,9 @@ export function AdminDashboard() {
               icon={BarChart3}
             />
             <QuickAction
-              href="/whatsapp/admin/settings"
-              label="Admin Settings"
-              description="Meta Cloud API and email"
+              href="/whatsapp/settings"
+              label="Settings"
+              description="Meta Cloud API, account, and notifications"
               icon={Settings}
             />
           </div>
