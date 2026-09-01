@@ -60,6 +60,18 @@ export interface TeamUserDTO {
   role: 'ADMIN' | 'USER';
 }
 
+export interface TeamAgentWorkloadDTO extends TeamUserDTO {
+  open: number;
+  pending: number;
+  total: number;
+}
+
+export interface AgentAnalyticsDTO extends TeamUserDTO {
+  open: number;
+  resolved: number;
+  total: number;
+}
+
 export interface AnalyticsConversations {
   total: number;
   newToday: number;

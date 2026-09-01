@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { AnalyticsConversations } from '@/types';
+import type { AgentAnalyticsDTO, AnalyticsConversations } from '@/types';
+import { getInitials } from '@/lib/utils';
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -38,10 +39,7 @@ export default function AnalyticsPage() {
 
   const { data: agents } = useQuery({
     queryKey: ['analytics-agents'],
-    queryFn: () =>
-      api.get<Array<{ _id: string; total: number; resolved: number; open: number }>>(
-        '/analytics/agents'
-      ),
+    queryFn: () => api.get<AgentAnalyticsDTO[]>('/analytics/agents'),
   });
 
   if (loadingConv) {
@@ -93,8 +91,16 @@ export default function AnalyticsPage() {
         <div className="space-y-2">
           {(agents ?? []).map((agent) => (
             <div key={agent._id} className="flex items-center justify-between rounded-lg border p-3">
-              <span className="font-medium">{agent._id}</span>
-              <div className="flex gap-4 text-sm text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-whatsapp text-xs font-semibold text-white">
+                  {getInitials(agent.name)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium">{agent.name}</p>
+                  <p className="truncate text-sm text-muted-foreground">{agent.email}</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-4 text-sm text-muted-foreground">
                 <span>Total: {agent.total}</span>
                 <span>Open: {agent.open}</span>
                 <span>Resolved: {agent.resolved}</span>

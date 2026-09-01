@@ -10,3 +10,5 @@ export const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6).max(128),
 });
+
+export const createTeamUserSchema = signupSchema;

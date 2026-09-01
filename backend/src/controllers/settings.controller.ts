@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as tagService from '../services/tags/tagService';
 import * as analyticsService from '../services/analytics/analyticsService';
+import { createTeamUser } from '../services/users/teamUserService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
@@ -92,6 +93,19 @@ export async function listTeamUsers(req: AuthenticatedRequest, res: Response, ne
   try {
     const users = await analyticsService.listTeamUsers(req.user!);
     res.json(users);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createTeamUserAccount(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const user = await createTeamUser(req.user!, req.body);
+    res.status(201).json(user);
   } catch (error) {
     next(error);
   }

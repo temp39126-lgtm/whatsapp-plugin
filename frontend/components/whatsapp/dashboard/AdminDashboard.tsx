@@ -18,7 +18,7 @@ import { useConversations } from '@/hooks/useConversations';
 import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
 import { getInitials } from '@/lib/utils';
-import type { AnalyticsConversations } from '@/types';
+import type { AnalyticsConversations, TeamAgentWorkloadDTO } from '@/types';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -35,10 +35,7 @@ export function AdminDashboard() {
 
   const { data: teamWorkload } = useQuery({
     queryKey: ['team-workload'],
-    queryFn: () =>
-      api.get<Array<{ _id: string; open: number; pending: number; total: number }>>(
-        '/team/workload'
-      ),
+    queryFn: () => api.get<TeamAgentWorkloadDTO[]>('/team/workload'),
   });
 
   const { data: unassignedData } = useConversations({ unassigned: true });
@@ -168,13 +165,16 @@ export function AdminDashboard() {
                 <div className="divide-y">
                   {(teamWorkload ?? []).slice(0, 5).map((agent) => (
                     <div key={agent._id} className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-whatsapp text-xs font-semibold text-white">
-                          {getInitials(agent._id)}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-whatsapp text-xs font-semibold text-white">
+                          {getInitials(agent.name)}
                         </div>
-                        <span className="font-medium">{agent._id}</span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{agent.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
+                        </div>
                       </div>
-                      <div className="flex gap-3 text-sm text-muted-foreground">
+                      <div className="shrink-0 flex gap-3 text-sm text-muted-foreground">
                         <span>{agent.open} open</span>
                         <span>{agent.pending} pending</span>
                       </div>

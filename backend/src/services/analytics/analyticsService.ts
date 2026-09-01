@@ -5,6 +5,9 @@ import { Call } from '../../models/Call';
 import { InternalNote } from '../../models/InternalNote';
 import { User } from '../../models/User';
 import { ActivityLog } from '../../models/ActivityLog';
+import { enrichAgentStats, listTeamUsers as listTeamUsersFromService } from '../users/teamUserService';
+
+export { listTeamUsersFromService as listTeamUsers };
 
 export async function getConversationAnalytics(user: AuthUser) {
   const tenantId = user.tenantId;
@@ -49,7 +52,8 @@ export async function getAgentAnalytics(user: AuthUser) {
     },
   ];
 
-  return Conversation.aggregate(pipeline);
+  const stats = await Conversation.aggregate(pipeline);
+  return enrichAgentStats(user.tenantId, stats);
 }
 
 export async function getCallAnalytics(user: AuthUser) {
@@ -160,12 +164,8 @@ export async function listInternalNotes(
   }));
 }
 
-export async function listTeamUsers(user: AuthUser) {
-  return User.find({ tenantId: user.tenantId }, 'name email role').sort({ name: 1 }).lean();
-}
-
 export async function getTeamWorkload(user: AuthUser) {
-  return Conversation.aggregate([
+  const stats = await Conversation.aggregate([
     { $match: { tenantId: user.tenantId, assignedUserId: { $exists: true } } },
     {
       $group: {
@@ -176,4 +176,6 @@ export async function getTeamWorkload(user: AuthUser) {
       },
     },
   ]);
+
+  return enrichAgentStats(user.tenantId, stats);
 }
