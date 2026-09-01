@@ -1,11 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
-import { useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
+import { useCreateContact, useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
 import type { ContactDTO, PaginatedResponse } from '@/types';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
@@ -14,7 +14,11 @@ import { useState } from 'react';
 export default function ContactsPage() {
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
   const deleteContact = useDeleteContact();
+  const createContact = useCreateContact();
   const uploadContactAvatar = useUploadContactAvatar();
 
   const { data, isLoading } = useQuery({
@@ -33,15 +37,66 @@ export default function ContactsPage() {
     deleteContact.mutate(contact._id);
   }
 
+  function handleCreateContact(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage('');
+    createContact.mutate(
+      { name: name.trim(), phone: phone.trim() },
+      {
+        onSuccess: (contact) => {
+          setName('');
+          setPhone('');
+          setMessage(`Saved contact "${contact.name}"`);
+        },
+        onError: (error) =>
+          setMessage(error instanceof Error ? error.message : 'Failed to save contact'),
+      }
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="border-b px-6 py-4">
         <h1 className="text-2xl font-semibold">Contacts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {isAdmin
-            ? 'Upload a photo with the camera icon. Delete removes the contact and related CRM data.'
-            : 'View customer details. Only admins can change contact photos or delete contacts.'}
+            ? 'Add a customer by name and phone number. Upload a photo with the camera icon.'
+            : 'Add customer contacts by name and phone number.'}
         </p>
+
+        <form
+          onSubmit={handleCreateContact}
+          className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_1fr_auto]"
+        >
+          <Input
+            placeholder="Contact name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            minLength={1}
+          />
+          <Input
+            placeholder="Phone number (e.g. +15551234567)"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            required
+            minLength={8}
+          />
+          <Button type="submit" variant="whatsapp" disabled={createContact.isPending}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            {createContact.isPending ? 'Saving...' : 'Save contact'}
+          </Button>
+        </form>
+        {message && (
+          <p
+            className={`mt-2 text-sm ${
+              createContact.isError ? 'text-red-600' : 'text-whatsapp-dark'
+            }`}
+          >
+            {message}
+          </p>
+        )}
+
         <Input
           placeholder="Search contacts..."
           value={search}

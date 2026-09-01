@@ -9,6 +9,62 @@ import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 import { storeAvatar } from '../avatars/avatarService';
+import { WhatsAppAccount } from '../../models/WhatsAppAccount';
+
+function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D/g, '');
+
+  if (digits.length < 8 || digits.length > 15) {
+    throw new AppError(400, 'Enter a valid phone number with country code');
+  }
+
+  const formatted = trimmed.startsWith('+') ? `+${digits}` : `+${digits}`;
+  return { phone: formatted, whatsappId: digits };
+}
+
+export async function createContact(
+  user: AuthUser,
+  input: { name: string; phone: string }
+) {
+  const account = await WhatsAppAccount.findOne({ tenantId: user.tenantId });
+  if (!account) {
+    throw new AppError(400, 'WhatsApp is not configured for this workspace');
+  }
+
+  const { phone, whatsappId } = normalizePhoneInput(input.phone);
+  const existing = await Contact.findOne({ tenantId: user.tenantId, whatsappId });
+  if (existing) {
+    throw new AppError(409, 'A contact with this phone number already exists');
+  }
+
+  const contact = await Contact.create({
+    tenantId: user.tenantId,
+    whatsappAccountId: account._id,
+    name: input.name.trim(),
+    phone,
+    whatsappId,
+    tags: [],
+  });
+
+  await Conversation.create({
+    tenantId: user.tenantId,
+    whatsappAccountId: account._id,
+    contactId: contact._id,
+    status: 'OPEN',
+    priority: 'NORMAL',
+    unreadCount: 0,
+    lastMessage: '',
+    lastMessageAt: new Date(),
+  });
+
+  await logActivity(user, 'contact.created', 'contact', contact._id.toString(), {
+    name: contact.name,
+    phone: contact.phone,
+  });
+
+  return contact.toObject();
+}
 
 export async function listContacts(user: AuthUser, page = 1, limit = 20, search?: string) {
   const query: Record<string, unknown> = { tenantId: user.tenantId };

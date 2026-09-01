@@ -5,6 +5,15 @@ import { readAvatar } from '../services/avatars/avatarService';
 import { Contact } from '../models/Contact';
 import { AppError } from '../types';
 
+export async function createContact(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await contactService.createContact(req.user!, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function listContacts(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const page = Number(req.query.page) || 1;

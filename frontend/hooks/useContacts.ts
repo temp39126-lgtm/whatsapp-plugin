@@ -2,6 +2,19 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { ContactDTO } from '@/types';
+
+export function useCreateContact() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; phone: string }) =>
+      api.post<ContactDTO>('/contacts', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
 
 export function useDeleteContact() {
   const queryClient = useQueryClient();
