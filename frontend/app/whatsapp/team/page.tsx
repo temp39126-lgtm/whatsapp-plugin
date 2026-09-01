@@ -144,7 +144,7 @@ export default function TeamPage() {
           <section>
             <h2 className="mb-4 text-lg font-semibold">Agent workload</h2>
             <p className="mb-3 text-sm text-muted-foreground">
-              All team members are listed here. Counts stay at 0 until chats are assigned in the
+              Agents only. Admins are excluded. Counts stay at 0 until chats are assigned in the
               inbox.
             </p>
             <div className="rounded-xl border bg-card shadow-sm">

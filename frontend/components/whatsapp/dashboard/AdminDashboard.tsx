@@ -166,7 +166,7 @@ export function AdminDashboard() {
               <div>
                 <h2 className="text-lg font-semibold">Users</h2>
                 <p className="text-xs text-muted-foreground">
-                  Click a user to view profile and assigned conversations
+                  Agents only — click to view profile and assigned conversations
                 </p>
               </div>
               <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">

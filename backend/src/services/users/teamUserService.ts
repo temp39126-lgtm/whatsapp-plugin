@@ -30,10 +30,11 @@ export async function createTeamUser(
   };
 }
 
-export async function listTeamUsers(user: AuthUser) {
-  const users = await User.find({ tenantId: user.tenantId, isActive: true }, 'name email role')
-    .sort({ name: 1 })
-    .lean();
+export async function listTeamUsers(user: AuthUser, options?: { agentsOnly?: boolean }) {
+  const query: Record<string, unknown> = { tenantId: user.tenantId, isActive: true };
+  if (options?.agentsOnly) query.role = 'USER';
+
+  const users = await User.find(query, 'name email role').sort({ name: 1 }).lean();
 
   return users.map((entry) => ({
     _id: entry._id.toString(),
@@ -41,6 +42,10 @@ export async function listTeamUsers(user: AuthUser) {
     email: entry.email,
     role: entry.role as 'ADMIN' | 'USER',
   }));
+}
+
+function isAgentRole(role: 'ADMIN' | 'USER') {
+  return role === 'USER';
 }
 
 type AgentStatRow = { _id: string };
@@ -72,9 +77,11 @@ export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
   admin: AuthUser,
   stats: Array<{ _id: string } & T>
 ): Promise<Array<{ _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & T>> {
-  const enriched = await enrichAgentStats(admin.tenantId, stats);
+  const enriched = (await enrichAgentStats(admin.tenantId, stats)).filter((row) =>
+    isAgentRole(row.role)
+  );
   const statMap = new Map(enriched.map((row) => [row._id, row]));
-  const allUsers = await listTeamUsers(admin);
+  const allUsers = (await listTeamUsers(admin, { agentsOnly: true }));
 
   return allUsers
     .map((member) => {
@@ -102,9 +109,11 @@ export async function mergeTeamUsersWithAgentAnalytics(
 ): Promise<
   Array<{ _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & AnalyticsCounts>
 > {
-  const enriched = await enrichAgentStats(admin.tenantId, stats);
+  const enriched = (await enrichAgentStats(admin.tenantId, stats)).filter((row) =>
+    isAgentRole(row.role)
+  );
   const statMap = new Map(enriched.map((row) => [row._id, row]));
-  const allUsers = await listTeamUsers(admin);
+  const allUsers = (await listTeamUsers(admin, { agentsOnly: true }));
 
   return allUsers
     .map((member) => {
