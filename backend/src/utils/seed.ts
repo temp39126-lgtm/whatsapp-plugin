@@ -17,10 +17,14 @@ async function ensureDemoWhatsAppAccount(tenantId: string) {
     const token = env.WHATSAPP_ACCESS_TOKEN || DEMO_ACCESS_TOKEN;
     account = await WhatsAppAccount.create({
       tenantId,
+      metaAppId: 'demo-meta-app-id',
+      encryptedAppSecret: encrypt('demo-app-secret'),
       phoneNumberId: 'demo-phone-number-id',
       businessAccountId: 'demo-business-account-id',
       displayPhoneNumber: '+1 555 0100',
       encryptedAccessToken: encrypt(token),
+      webhookVerifyToken: env.META_VERIFY_TOKEN,
+      metaApiVersion: env.META_API_VERSION,
       connectionStatus: 'CONNECTED',
       webhookConfigured: true,
     });

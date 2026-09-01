@@ -2,7 +2,10 @@ import { env } from '../../config/env';
 import { decrypt } from '../../utils/encryption';
 import { IWhatsAppAccount } from '../../models/WhatsAppAccount';
 
-const BASE_URL = `https://graph.facebook.com/${env.META_API_VERSION}`;
+function getBaseUrl(account?: IWhatsAppAccount): string {
+  const version = account?.metaApiVersion || env.META_API_VERSION;
+  return `https://graph.facebook.com/${version}`;
+}
 
 function getAccessToken(account?: IWhatsAppAccount): string {
   if (account?.encryptedAccessToken) {
@@ -67,7 +70,7 @@ export async function uploadMediaToMeta(
   formData.append('file', new Blob([buffer], { type: mimeType }), 'file');
   formData.append('type', mimeType);
 
-  const response = await fetch(`${BASE_URL}/${phoneNumberId}/media`, {
+  const response = await fetch(`${getBaseUrl(account)}/${phoneNumberId}/media`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
@@ -86,7 +89,7 @@ export async function downloadMetaMedia(
   account?: IWhatsAppAccount
 ): Promise<{ url: string; mimeType: string }> {
   const token = getAccessToken(account);
-  const metaResponse = await fetch(`${BASE_URL}/${mediaId}`, {
+  const metaResponse = await fetch(`${getBaseUrl(account)}/${mediaId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!metaResponse.ok) throw new Error('Failed to get media URL from Meta');
@@ -116,7 +119,7 @@ async function metaPost(
   account?: IWhatsAppAccount
 ): Promise<{ messages: Array<{ id: string }> }> {
   const token = getAccessToken(account);
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${getBaseUrl(account)}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

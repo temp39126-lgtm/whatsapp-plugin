@@ -9,19 +9,50 @@ import { Input } from '@/components/ui/input';
 import type { WhatsAppAccountSettings } from '@/types';
 
 interface MetaFormState {
-  phoneNumberId: string;
+  metaAppId: string;
+  appSecret: string;
   businessAccountId: string;
+  phoneNumberId: string;
   displayPhoneNumber: string;
   accessToken: string;
+  webhookVerifyToken: string;
+  metaApiVersion: string;
+}
+
+function Field({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
 }
 
 export function AdminMetaCloudPanel() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<MetaFormState>({
-    phoneNumberId: '',
+    metaAppId: '',
+    appSecret: '',
     businessAccountId: '',
+    phoneNumberId: '',
     displayPhoneNumber: '',
     accessToken: '',
+    webhookVerifyToken: '',
+    metaApiVersion: 'v21.0',
   });
   const [message, setMessage] = useState('');
 
@@ -39,30 +70,53 @@ export function AdminMetaCloudPanel() {
     if (!settings?.configured) return;
     setForm((current) => ({
       ...current,
-      phoneNumberId: settings.phoneNumberId ?? '',
+      metaAppId: settings.metaAppId ?? '',
+      appSecret: '',
       businessAccountId: settings.businessAccountId ?? '',
+      phoneNumberId: settings.phoneNumberId ?? '',
       displayPhoneNumber: settings.displayPhoneNumber ?? '',
       accessToken: '',
+      webhookVerifyToken: settings.webhookVerifyToken ?? '',
+      metaApiVersion: settings.metaApiVersion ?? 'v21.0',
     }));
   }, [settings]);
 
   const saveSettings = useMutation({
     mutationFn: () =>
       api.put('/settings/account', {
-        phoneNumberId: form.phoneNumberId.trim(),
+        metaAppId: form.metaAppId.trim(),
         businessAccountId: form.businessAccountId.trim(),
+        phoneNumberId: form.phoneNumberId.trim(),
         displayPhoneNumber: form.displayPhoneNumber.trim(),
+        webhookVerifyToken: form.webhookVerifyToken.trim(),
+        metaApiVersion: form.metaApiVersion.trim() || 'v21.0',
+        ...(form.appSecret.trim() ? { appSecret: form.appSecret.trim() } : {}),
         ...(form.accessToken.trim() ? { accessToken: form.accessToken.trim() } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       queryClient.invalidateQueries({ queryKey: ['settings-connection'] });
-      setForm((current) => ({ ...current, accessToken: '' }));
+      queryClient.invalidateQueries({ queryKey: ['webhook-info'] });
+      setForm((current) => ({ ...current, appSecret: '', accessToken: '' }));
       setMessage('Meta Cloud API configuration saved.');
     },
     onError: (error) =>
       setMessage(error instanceof Error ? error.message : 'Failed to save configuration'),
   });
+
+  function validateForm(): string | null {
+    if (!form.metaAppId.trim()) return 'Meta App ID is required.';
+    if (!form.businessAccountId.trim()) return 'WhatsApp Business Account ID is required.';
+    if (!form.phoneNumberId.trim()) return 'Phone Number ID is required.';
+    if (!form.displayPhoneNumber.trim()) return 'Display phone number is required.';
+    if (!form.webhookVerifyToken.trim()) return 'Webhook verify token is required.';
+    if (!form.metaApiVersion.trim()) return 'Meta API version is required.';
+    if (!settings?.configured && !form.appSecret.trim()) return 'Meta App Secret is required.';
+    if (!settings?.configured && !form.accessToken.trim()) {
+      return 'Permanent access token is required.';
+    }
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -87,38 +141,119 @@ export function AdminMetaCloudPanel() {
           )}
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Connect your WhatsApp Business account using Meta Cloud API credentials.
+          Enter all credentials from your Meta Developer App and WhatsApp Business Account.
         </p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Input
-            placeholder="Phone Number ID"
-            value={form.phoneNumberId}
-            onChange={(event) => setForm({ ...form, phoneNumberId: event.target.value })}
-          />
-          <Input
-            placeholder="Business Account ID"
-            value={form.businessAccountId}
-            onChange={(event) => setForm({ ...form, businessAccountId: event.target.value })}
-          />
-          <Input
-            placeholder="Display Phone Number"
-            value={form.displayPhoneNumber}
-            onChange={(event) => setForm({ ...form, displayPhoneNumber: event.target.value })}
-          />
-          <Input
-            type="password"
-            placeholder={
-              settings?.configured ? 'Access token (leave blank to keep current)' : 'Access Token'
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field
+            label="Meta App ID"
+            required
+            hint="From Meta Developer Dashboard → App settings → Basic"
+          >
+            <Input
+              value={form.metaAppId}
+              onChange={(event) => setForm({ ...form, metaAppId: event.target.value })}
+              placeholder="e.g. 123456789012345"
+            />
+          </Field>
+
+          <Field
+            label="Meta App Secret"
+            required={!settings?.appSecretConfigured}
+            hint={
+              settings?.appSecretConfigured
+                ? 'Leave blank to keep the current secret'
+                : 'From Meta Developer Dashboard → App settings → Basic'
             }
-            value={form.accessToken}
-            onChange={(event) => setForm({ ...form, accessToken: event.target.value })}
-          />
+          >
+            <Input
+              type="password"
+              value={form.appSecret}
+              onChange={(event) => setForm({ ...form, appSecret: event.target.value })}
+              placeholder={
+                settings?.appSecretConfigured ? 'Leave blank to keep current' : 'App secret'
+              }
+            />
+          </Field>
+
+          <Field
+            label="WhatsApp Business Account ID"
+            required
+            hint="WhatsApp Manager → Account overview"
+          >
+            <Input
+              value={form.businessAccountId}
+              onChange={(event) => setForm({ ...form, businessAccountId: event.target.value })}
+              placeholder="WABA ID"
+            />
+          </Field>
+
+          <Field label="Phone Number ID" required hint="WhatsApp Manager → Phone numbers">
+            <Input
+              value={form.phoneNumberId}
+              onChange={(event) => setForm({ ...form, phoneNumberId: event.target.value })}
+              placeholder="Phone number ID"
+            />
+          </Field>
+
+          <Field label="Display phone number" required hint="Customer-facing business number">
+            <Input
+              value={form.displayPhoneNumber}
+              onChange={(event) => setForm({ ...form, displayPhoneNumber: event.target.value })}
+              placeholder="+1 555 0100"
+            />
+          </Field>
+
+          <Field
+            label="Permanent access token"
+            required={!settings?.configured}
+            hint={
+              settings?.configured
+                ? 'Leave blank to keep the current token'
+                : 'System user token with whatsapp_business_messaging permission'
+            }
+          >
+            <Input
+              type="password"
+              value={form.accessToken}
+              onChange={(event) => setForm({ ...form, accessToken: event.target.value })}
+              placeholder={
+                settings?.configured ? 'Leave blank to keep current' : 'Permanent access token'
+              }
+            />
+          </Field>
+
+          <Field
+            label="Webhook verify token"
+            required
+            hint="Must match the verify token you enter in Meta webhook setup"
+          >
+            <Input
+              value={form.webhookVerifyToken}
+              onChange={(event) => setForm({ ...form, webhookVerifyToken: event.target.value })}
+              placeholder="Custom verify token"
+            />
+          </Field>
+
+          <Field label="Meta API version" required hint="Usually v21.0 or latest Graph API version">
+            <Input
+              value={form.metaApiVersion}
+              onChange={(event) => setForm({ ...form, metaApiVersion: event.target.value })}
+              placeholder="v21.0"
+            />
+          </Field>
         </div>
+
         <Button
-          className="mt-4"
+          className="mt-6"
           variant="whatsapp"
           disabled={saveSettings.isPending}
           onClick={() => {
+            const error = validateForm();
+            if (error) {
+              setMessage(error);
+              return;
+            }
             setMessage('');
             saveSettings.mutate();
           }}
@@ -128,7 +263,7 @@ export function AdminMetaCloudPanel() {
         {message && (
           <p
             className={`mt-3 text-sm ${
-              saveSettings.isError ? 'text-red-600' : 'text-whatsapp-dark'
+              saveSettings.isError || message.includes('required') ? 'text-red-600' : 'text-whatsapp-dark'
             }`}
           >
             {message}
@@ -140,16 +275,19 @@ export function AdminMetaCloudPanel() {
         <div className="rounded-xl border bg-card p-5 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <Link2 className="h-5 w-5 text-whatsapp" />
-            <h2 className="text-lg font-semibold">Webhook</h2>
+            <h2 className="text-lg font-semibold">Webhook setup in Meta</h2>
           </div>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Copy these values into Meta Developer Dashboard → WhatsApp → Configuration → Webhook.
+          </p>
           <div className="space-y-2 text-sm">
             <p>
-              <span className="font-medium">URL:</span>{' '}
+              <span className="font-medium">Callback URL:</span>{' '}
               <code className="break-all text-xs">{webhook.webhookUrl}</code>
             </p>
             <p>
               <span className="font-medium">Verify token:</span>{' '}
-              <code className="text-xs">{webhook.verifyToken}</code>
+              <code className="break-all text-xs">{webhook.verifyToken}</code>
             </p>
           </div>
         </div>

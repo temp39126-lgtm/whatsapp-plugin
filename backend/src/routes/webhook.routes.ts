@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { env } from '../config/env';
-import { verifyWebhookSignature } from '../utils/encryption';
+import { decrypt, verifyWebhookSignature } from '../utils/encryption';
+import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import {
   findAccountByPhoneNumberId,
   processIncomingMessage,
@@ -12,13 +13,25 @@ import { logger } from '../config/logger';
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === env.META_VERIFY_TOKEN) {
-    logger.info('Webhook verified');
+  if (mode !== 'subscribe' || typeof token !== 'string') {
+    res.status(403).send('Forbidden');
+    return;
+  }
+
+  if (token === env.META_VERIFY_TOKEN) {
+    logger.info('Webhook verified using environment token');
+    res.status(200).send(challenge);
+    return;
+  }
+
+  const account = await WhatsAppAccount.findOne({ webhookVerifyToken: token });
+  if (account) {
+    logger.info({ tenantId: account.tenantId }, 'Webhook verified using tenant token');
     res.status(200).send(challenge);
     return;
   }
@@ -30,25 +43,31 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
   const signature = req.headers['x-hub-signature-256'] as string;
   const rawBody = JSON.stringify(req.body);
 
-  if (env.META_APP_SECRET && signature) {
-    if (!verifyWebhookSignature(rawBody, signature)) {
-      logger.warn('Invalid webhook signature');
-      res.status(401).send('Invalid signature');
-      return;
-    }
-  }
-
-  res.status(200).send('OK');
-
   try {
     const entry = req.body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
+    const phoneNumberId = value?.metadata?.phone_number_id;
 
-    if (!value) return;
+    let appSecret = env.META_APP_SECRET;
+    if (phoneNumberId) {
+      const account = await findAccountByPhoneNumberId(phoneNumberId);
+      if (account?.encryptedAppSecret) {
+        appSecret = decrypt(account.encryptedAppSecret);
+      }
+    }
 
-    const phoneNumberId = value.metadata?.phone_number_id;
-    if (!phoneNumberId) return;
+    if (appSecret && signature) {
+      if (!verifyWebhookSignature(rawBody, signature, appSecret)) {
+        logger.warn({ phoneNumberId }, 'Invalid webhook signature');
+        res.status(401).send('Invalid signature');
+        return;
+      }
+    }
+
+    res.status(200).send('OK');
+
+    if (!value || !phoneNumberId) return;
 
     const account = await findAccountByPhoneNumberId(phoneNumberId);
     if (!account) {
@@ -80,6 +99,9 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
     }
   } catch (error) {
     logger.error({ error }, 'Webhook processing error');
+    if (!res.headersSent) {
+      res.status(500).send('Error');
+    }
   }
 });
 

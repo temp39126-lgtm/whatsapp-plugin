@@ -129,9 +129,13 @@ export async function getAccountSettings(req: AuthenticatedRequest, res: Respons
     }
     res.json({
       configured: true,
+      metaAppId: account.metaAppId,
+      appSecretConfigured: Boolean(account.encryptedAppSecret),
       phoneNumberId: account.phoneNumberId,
       businessAccountId: account.businessAccountId,
       displayPhoneNumber: account.displayPhoneNumber,
+      webhookVerifyToken: account.webhookVerifyToken || env.META_VERIFY_TOKEN,
+      metaApiVersion: account.metaApiVersion || env.META_API_VERSION,
       connectionStatus: account.connectionStatus,
       webhookConfigured: account.webhookConfigured,
       callingEnabled: env.CALLING_ENABLED,
@@ -163,16 +167,23 @@ export async function updateAccountSettings(req: AuthenticatedRequest, res: Resp
   try {
     const existing = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });
     if (!req.body.accessToken && !existing) {
-      throw new AppError(400, 'Access token is required for initial WhatsApp configuration');
+      throw new AppError(400, 'Permanent access token is required for initial WhatsApp configuration');
+    }
+    if (!req.body.appSecret && !existing?.encryptedAppSecret) {
+      throw new AppError(400, 'Meta App Secret is required for initial WhatsApp configuration');
     }
 
     const account = await saveWhatsAppAccount(req.user!.tenantId, req.body);
     await tagService.seedDefaultTags(req.user!.tenantId, req.user!.userId);
     res.json({
       configured: true,
+      metaAppId: account.metaAppId,
+      appSecretConfigured: Boolean(account.encryptedAppSecret),
       phoneNumberId: account.phoneNumberId,
       businessAccountId: account.businessAccountId,
       displayPhoneNumber: account.displayPhoneNumber,
+      webhookVerifyToken: account.webhookVerifyToken,
+      metaApiVersion: account.metaApiVersion,
       connectionStatus: account.connectionStatus,
       webhookConfigured: account.webhookConfigured,
       callingEnabled: env.CALLING_ENABLED,
@@ -184,9 +195,12 @@ export async function updateAccountSettings(req: AuthenticatedRequest, res: Resp
 
 export async function getWebhookInfo(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
+    const account = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('x-forwarded-host') || req.get('host');
     res.json({
-      webhookUrl: `${req.protocol}://${req.get('host')}/api/whatsapp/webhook`,
-      verifyToken: env.META_VERIFY_TOKEN,
+      webhookUrl: `${protocol}://${host}/api/whatsapp/webhook`,
+      verifyToken: account?.webhookVerifyToken || env.META_VERIFY_TOKEN,
     });
   } catch (error) {
     next(error);

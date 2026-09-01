@@ -86,9 +86,13 @@ export interface AnalyticsConversations {
 
 export interface WhatsAppAccountSettings {
   configured: boolean;
+  metaAppId?: string;
+  appSecretConfigured?: boolean;
   phoneNumberId?: string;
   businessAccountId?: string;
   displayPhoneNumber?: string;
+  webhookVerifyToken?: string;
+  metaApiVersion?: string;
   connectionStatus?: string;
   webhookConfigured?: boolean;
   callingEnabled?: boolean;

@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
 export const updateWhatsAppAccountSchema = z.object({
-  phoneNumberId: z.string().min(1),
-  businessAccountId: z.string().min(1),
-  displayPhoneNumber: z.string().min(1),
+  metaAppId: z.string().min(1, 'Meta App ID is required'),
+  appSecret: z.string().min(1).optional(),
+  businessAccountId: z.string().min(1, 'WhatsApp Business Account ID is required'),
+  phoneNumberId: z.string().min(1, 'Phone Number ID is required'),
+  displayPhoneNumber: z.string().min(1, 'Display phone number is required'),
   accessToken: z.string().min(1).optional(),
+  webhookVerifyToken: z.string().min(1, 'Webhook verify token is required'),
+  metaApiVersion: z.string().min(1, 'Meta API version is required').default('v21.0'),
 });
 
 export const updateTenantNotificationSettingsSchema = z.object({

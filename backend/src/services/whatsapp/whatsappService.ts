@@ -415,29 +415,44 @@ export async function sendOutgoingMessage(
 export async function saveWhatsAppAccount(
   tenantId: string,
   data: {
+    metaAppId: string;
+    appSecret?: string;
     phoneNumberId: string;
     businessAccountId: string;
     displayPhoneNumber: string;
     accessToken?: string;
+    webhookVerifyToken: string;
+    metaApiVersion: string;
   }
 ): Promise<IWhatsAppAccount> {
-  const existing = await WhatsAppAccount.findOne({ tenantId, phoneNumberId: data.phoneNumberId });
+  const existing = await WhatsAppAccount.findOne({ tenantId });
   const encryptedAccessToken = data.accessToken
     ? encrypt(data.accessToken)
     : existing?.encryptedAccessToken;
+  const encryptedAppSecret = data.appSecret
+    ? encrypt(data.appSecret)
+    : existing?.encryptedAppSecret;
 
   if (!encryptedAccessToken) {
     throw new Error('Access token is required for new WhatsApp account configuration');
   }
 
+  if (!encryptedAppSecret) {
+    throw new Error('App secret is required for new WhatsApp account configuration');
+  }
+
   return WhatsAppAccount.findOneAndUpdate(
-    { tenantId, phoneNumberId: data.phoneNumberId },
+    { tenantId },
     {
       tenantId,
+      metaAppId: data.metaAppId,
+      encryptedAppSecret,
       phoneNumberId: data.phoneNumberId,
       businessAccountId: data.businessAccountId,
       displayPhoneNumber: data.displayPhoneNumber,
       encryptedAccessToken,
+      webhookVerifyToken: data.webhookVerifyToken,
+      metaApiVersion: data.metaApiVersion,
       connectionStatus: 'CONNECTED',
       webhookConfigured: true,
     },

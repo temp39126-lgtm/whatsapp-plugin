@@ -23,10 +23,15 @@ export function decrypt(encryptedText: string): string {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 }
 
-export function verifyWebhookSignature(payload: string, signature: string): boolean {
-  if (!env.META_APP_SECRET) return false;
+export function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  appSecret?: string
+): boolean {
+  const secret = appSecret || env.META_APP_SECRET;
+  if (!secret) return false;
   const expected = crypto
-    .createHmac('sha256', env.META_APP_SECRET)
+    .createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
   const received = signature.replace('sha256=', '');
