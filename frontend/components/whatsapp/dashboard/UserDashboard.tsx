@@ -131,7 +131,7 @@ export function UserDashboard() {
                   return (
                     <Link
                       key={conv._id}
-                      href="/whatsapp/inbox"
+                      href={`/whatsapp/inbox?conversation=${conv._id}`}
                       className="flex items-center justify-between p-4 transition-colors hover:bg-whatsapp-light/30"
                     >
                       <div className="flex items-center gap-3 min-w-0">

@@ -25,7 +25,7 @@ const navItems = [
   { href: '/whatsapp/team', label: 'Team', icon: UserCog, roles: ['ADMIN'] },
   { href: '/whatsapp/tags', label: 'Tags', icon: Tags, roles: ['ADMIN'] },
   { href: '/whatsapp/analytics', label: 'Analytics', icon: BarChart3, roles: ['ADMIN'] },
-  { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] },
+  { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'USER'] },
 ];
 
 export function Sidebar() {

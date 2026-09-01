@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFilters';
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
@@ -8,9 +9,24 @@ import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
 
-export default function InboxPage() {
+function InboxLoading() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
+    </div>
+  );
+}
+
+function InboxPageContent() {
+  const searchParams = useSearchParams();
+  const conversationParam = searchParams.get('conversation');
+
   const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(conversationParam);
+
+  useEffect(() => {
+    setSelectedId(conversationParam);
+  }, [conversationParam]);
 
   const { data, isLoading } = useConversations(filters);
   const { data: selectedConversation } = useConversation(selectedId);
@@ -42,5 +58,13 @@ export default function InboxPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense fallback={<InboxLoading />}>
+      <InboxPageContent />
+    </Suspense>
   );
 }
