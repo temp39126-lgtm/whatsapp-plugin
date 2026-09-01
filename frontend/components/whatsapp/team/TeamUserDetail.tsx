@@ -18,8 +18,8 @@ interface TeamUserDetailProps {
 
 export function TeamUserDetail({
   userId,
-  backHref = '/whatsapp/team',
-  backLabel = 'Back to team',
+  backHref = '/whatsapp/admin',
+  backLabel = 'Back to dashboard',
 }: TeamUserDetailProps) {
   const { data: teamUsers = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: ['team-users'],
