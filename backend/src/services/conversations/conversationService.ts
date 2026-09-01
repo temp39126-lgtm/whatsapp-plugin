@@ -105,7 +105,9 @@ export async function listConversations(
 
   if (filters.status) query.status = filters.status;
   if (filters.priority) query.priority = filters.priority;
-  if (filters.unassigned) query.assignedUserId = { $exists: false };
+  if (filters.unassigned) {
+    query.$or = [{ assignedUserId: { $exists: false } }, { assignedUserId: null }];
+  }
   if (filters.mine) query.assignedUserId = user.userId;
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
   if (filters.unread) query.unreadCount = { $gt: 0 };
@@ -185,9 +187,26 @@ export async function getConversation(user: AuthUser, conversationId: string) {
 export async function assignConversation(
   user: AuthUser,
   conversation: IConversation,
-  assignedUserId: string
+  assignedUserId: string | null
 ) {
   const previousAssignee = conversation.assignedUserId;
+
+  if (assignedUserId === null) {
+    conversation.set('assignedUserId', undefined, { strict: false });
+    await conversation.save();
+
+    await logActivity(user, 'conversation.unassigned', 'conversation', conversation._id.toString(), {
+      previousAssignee,
+    });
+
+    await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.unassigned', {
+      conversationId: conversation._id.toString(),
+      previousAssignee,
+    });
+
+    return getConversation(user, conversation._id.toString());
+  }
+
   conversation.assignedUserId = assignedUserId;
   await conversation.save();
 

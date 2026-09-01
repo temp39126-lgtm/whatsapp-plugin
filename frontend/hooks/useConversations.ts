@@ -82,7 +82,7 @@ function invalidateConversationQueries(
 export function useAssignConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, assignedUserId }: { id: string; assignedUserId: string }) =>
+    mutationFn: ({ id, assignedUserId }: { id: string; assignedUserId: string | null }) =>
       api.post(`/conversations/${id}/assign`, { assignedUserId }),
     onSuccess: (_data, variables) => {
       invalidateConversationQueries(queryClient, variables.id);

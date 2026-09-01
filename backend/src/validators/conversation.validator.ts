@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const assignConversationSchema = z.object({
-  assignedUserId: z.string().min(1),
+  assignedUserId: z.union([z.string().min(1), z.null()]),
 });
 
 export const updateStatusSchema = z.object({

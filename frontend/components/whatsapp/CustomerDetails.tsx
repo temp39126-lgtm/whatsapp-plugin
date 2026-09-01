@@ -367,24 +367,44 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Assigned Agent
           </h4>
           {isAdmin ? (
-            <select
-              value={conversation.assignedUserId ?? ''}
-              onChange={(event) => {
-                if (!event.target.value) return;
-                assignConversation.mutate({
-                  id: conversation._id,
-                  assignedUserId: event.target.value,
-                });
-              }}
-              className="w-full rounded border px-2 py-1.5 text-sm"
-            >
-              {!conversation.assignedUserId && <option value="">Unassigned</option>}
-              {teamUsers.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'User'})
-                </option>
-              ))}
-            </select>
+            <>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Choose an agent to own this chat, or select Unassigned to handle it as admin only.
+              </p>
+              <select
+                value={conversation.assignedUserId ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  assignConversation.mutate(
+                    {
+                      id: conversation._id,
+                      assignedUserId: value ? value : null,
+                    },
+                    {
+                      onSuccess: () =>
+                        setActionMessage(
+                          value
+                            ? `Assigned to ${teamUsers.find((user) => user._id === value)?.name ?? 'agent'}`
+                            : 'Conversation unassigned — only admins can see it now'
+                        ),
+                      onError: (error) =>
+                        setActionMessage(
+                          error instanceof Error ? error.message : 'Failed to update assignment'
+                        ),
+                    }
+                  );
+                }}
+                className="w-full rounded border px-2 py-1.5 text-sm"
+                disabled={assignConversation.isPending}
+              >
+                <option value="">Unassigned</option>
+                {teamUsers.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'User'})
+                  </option>
+                ))}
+              </select>
+            </>
           ) : (
             <p className="text-sm">{conversation.assignedUser?.name ?? 'Unassigned'}</p>
           )}
