@@ -367,24 +367,59 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Assigned Agent
           </h4>
           {isAdmin ? (
-            <select
-              value={conversation.assignedUserId ?? ''}
-              onChange={(event) => {
-                if (!event.target.value) return;
-                assignConversation.mutate({
-                  id: conversation._id,
-                  assignedUserId: event.target.value,
-                });
-              }}
-              className="w-full rounded border px-2 py-1.5 text-sm"
-            >
-              {!conversation.assignedUserId && <option value="">Unassigned</option>}
-              {teamUsers.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'User'})
-                </option>
-              ))}
-            </select>
+            <>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Choose who owns this chat. The assignee gets an email if SMTP is configured and
+                they have assignment emails enabled in Settings.
+              </p>
+              <select
+                value={conversation.assignedUserId ?? ''}
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  const selectedUser = teamUsers.find((user) => user._id === event.target.value);
+                  assignConversation.mutate(
+                    {
+                      id: conversation._id,
+                      assignedUserId: event.target.value,
+                    },
+                    {
+                      onSuccess: (data) => {
+                        const assigneeName = selectedUser?.name ?? 'Agent';
+                        const notification = data.emailNotification;
+                        if (notification.sent) {
+                          setActionMessage(`Assigned to ${assigneeName}. Email notification sent.`);
+                        } else if (notification.reason === 'disabled_by_user') {
+                          setActionMessage(
+                            `Assigned to ${assigneeName}. They have assignment emails turned off.`
+                          );
+                        } else if (notification.reason === 'not_configured') {
+                          setActionMessage(
+                            `Assigned to ${assigneeName}. Email not sent (SMTP not configured).`
+                          );
+                        } else {
+                          setActionMessage(
+                            `Assigned to ${assigneeName}. Email failed to send — check server logs.`
+                          );
+                        }
+                      },
+                      onError: (error) =>
+                        setActionMessage(
+                          error instanceof Error ? error.message : 'Failed to assign conversation'
+                        ),
+                    }
+                  );
+                }}
+                className="w-full rounded border px-2 py-1.5 text-sm"
+                disabled={assignConversation.isPending}
+              >
+                {!conversation.assignedUserId && <option value="">Unassigned</option>}
+                {teamUsers.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {user.name} ({user.role === 'ADMIN' ? 'Admin' : 'User'})
+                  </option>
+                ))}
+              </select>
+            </>
           ) : (
             <p className="text-sm">{conversation.assignedUser?.name ?? 'Unassigned'}</p>
           )}

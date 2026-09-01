@@ -87,6 +87,23 @@ export interface WhatsAppConnectionStatus {
   callingEnabled?: boolean;
 }
 
+export interface EmailSettingsStatus {
+  configured: boolean;
+  smtpHost: string | null;
+  smtpPort: number;
+  fromAddress: string | null;
+  frontendUrl: string;
+  authConfigured: boolean;
+}
+
+export interface AssignConversationResponse {
+  conversation: ConversationDTO;
+  emailNotification: {
+    sent: boolean;
+    reason?: 'not_configured' | 'send_failed' | 'disabled_by_user';
+  };
+}
+
 export interface GroupDTO {
   _id: string;
   tenantId: string;

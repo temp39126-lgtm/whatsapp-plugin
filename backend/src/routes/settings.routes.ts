@@ -38,6 +38,12 @@ router.put(
   controller.updateAccountSettings
 );
 router.get('/settings/webhook', requireRole('ADMIN'), controller.getWebhookInfo);
+router.get(
+  '/settings/email',
+  requireRole('ADMIN'),
+  requirePermission('manage_settings'),
+  controller.getEmailSettings
+);
 router.get('/team/workload', requireRole('ADMIN'), requirePermission('manage_team'), controller.getTeamWorkload);
 router.get('/team/users', requireRole('ADMIN'), requirePermission('manage_team'), controller.listTeamUsers);
 

@@ -7,11 +7,12 @@ import {
   Bell,
   Building2,
   KeyRound,
+  Mail,
   MessageCircle,
   Shield,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { WhatsAppAccountSettings, WhatsAppConnectionStatus } from '@/types';
+import type { EmailSettingsStatus, WhatsAppAccountSettings, WhatsAppConnectionStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
@@ -22,6 +23,7 @@ import { SettingsAccountPanel } from '@/components/whatsapp/settings/SettingsAcc
 import { SettingsNotificationsPanel } from '@/components/whatsapp/settings/SettingsNotificationsPanel';
 import { SettingsPrivacyPanel } from '@/components/whatsapp/settings/SettingsPrivacyPanel';
 import { SettingsWhatsAppPanel } from '@/components/whatsapp/settings/SettingsWhatsAppPanel';
+import { SettingsEmailPanel } from '@/components/whatsapp/settings/SettingsEmailPanel';
 
 type SettingsPanel =
   | 'home'
@@ -29,7 +31,8 @@ type SettingsPanel =
   | 'notifications'
   | 'privacy'
   | 'whatsapp'
-  | 'business';
+  | 'business'
+  | 'email';
 
 const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   account: 'Account',
@@ -37,6 +40,7 @@ const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   privacy: 'Privacy',
   whatsapp: 'WhatsApp',
   business: 'Business configuration',
+  email: 'Email notifications',
 };
 
 function AdminBusinessPanel({
@@ -141,6 +145,12 @@ export default function SettingsPage() {
     enabled: isAdmin,
   });
 
+  const { data: emailSettings, isLoading: isLoadingEmail } = useQuery({
+    queryKey: ['settings-email'],
+    queryFn: () => api.get<EmailSettingsStatus>('/settings/email'),
+    enabled: isAdmin,
+  });
+
   const [form, setForm] = useState({
     phoneNumberId: '',
     businessAccountId: '',
@@ -192,6 +202,9 @@ export default function SettingsPage() {
             onSave={() => saveSettings.mutate()}
           />
         )}
+        {panel === 'email' && isAdmin && (
+          <SettingsEmailPanel email={emailSettings} isLoading={isLoadingEmail} />
+        )}
       </div>
     );
   }
@@ -234,13 +247,22 @@ export default function SettingsPage() {
           onClick={() => setPanel('whatsapp')}
         />
         {isAdmin && (
-          <SettingsMenuItem
-            icon={Building2}
-            title="Business configuration"
-            subtitle="API credentials and webhook setup"
-            onClick={() => setPanel('business')}
-            iconClassName="bg-emerald-100 text-emerald-700"
-          />
+          <>
+            <SettingsMenuItem
+              icon={Mail}
+              title="Email notifications"
+              subtitle="SMTP status for assignment alerts"
+              onClick={() => setPanel('email')}
+              iconClassName="bg-blue-100 text-blue-700"
+            />
+            <SettingsMenuItem
+              icon={Building2}
+              title="Business configuration"
+              subtitle="API credentials and webhook setup"
+              onClick={() => setPanel('business')}
+              iconClassName="bg-emerald-100 text-emerald-700"
+            />
+          </>
         )}
       </div>
     </div>

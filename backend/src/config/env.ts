@@ -43,6 +43,13 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  EMAIL_FROM: z.string().default(''),
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
 });
 
 export const env = envSchema.parse(process.env);

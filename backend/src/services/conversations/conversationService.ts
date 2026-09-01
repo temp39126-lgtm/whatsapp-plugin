@@ -1,6 +1,7 @@
-import { AuthUser } from '../../types';
+import { AuthUser, AppError } from '../../types';
 import { Conversation, IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
+import { User } from '../../models/User';
 import { ConversationAssignment } from '../../models/ConversationAssignment';
 import { buildConversationFilter } from '../rbac/conversationAccess';
 import { logActivity } from '../rbac/activityLog';
@@ -9,6 +10,12 @@ import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { enrichConversations } from './conversationEnrichment';
 import { syncGroupInboxConversations } from '../groups/groupInboxService';
 import { Group } from '../../models/Group';
+import {
+  sendConversationAssignmentEmail,
+  isEmailConfigured,
+  type EmailSendResult,
+} from '../email/emailService';
+import { DEFAULT_USER_PREFERENCES } from '../../types/preferences';
 
 interface ConversationFilters {
   status?: string;
@@ -187,6 +194,16 @@ export async function assignConversation(
   conversation: IConversation,
   assignedUserId: string
 ) {
+  const assignee = await User.findOne({
+    _id: assignedUserId,
+    tenantId: user.tenantId,
+    isActive: true,
+  });
+
+  if (!assignee) {
+    throw new AppError(404, 'Assigned user not found');
+  }
+
   const previousAssignee = conversation.assignedUserId;
   conversation.assignedUserId = assignedUserId;
   await conversation.save();
@@ -208,7 +225,52 @@ export async function assignConversation(
     assignedUserId,
   });
 
-  return getConversation(user, conversation._id.toString());
+  const emailNotification = await notifyAssigneeByEmail(user, conversation, assignee);
+
+  const enriched = await getConversation(user, conversation._id.toString());
+
+  return { conversation: enriched, emailNotification };
+}
+
+async function notifyAssigneeByEmail(
+  assigner: AuthUser,
+  conversation: IConversation,
+  assignee: {
+    _id: { toString(): string };
+    email: string;
+    name: string;
+    preferences?: { notifications?: { emailOnAssignment?: boolean } };
+  }
+): Promise<EmailSendResult> {
+  const wantsEmail =
+    assignee.preferences?.notifications?.emailOnAssignment ??
+    DEFAULT_USER_PREFERENCES.notifications.emailOnAssignment;
+
+  if (!wantsEmail) {
+    return { sent: false, reason: 'disabled_by_user' };
+  }
+
+  if (!isEmailConfigured()) {
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  const populated = await Conversation.findById(conversation._id)
+    .populate('contactId', 'name phone')
+    .populate('groupId', 'name')
+    .lean();
+
+  const contact = populated?.contactId as { name?: string; phone?: string } | undefined;
+  const group = populated?.groupId as { name?: string } | undefined;
+  const conversationLabel =
+    group?.name ?? contact?.name ?? contact?.phone ?? `Conversation ${conversation._id.toString()}`;
+
+  return sendConversationAssignmentEmail({
+    toEmail: assignee.email,
+    toName: assignee.name,
+    assignedByName: assigner.name ?? 'An admin',
+    conversationLabel,
+    conversationId: conversation._id.toString(),
+  });
 }
 
 export async function updateConversationStatus(

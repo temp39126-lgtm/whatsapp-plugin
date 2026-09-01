@@ -3,6 +3,7 @@ export interface NotificationPreferences {
   sound: boolean;
   desktopNotifications: boolean;
   emailSummary: boolean;
+  emailOnAssignment: boolean;
 }
 
 export interface PrivacyPreferences {
@@ -22,6 +23,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
     sound: true,
     desktopNotifications: true,
     emailSummary: false,
+    emailOnAssignment: true,
   },
   privacy: {
     readReceipts: true,

@@ -2,7 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { ConversationDTO, PaginatedResponse, TagDTO, TeamUserDTO } from '@/types';
+import type {
+  AssignConversationResponse,
+  ConversationDTO,
+  PaginatedResponse,
+  TagDTO,
+  TeamUserDTO,
+} from '@/types';
 
 interface ConversationFilters {
   status?: string;
@@ -83,9 +89,11 @@ export function useAssignConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, assignedUserId }: { id: string; assignedUserId: string }) =>
-      api.post(`/conversations/${id}/assign`, { assignedUserId }),
-    onSuccess: (_data, variables) => {
-      invalidateConversationQueries(queryClient, variables.id);
+      api.post<AssignConversationResponse>(`/conversations/${id}/assign`, {
+        assignedUserId,
+      }),
+    onSuccess: (data) => {
+      invalidateConversationQueries(queryClient, data.conversation._id);
     },
   });
 }

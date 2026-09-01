@@ -58,6 +58,13 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
         disabled={isSaving}
         onChange={(checked) => updateNotification('emailSummary', checked)}
       />
+      <SettingsToggle
+        label="Email when assigned a chat"
+        description="Get an email when an admin assigns a conversation to you"
+        checked={notifications.emailOnAssignment}
+        disabled={isSaving}
+        onChange={(checked) => updateNotification('emailOnAssignment', checked)}
+      />
       {message && <p className="py-3 text-sm text-whatsapp-dark">{message}</p>}
     </div>
   );

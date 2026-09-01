@@ -6,6 +6,7 @@ import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
 import { getUserProfile } from '../services/users/userProfileService';
+import { getEmailConfigStatus } from '../services/email/emailService';
 
 export async function listTags(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -157,6 +158,14 @@ export async function getWebhookInfo(req: AuthenticatedRequest, res: Response, n
       webhookUrl: `${req.protocol}://${req.get('host')}/api/whatsapp/webhook`,
       verifyToken: env.META_VERIFY_TOKEN,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getEmailSettings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    res.json(getEmailConfigStatus());
   } catch (error) {
     next(error);
   }
