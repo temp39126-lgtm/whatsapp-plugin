@@ -4,7 +4,8 @@ export interface ConversationDTO {
   _id: string;
   tenantId: string;
   whatsappAccountId: string;
-  contactId: string;
+  contactId?: string;
+  groupId?: string;
   assignedUserId?: string;
   assignedUser?: {
     _id: string;
@@ -26,5 +27,10 @@ export interface ConversationDTO {
     phone: string;
     whatsappId: string;
     profileImage?: string;
+  };
+  group?: {
+    _id: string;
+    name: string;
+    memberCount: number;
   };
 }

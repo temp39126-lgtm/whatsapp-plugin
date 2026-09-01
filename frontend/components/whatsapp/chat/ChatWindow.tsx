@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone } from 'lucide-react';
+import { Phone, Users } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
@@ -38,6 +38,12 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
 
   const messages = messagesData?.data ?? [];
   const contact = conversation?.contact;
+  const group = conversation?.group;
+  const isGroup = Boolean(group);
+  const headerName = group?.name ?? contact?.name ?? 'Unknown';
+  const headerSubtitle = isGroup
+    ? `${group?.memberCount ?? 0} participants`
+    : contact?.phone;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,12 +110,16 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
     <div className="flex flex-1 flex-col bg-chat-bg">
       <header className="flex items-center justify-between border-b bg-background px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
-            {getInitials(contact?.name ?? 'U')}
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${
+              isGroup ? 'bg-emerald-700' : 'bg-whatsapp'
+            }`}
+          >
+            {isGroup ? <Users className="h-5 w-5" /> : getInitials(headerName)}
           </div>
           <div>
-            <h2 className="font-medium">{contact?.name ?? 'Unknown'}</h2>
-            <p className="text-xs text-muted-foreground">{contact?.phone}</p>
+            <h2 className="font-medium">{headerName}</h2>
+            <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">

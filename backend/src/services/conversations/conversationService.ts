@@ -7,6 +7,8 @@ import { logActivity } from '../rbac/activityLog';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { enrichConversations } from './conversationEnrichment';
+import { syncGroupInboxConversations } from '../groups/groupInboxService';
+import { Group } from '../../models/Group';
 
 interface ConversationFilters {
   status?: string;
@@ -19,12 +21,33 @@ interface ConversationFilters {
   mine?: boolean;
 }
 
+type PopulatedGroup = {
+  _id: { toString(): string };
+  name: string;
+  contactIds?: unknown[];
+};
+
+function mapPopulatedGroup(groupId: unknown) {
+  if (typeof groupId !== 'object' || groupId === null || !('name' in groupId)) {
+    return undefined;
+  }
+
+  const group = groupId as PopulatedGroup;
+  return {
+    _id: group._id.toString(),
+    name: group.name,
+    memberCount: Array.isArray(group.contactIds) ? group.contactIds.length : 0,
+  };
+}
+
 export async function listConversations(
   user: AuthUser,
   filters: ConversationFilters,
   page = 1,
   limit = 20
 ): Promise<ReturnType<typeof paginatedResponse>> {
+  await syncGroupInboxConversations(user);
+
   const query: Record<string, unknown> = {};
 
   if (filters.status) query.status = filters.status;
@@ -42,7 +65,14 @@ export async function listConversations(
         { phone: { $regex: filters.search, $options: 'i' } },
       ],
     }).select('_id');
-    query.contactId = { $in: matchingContacts.map((contact) => contact._id) };
+    const matchingGroups = await Group.find({
+      tenantId: user.tenantId,
+      name: { $regex: filters.search, $options: 'i' },
+    }).select('_id');
+    query.$or = [
+      { contactId: { $in: matchingContacts.map((contact) => contact._id) } },
+      { groupId: { $in: matchingGroups.map((group) => group._id) } },
+    ];
   }
 
   const filter = buildConversationFilter(user, query);
@@ -53,18 +83,22 @@ export async function listConversations(
     .skip(skip)
     .limit(lim)
     .populate('contactId', 'name phone whatsappId profileImage')
+    .populate('groupId', 'name contactIds')
     .populate('tags', 'name')
     .lean();
 
   const total = await Conversation.countDocuments(filter);
   const enriched = await enrichConversations(
-    conversations.map((conversation) => ({
-      ...conversation,
-      contact:
-        typeof conversation.contactId === 'object' && conversation.contactId !== null
-          ? conversation.contactId
-          : undefined,
-    }))
+    conversations.map((conversation) => {
+      return {
+        ...conversation,
+        contact:
+          typeof conversation.contactId === 'object' && conversation.contactId !== null
+            ? conversation.contactId
+            : undefined,
+        group: mapPopulatedGroup(conversation.groupId),
+      };
+    })
   );
 
   return paginatedResponse(enriched, total, page, lim);
@@ -76,6 +110,7 @@ export async function getConversation(user: AuthUser, conversationId: string) {
     tenantId: user.tenantId,
   })
     .populate('contactId')
+    .populate('groupId', 'name contactIds')
     .populate('tags', 'name');
 
   if (!conversation) return null;
@@ -85,6 +120,7 @@ export async function getConversation(user: AuthUser, conversationId: string) {
     {
       ...obj,
       contact: typeof obj.contactId === 'object' && obj.contactId !== null ? obj.contactId : undefined,
+      group: mapPopulatedGroup(obj.groupId),
     },
   ]);
 

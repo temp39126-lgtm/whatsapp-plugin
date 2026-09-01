@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import { Users } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import type { ConversationDTO } from '@/types';
 
@@ -37,7 +38,9 @@ export function ConversationList({
     <div className="flex-1 overflow-y-auto">
       {conversations.map((conversation) => {
         const contact = conversation.contact as ConversationDTO['contact'];
-        const name = contact?.name ?? 'Unknown';
+        const group = conversation.group;
+        const isGroup = Boolean(group);
+        const name = group?.name ?? contact?.name ?? 'Unknown';
         const isSelected = selectedId === conversation._id;
 
         return (
@@ -49,8 +52,13 @@ export function ConversationList({
               isSelected && 'bg-whatsapp-light'
             )}
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
-              {getInitials(name)}
+            <div
+              className={cn(
+                'flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white',
+                isGroup ? 'bg-emerald-700' : 'bg-whatsapp'
+              )}
+            >
+              {isGroup ? <Users className="h-5 w-5" /> : getInitials(name)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
@@ -63,7 +71,9 @@ export function ConversationList({
               </div>
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-sm text-muted-foreground">
-                  {conversation.lastMessage ?? 'No messages'}
+                  {isGroup && group
+                    ? conversation.lastMessage ?? `${group.memberCount} participants`
+                    : conversation.lastMessage ?? 'No messages'}
                 </p>
                 {conversation.unreadCount > 0 && (
                   <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-whatsapp px-1.5 text-xs font-medium text-white">
@@ -72,6 +82,11 @@ export function ConversationList({
                 )}
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1">
+                {isGroup && (
+                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
+                    Group
+                  </span>
+                )}
                 {conversation.tags?.slice(0, 2).map((tag) => (
                   <span
                     key={tag._id}

@@ -19,6 +19,7 @@ export function useCreateGroup() {
       api.post<GroupDTO>('/groups', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
 }

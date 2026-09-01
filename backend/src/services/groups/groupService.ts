@@ -3,6 +3,7 @@ import { Group } from '../../models/Group';
 import { Contact } from '../../models/Contact';
 import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
+import { createGroupInboxConversation } from './groupInboxService';
 
 export async function listGroups(user: AuthUser) {
   return Group.find({ tenantId: user.tenantId })
@@ -40,6 +41,8 @@ export async function createGroup(
     name: group.name,
     memberCount: contacts.length,
   });
+
+  await createGroupInboxConversation(user, group);
 
   return Group.findById(group._id).populate('contactIds', 'name phone whatsappId').lean();
 }
