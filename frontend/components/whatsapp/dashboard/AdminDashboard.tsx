@@ -9,7 +9,6 @@ import {
   BarChart3,
   Settings,
   Inbox,
-  UserCog,
   AlertCircle,
   UserCheck,
 } from 'lucide-react';
@@ -137,7 +136,7 @@ export function AdminDashboard() {
             <div className="grid gap-3 sm:grid-cols-2">
               <QuickAction
                 href="/whatsapp/inbox"
-                label="Team Inbox"
+                label="Inbox"
                 description="View all conversations"
                 icon={Inbox}
               />
@@ -146,12 +145,6 @@ export function AdminDashboard() {
                 label="Analytics"
                 description="Reports and metrics"
                 icon={BarChart3}
-              />
-              <QuickAction
-                href="/whatsapp/team"
-                label="Team"
-                description="Create agent accounts"
-                icon={UserCog}
               />
               <QuickAction
                 href="/whatsapp/settings"
