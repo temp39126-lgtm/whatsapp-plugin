@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Phone,
   Users,
-  Tags,
   BarChart3,
   Settings,
   UserCog,
