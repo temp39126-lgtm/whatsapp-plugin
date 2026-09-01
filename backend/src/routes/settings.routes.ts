@@ -13,6 +13,7 @@ router.get('/me', authenticate, tenantAccess, controller.getCurrentUser);
 
 router.use(authenticate, tenantAccess);
 
+router.get('/settings/connection', controller.getConnectionStatus);
 router.get('/settings/account', requireRole('ADMIN'), requirePermission('manage_settings'), controller.getAccountSettings);
 router.put(
   '/settings/account',

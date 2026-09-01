@@ -78,6 +78,13 @@ export interface WhatsAppAccountSettings {
   callingEnabled?: boolean;
 }
 
+export interface WhatsAppConnectionStatus {
+  configured: boolean;
+  displayPhoneNumber?: string;
+  connectionStatus?: string;
+  callingEnabled?: boolean;
+}
+
 export interface GroupDTO {
   _id: string;
   tenantId: string;

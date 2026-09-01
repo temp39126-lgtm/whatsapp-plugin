@@ -117,6 +117,24 @@ export async function getAccountSettings(req: AuthenticatedRequest, res: Respons
   }
 }
 
+export async function getConnectionStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const account = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });
+    if (!account) {
+      res.json({ configured: false });
+      return;
+    }
+    res.json({
+      configured: true,
+      displayPhoneNumber: account.displayPhoneNumber,
+      connectionStatus: account.connectionStatus,
+      callingEnabled: env.CALLING_ENABLED,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateAccountSettings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const account = await saveWhatsAppAccount(req.user!.tenantId, req.body);
