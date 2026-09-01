@@ -9,6 +9,7 @@ export interface IUser extends Document {
   role: UserRole;
   tenantId: string;
   isActive: boolean;
+  profileImage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,7 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ['ADMIN', 'USER'], required: true },
     tenantId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },
+    profileImage: { type: String },
   },
   { timestamps: true }
 );

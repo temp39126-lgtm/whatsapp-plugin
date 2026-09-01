@@ -11,6 +11,7 @@ export function userToAuthUser(user: {
   role: 'ADMIN' | 'USER';
   email: string;
   name: string;
+  profileImage?: string;
 }): AuthUser {
   return {
     userId: user._id.toString(),
@@ -19,6 +20,7 @@ export function userToAuthUser(user: {
     permissions: user.role === 'ADMIN' ? [...ADMIN_PERMISSIONS] : [],
     email: user.email,
     name: user.name,
+    profileImage: user.profileImage ? '/api/whatsapp/profile/avatar' : undefined,
   };
 }
 

@@ -22,6 +22,7 @@ interface AuthContextType {
     options?: LoginOptions
   ) => Promise<{ token: string; user: AuthUser }>;
   completeLogin: (token: string, user: AuthUser) => void;
+  refreshUser: (user: AuthUser) => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   login: async () => ({ token: '', user: null as unknown as AuthUser }),
   completeLogin: () => undefined,
+  refreshUser: () => undefined,
   signup: async () => undefined,
   logout: () => undefined,
 });
@@ -89,6 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [completeLogin]
   );
 
+  const refreshUser = useCallback((authUser: AuthUser) => {
+    setUser(authUser);
+  }, []);
+
   const logout = useCallback(() => {
     setAuthToken(null);
     setUser(null);
@@ -121,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.role === 'ADMIN',
         login,
         completeLogin,
+        refreshUser,
         signup,
         logout,
       }}

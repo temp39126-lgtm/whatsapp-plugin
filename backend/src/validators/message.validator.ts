@@ -28,6 +28,10 @@ export const createTagSchema = z.object({
   name: z.string().min(1).max(50),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
+
 export const startCallSchema = z.object({
   conversationId: z.string().min(1),
 });

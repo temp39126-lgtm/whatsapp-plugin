@@ -7,4 +7,5 @@ export interface AuthUser {
   permissions: Permission[];
   email?: string;
   name?: string;
+  profileImage?: string;
 }

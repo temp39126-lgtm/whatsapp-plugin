@@ -8,7 +8,7 @@ export function isAvatarMimeType(mimeType: string): boolean {
 
 export async function storeAvatar(
   tenantId: string,
-  category: 'contacts' | 'groups',
+  category: 'contacts' | 'groups' | 'users',
   entityId: string,
   fileName: string,
   body: Buffer,

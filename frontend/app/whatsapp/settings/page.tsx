@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
 import { useState } from 'react';
-import { Mail, Phone, Shield, User } from 'lucide-react';
+import { Phone } from 'lucide-react';
+import { AccountProfileSection } from '@/components/whatsapp/settings/AccountProfileSection';
 
 function SettingsSection({
   title,
@@ -81,15 +82,9 @@ function UserSettingsView({
   connection?: WhatsAppConnectionStatus;
   isLoadingConnection: boolean;
 }) {
-  const { user } = useAuth();
-
   return (
     <div className="max-w-2xl space-y-6">
-      <SettingsSection title="My account" description="Your personal profile in this workspace.">
-        <SettingsRow label="Name" value={user?.name ?? '—'} icon={User} />
-        <SettingsRow label="Email" value={user?.email ?? '—'} icon={Mail} />
-        <SettingsRow label="Role" value={user?.role === 'ADMIN' ? 'Admin' : 'User'} icon={Shield} />
-      </SettingsSection>
+      <AccountProfileSection />
 
       <SettingsSection
         title="WhatsApp"
@@ -148,6 +143,8 @@ function AdminSettingsView({
 }) {
   return (
     <div className="max-w-2xl space-y-8">
+      <AccountProfileSection />
+
       {settings?.configured && (
         <WhatsAppStatusBanner
           connection={{
@@ -236,24 +233,14 @@ export default function SettingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
-  const isLoading = isAdmin ? isLoadingSettings : isLoadingConnection;
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {isAdmin
-            ? 'Manage WhatsApp connection and workspace configuration.'
-            : 'View your account and workspace connection status.'}
+            ? 'Manage your profile, WhatsApp connection, and workspace configuration.'
+            : 'Update your profile and view workspace connection status.'}
         </p>
       </div>
 

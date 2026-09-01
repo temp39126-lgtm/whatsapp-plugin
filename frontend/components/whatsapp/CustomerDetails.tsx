@@ -173,9 +173,9 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             imageUrl={group?.profileImage ?? contact?.profileImage}
             size="lg"
             isGroup={isGroup}
-            editable
+            editable={isAdmin}
             uploading={isUploading}
-            onUpload={handleAvatarUpload}
+            onUpload={isAdmin ? handleAvatarUpload : undefined}
           />
         </div>
         <h3 className="font-semibold">{displayName}</h3>

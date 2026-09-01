@@ -8,9 +8,11 @@ import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
 import type { ContactDTO, PaginatedResponse } from '@/types';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/components/AuthProvider';
 import { useState } from 'react';
 
 export default function ContactsPage() {
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const deleteContact = useDeleteContact();
   const uploadContactAvatar = useUploadContactAvatar();
@@ -36,7 +38,9 @@ export default function ContactsPage() {
       <div className="border-b px-6 py-4">
         <h1 className="text-2xl font-semibold">Contacts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload a photo with the camera icon. Delete removes the contact and related CRM data.
+          {isAdmin
+            ? 'Upload a photo with the camera icon. Delete removes the contact and related CRM data.'
+            : 'View customer details. Only admins can change contact photos or delete contacts.'}
         </p>
         <Input
           placeholder="Search contacts..."
@@ -66,7 +70,7 @@ export default function ContactsPage() {
                         : undefined
                     }
                     size="md"
-                    editable
+                    editable={isAdmin}
                     uploading={uploadContactAvatar.isPending}
                     onUpload={(file) =>
                       uploadContactAvatar.mutate({ contactId: contact._id, file })

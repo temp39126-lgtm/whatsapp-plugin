@@ -9,6 +9,7 @@ export interface AuthUser {
   permissions: string[];
   email?: string;
   name?: string;
+  profileImage?: string;
 }
 
 export interface AuthenticatedRequest extends Request {

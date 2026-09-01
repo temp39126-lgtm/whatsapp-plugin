@@ -5,6 +5,7 @@ import * as analyticsService from '../services/analytics/analyticsService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
+import { getUserProfile } from '../services/users/userProfileService';
 
 export async function listTags(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -161,6 +162,11 @@ export async function getWebhookInfo(req: AuthenticatedRequest, res: Response, n
   }
 }
 
-export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
-  res.json(req.user);
+export async function getCurrentUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const profile = await getUserProfile(req.user!);
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
 }

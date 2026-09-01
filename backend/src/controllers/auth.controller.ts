@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types';
 import { loginWithPassword, registerUser } from '../services/auth/authService';
+import { getUserProfile } from '../services/users/userProfileService';
 
 export async function login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -26,8 +27,13 @@ export async function signup(req: AuthenticatedRequest, res: Response, next: Nex
   }
 }
 
-export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
-  res.json(req.user);
+export async function getCurrentUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const profile = await getUserProfile(req.user!);
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function logout(_req: AuthenticatedRequest, res: Response) {
