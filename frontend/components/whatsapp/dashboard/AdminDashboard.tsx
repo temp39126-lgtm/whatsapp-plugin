@@ -150,7 +150,7 @@ export function AdminDashboard() {
               <QuickAction
                 href="/whatsapp/team"
                 label="Team"
-                description="Manage agents"
+                description="Create agent accounts"
                 icon={UserCog}
               />
               <QuickAction
@@ -171,15 +171,15 @@ export function AdminDashboard() {
                 </p>
               </div>
               <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
-                View all
+                Add agent
               </Link>
             </div>
             <div className="rounded-xl border bg-card shadow-sm">
               {(teamWorkload ?? []).length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">No team members yet</p>
+                <p className="p-6 text-sm text-muted-foreground">No agents yet</p>
               ) : (
                 <div className="divide-y">
-                  {(teamWorkload ?? []).slice(0, 5).map((agent) => (
+                  {(teamWorkload ?? []).map((agent) => (
                     <Link
                       key={agent._id}
                       href={`/whatsapp/team/${agent._id}`}
@@ -273,7 +273,7 @@ export function AdminDashboard() {
               </h2>
             </div>
             <p className="mt-1 text-sm text-orange-700">
-              Assign agents from the inbox or team page to improve response times.
+              Assign agents from the inbox to improve response times.
             </p>
             <Link
               href={buildInboxHref({ unassigned: true })}

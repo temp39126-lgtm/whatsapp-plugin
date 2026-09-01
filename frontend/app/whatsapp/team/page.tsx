@@ -1,15 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getInitials } from '@/lib/utils';
-import type { TeamAgentWorkloadDTO, TeamUserDTO } from '@/types';
-import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
+import type { TeamUserDTO } from '@/types';
 
 export default function TeamPage() {
   const queryClient = useQueryClient();
@@ -18,21 +16,12 @@ export default function TeamPage() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  const { data: teamUsers = [], isLoading: isLoadingUsers } = useQuery({
-    queryKey: ['team-users'],
-    queryFn: () => api.get<TeamUserDTO[]>('/team/users'),
-  });
-
-  const { data: workload = [], isLoading: isLoadingWorkload } = useQuery({
-    queryKey: ['team-workload'],
-    queryFn: () => api.get<TeamAgentWorkloadDTO[]>('/team/workload'),
-  });
-
   const createUser = useMutation({
     mutationFn: (payload: { name: string; email: string; password: string }) =>
       api.post<TeamUserDTO>('/team/users', payload),
     onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ['team-users'] });
+      queryClient.invalidateQueries({ queryKey: ['team-workload'] });
       setName('');
       setEmail('');
       setPassword('');
@@ -48,18 +37,27 @@ export default function TeamPage() {
     createUser.mutate({ name: name.trim(), email: email.trim(), password });
   }
 
-  const isLoading = isLoadingUsers || isLoadingWorkload;
-
   return (
     <div className="overflow-y-auto p-6">
       <div className="mb-6">
+        <Link
+          href="/whatsapp/admin"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-whatsapp-dark hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to dashboard
+        </Link>
         <h1 className="text-2xl font-semibold">Team Management</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create agent accounts and review workload across your team.
+          Create new agent accounts here. View agents and assigned conversation counts on the{' '}
+          <Link href="/whatsapp/admin" className="text-whatsapp-dark hover:underline">
+            admin dashboard
+          </Link>
+          .
         </p>
       </div>
 
-      <section className="mb-8 rounded-xl border bg-card p-5 shadow-sm">
+      <section className="max-w-3xl rounded-xl border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <UserPlus className="h-5 w-5 text-whatsapp" />
           <h2 className="text-lg font-semibold">Create agent account</h2>
@@ -105,86 +103,6 @@ export default function TeamPage() {
           </p>
         )}
       </section>
-
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
-        </div>
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-2">
-          <section>
-            <h2 className="mb-4 text-lg font-semibold">Team members ({teamUsers.length})</h2>
-            <div className="rounded-xl border bg-card shadow-sm">
-              {teamUsers.length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">No team members yet</p>
-              ) : (
-                <div className="divide-y">
-                  {teamUsers.map((member) => (
-                    <Link
-                      key={member._id}
-                      href={`/whatsapp/team/${member._id}`}
-                      className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <ProfileAvatar
-                        name={member.name}
-                        imageUrl={member.profileImage}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">{member.name}</p>
-                        <p className="truncate text-sm text-muted-foreground">{member.email}</p>
-                      </div>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                        {member.role === 'ADMIN' ? 'Admin' : 'Agent'}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="mb-4 text-lg font-semibold">Agent workload</h2>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Agents only. Admins are excluded. Counts stay at 0 until chats are assigned in the
-              inbox.
-            </p>
-            <div className="rounded-xl border bg-card shadow-sm">
-              {workload.length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">No team members yet</p>
-              ) : (
-                <div className="divide-y">
-                  {workload.map((agent) => (
-                    <Link
-                      key={agent._id}
-                      href={`/whatsapp/team/${agent._id}`}
-                      className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ProfileAvatar
-                          name={agent.name}
-                          imageUrl={agent.profileImage}
-                          size="md"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-medium">{agent.name}</p>
-                          <p className="truncate text-sm text-muted-foreground">{agent.email}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right text-sm text-muted-foreground">
-                        <p>{agent.open} open</p>
-                        <p>{agent.pending} pending</p>
-                        <p className="font-medium text-foreground">{agent.total} total</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
