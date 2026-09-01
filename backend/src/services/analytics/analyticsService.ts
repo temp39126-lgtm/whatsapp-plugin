@@ -5,7 +5,7 @@ import { Call } from '../../models/Call';
 import { InternalNote } from '../../models/InternalNote';
 import { User } from '../../models/User';
 import { ActivityLog } from '../../models/ActivityLog';
-import { enrichAgentStats, listTeamUsers as listTeamUsersFromService } from '../users/teamUserService';
+import { enrichAgentStats, listTeamUsers as listTeamUsersFromService, mergeTeamUsersWithAgentAnalytics, mergeTeamUsersWithWorkload } from '../users/teamUserService';
 
 export { listTeamUsersFromService as listTeamUsers };
 
@@ -53,7 +53,7 @@ export async function getAgentAnalytics(user: AuthUser) {
   ];
 
   const stats = await Conversation.aggregate(pipeline);
-  return enrichAgentStats(user.tenantId, stats);
+  return mergeTeamUsersWithAgentAnalytics(user, stats);
 }
 
 export async function getCallAnalytics(user: AuthUser) {
@@ -177,5 +177,5 @@ export async function getTeamWorkload(user: AuthUser) {
     },
   ]);
 
-  return enrichAgentStats(user.tenantId, stats);
+  return mergeTeamUsersWithWorkload(user, stats);
 }

@@ -153,14 +153,19 @@ export function AdminDashboard() {
 
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Agent Workload</h2>
+              <div>
+                <h2 className="text-lg font-semibold">Agent Workload</h2>
+                <p className="text-xs text-muted-foreground">
+                  Includes all team members; counts update after inbox assignment
+                </p>
+              </div>
               <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
                 View all
               </Link>
             </div>
             <div className="rounded-xl border bg-card shadow-sm">
               {(teamWorkload ?? []).length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">No assigned agents yet</p>
+                <p className="p-6 text-sm text-muted-foreground">No team members yet</p>
               ) : (
                 <div className="divide-y">
                   {(teamWorkload ?? []).slice(0, 5).map((agent) => (

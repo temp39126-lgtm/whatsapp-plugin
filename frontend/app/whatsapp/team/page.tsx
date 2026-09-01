@@ -138,11 +138,13 @@ export default function TeamPage() {
 
           <section>
             <h2 className="mb-4 text-lg font-semibold">Agent workload</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
+              All team members are listed here. Counts stay at 0 until chats are assigned in the
+              inbox.
+            </p>
             <div className="rounded-xl border bg-card shadow-sm">
               {workload.length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">
-                  No assigned conversations yet. Assign chats from the inbox.
-                </p>
+                <p className="p-6 text-sm text-muted-foreground">No team members yet</p>
               ) : (
                 <div className="divide-y">
                   {workload.map((agent) => (

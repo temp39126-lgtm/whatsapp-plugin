@@ -65,3 +65,61 @@ export async function enrichAgentStats<T extends AgentStatRow>(
     };
   });
 }
+
+type WorkloadCounts = { open: number; pending: number; total: number };
+
+export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
+  admin: AuthUser,
+  stats: Array<{ _id: string } & T>
+): Promise<Array<{ _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & T>> {
+  const enriched = await enrichAgentStats(admin.tenantId, stats);
+  const statMap = new Map(enriched.map((row) => [row._id, row]));
+  const allUsers = await listTeamUsers(admin);
+
+  return allUsers
+    .map((member) => {
+      const existing = statMap.get(member._id);
+      if (existing) return existing;
+
+      return {
+        _id: member._id,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        open: 0,
+        pending: 0,
+        total: 0,
+      } as { _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & T;
+    })
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
+
+type AnalyticsCounts = { total: number; resolved: number; open: number };
+
+export async function mergeTeamUsersWithAgentAnalytics(
+  admin: AuthUser,
+  stats: Array<{ _id: string } & AnalyticsCounts>
+): Promise<
+  Array<{ _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & AnalyticsCounts>
+> {
+  const enriched = await enrichAgentStats(admin.tenantId, stats);
+  const statMap = new Map(enriched.map((row) => [row._id, row]));
+  const allUsers = await listTeamUsers(admin);
+
+  return allUsers
+    .map((member) => {
+      const existing = statMap.get(member._id);
+      if (existing) return existing;
+
+      return {
+        _id: member._id,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        total: 0,
+        resolved: 0,
+        open: 0,
+      };
+    })
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
