@@ -9,7 +9,6 @@ import {
   Users,
   BarChart3,
   Settings,
-  UserCog,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
