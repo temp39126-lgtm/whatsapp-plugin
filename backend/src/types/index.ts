@@ -12,6 +12,11 @@ export interface AuthUser {
   profileImage?: string;
 }
 
+export interface UserProfile extends AuthUser {
+  about?: string;
+  preferences: import('./preferences').UserPreferences;
+}
+
 export interface AuthenticatedRequest extends Request {
   user?: AuthUser;
   conversation?: IConversation;

@@ -29,7 +29,26 @@ export const createTagSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1).max(100).optional(),
+  about: z.string().trim().max(139).optional(),
+});
+
+export const updatePreferencesSchema = z.object({
+  notifications: z
+    .object({
+      messageAlerts: z.boolean().optional(),
+      sound: z.boolean().optional(),
+      desktopNotifications: z.boolean().optional(),
+      emailSummary: z.boolean().optional(),
+    })
+    .optional(),
+  privacy: z
+    .object({
+      readReceipts: z.boolean().optional(),
+      showOnlineStatus: z.boolean().optional(),
+      showProfilePhoto: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const startCallSchema = z.object({

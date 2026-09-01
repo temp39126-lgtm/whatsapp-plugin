@@ -10,6 +10,20 @@ export interface IUser extends Document {
   tenantId: string;
   isActive: boolean;
   profileImage?: string;
+  about?: string;
+  preferences?: {
+    notifications?: {
+      messageAlerts?: boolean;
+      sound?: boolean;
+      desktopNotifications?: boolean;
+      emailSummary?: boolean;
+    };
+    privacy?: {
+      readReceipts?: boolean;
+      showOnlineStatus?: boolean;
+      showProfilePhoto?: boolean;
+    };
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +37,20 @@ const userSchema = new Schema<IUser>(
     tenantId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },
     profileImage: { type: String },
+    about: { type: String, default: '', maxlength: 139 },
+    preferences: {
+      notifications: {
+        messageAlerts: { type: Boolean, default: true },
+        sound: { type: Boolean, default: true },
+        desktopNotifications: { type: Boolean, default: true },
+        emailSummary: { type: Boolean, default: false },
+      },
+      privacy: {
+        readReceipts: { type: Boolean, default: true },
+        showOnlineStatus: { type: Boolean, default: true },
+        showProfilePhoto: { type: Boolean, default: true },
+      },
+    },
   },
   { timestamps: true }
 );

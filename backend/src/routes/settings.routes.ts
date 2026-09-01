@@ -4,7 +4,7 @@ import { tenantAccess } from '../middleware/tenantAccess';
 import { requireRole } from '../middleware/requireRole';
 import { requirePermission } from '../middleware/requirePermission';
 import { validateBody } from '../middleware/validate';
-import { whatsAppAccountSchema, updateProfileSchema } from '../validators/message.validator';
+import { whatsAppAccountSchema, updateProfileSchema, updatePreferencesSchema } from '../validators/message.validator';
 import { avatarUploadMiddleware } from '../middleware/upload';
 import * as controller from '../controllers/settings.controller';
 import * as profileController from '../controllers/profile.controller';
@@ -17,6 +17,11 @@ router.use(authenticate, tenantAccess);
 
 router.get('/profile', profileController.getProfile);
 router.put('/profile', validateBody(updateProfileSchema), profileController.updateProfile);
+router.put(
+  '/profile/preferences',
+  validateBody(updatePreferencesSchema),
+  profileController.updatePreferences
+);
 router.get('/profile/avatar', profileController.getProfileAvatar);
 router.post(
   '/profile/avatar',

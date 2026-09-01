@@ -1,120 +1,45 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  ArrowLeft,
+  Bell,
+  Building2,
+  KeyRound,
+  MessageCircle,
+  Shield,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import type { WhatsAppAccountSettings, WhatsAppConnectionStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
-import { useState } from 'react';
-import { Phone } from 'lucide-react';
-import { AccountProfileSection } from '@/components/whatsapp/settings/AccountProfileSection';
+import { useUserProfile } from '@/hooks/useProfile';
+import { SettingsMenuItem } from '@/components/whatsapp/settings/SettingsMenuItem';
+import { SettingsProfileHeader } from '@/components/whatsapp/settings/SettingsProfileHeader';
+import { SettingsAccountPanel } from '@/components/whatsapp/settings/SettingsAccountPanel';
+import { SettingsNotificationsPanel } from '@/components/whatsapp/settings/SettingsNotificationsPanel';
+import { SettingsPrivacyPanel } from '@/components/whatsapp/settings/SettingsPrivacyPanel';
+import { SettingsWhatsAppPanel } from '@/components/whatsapp/settings/SettingsWhatsAppPanel';
 
-function SettingsSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border bg-card p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-4 space-y-3">{children}</div>
-    </section>
-  );
-}
+type SettingsPanel =
+  | 'home'
+  | 'account'
+  | 'notifications'
+  | 'privacy'
+  | 'whatsapp'
+  | 'business';
 
-function SettingsRow({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg bg-muted/40 px-4 py-3">
-      {Icon && <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-0.5 text-sm font-medium break-words">{value}</p>
-      </div>
-    </div>
-  );
-}
+const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
+  account: 'Account',
+  notifications: 'Notifications',
+  privacy: 'Privacy',
+  whatsapp: 'WhatsApp',
+  business: 'Business configuration',
+};
 
-function WhatsAppStatusBanner({ connection }: { connection: WhatsAppConnectionStatus }) {
-  if (!connection.configured) {
-    return (
-      <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
-        <p className="font-medium text-yellow-800">WhatsApp not connected</p>
-        <p className="mt-1 text-sm text-yellow-700">
-          Your workspace is not linked to WhatsApp yet. Ask your admin to complete setup.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-      <p className="font-medium text-green-800">WhatsApp connected</p>
-      <p className="mt-1 text-sm text-green-700">
-        {connection.displayPhoneNumber ?? 'Business number'} · {connection.connectionStatus ?? 'Active'}
-      </p>
-      <p className="mt-1 text-xs text-green-600">
-        {connection.callingEnabled
-          ? 'Calling enabled for this workspace'
-          : 'Calling disabled (requires Meta Business Calling)'}
-      </p>
-    </div>
-  );
-}
-
-function UserSettingsView({
-  connection,
-  isLoadingConnection,
-}: {
-  connection?: WhatsAppConnectionStatus;
-  isLoadingConnection: boolean;
-}) {
-  return (
-    <div className="max-w-2xl space-y-6">
-      <AccountProfileSection />
-
-      <SettingsSection
-        title="WhatsApp"
-        description="Connection details for your team. Only admins can change configuration."
-      >
-        {isLoadingConnection ? (
-          <div className="flex items-center justify-center py-6">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
-          </div>
-        ) : (
-          <>
-            <WhatsAppStatusBanner connection={connection ?? { configured: false }} />
-            {connection?.configured && (
-              <SettingsRow
-                label="Business number"
-                value={connection.displayPhoneNumber ?? 'Not available'}
-                icon={Phone}
-              />
-            )}
-            <p className="text-sm text-muted-foreground">
-              Contact your admin if WhatsApp needs to be connected or updated.
-            </p>
-          </>
-        )}
-      </SettingsSection>
-    </div>
-  );
-}
-
-function AdminSettingsView({
+function AdminBusinessPanel({
   settings,
   webhook,
   form,
@@ -142,21 +67,8 @@ function AdminSettingsView({
   onSave: () => void;
 }) {
   return (
-    <div className="max-w-2xl space-y-8">
-      <AccountProfileSection />
-
-      {settings?.configured && (
-        <WhatsAppStatusBanner
-          connection={{
-            configured: true,
-            displayPhoneNumber: settings.displayPhoneNumber,
-            connectionStatus: settings.connectionStatus,
-            callingEnabled: settings.callingEnabled,
-          }}
-        />
-      )}
-
-      <SettingsSection title="WhatsApp account" description="Connect your Meta WhatsApp Business account.">
+    <div className="space-y-6 p-4">
+      <div className="space-y-3">
         <Input
           placeholder="Phone Number ID"
           value={form.phoneNumberId}
@@ -181,19 +93,24 @@ function AdminSettingsView({
         <Button variant="whatsapp" onClick={onSave} disabled={isSaving}>
           Save configuration
         </Button>
-      </SettingsSection>
+      </div>
 
       {webhook && (
-        <SettingsSection title="Webhook configuration">
-          <div className="rounded-lg bg-muted/40 p-4 text-sm">
-            <p>
-              <span className="font-medium">URL:</span> {webhook.webhookUrl}
-            </p>
-            <p className="mt-2">
-              <span className="font-medium">Verify token:</span> {webhook.verifyToken}
-            </p>
-          </div>
-        </SettingsSection>
+        <div className="rounded-xl border bg-card p-4 text-sm">
+          <p className="font-medium">Webhook configuration</p>
+          <p className="mt-2">
+            <span className="font-medium">URL:</span> {webhook.webhookUrl}
+          </p>
+          <p className="mt-2">
+            <span className="font-medium">Verify token:</span> {webhook.verifyToken}
+          </p>
+        </div>
+      )}
+
+      {settings?.configured && (
+        <p className="text-sm text-green-700">
+          Connected: {settings.displayPhoneNumber} · {settings.connectionStatus}
+        </p>
       )}
     </div>
   );
@@ -202,17 +119,20 @@ function AdminSettingsView({
 export default function SettingsPage() {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [panel, setPanel] = useState<SettingsPanel>('home');
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => api.get<WhatsAppAccountSettings>('/settings/account'),
-    enabled: isAdmin,
-  });
+  const { data: profile, isLoading: isLoadingProfile } = useUserProfile();
 
   const { data: connection, isLoading: isLoadingConnection } = useQuery({
     queryKey: ['settings-connection'],
     queryFn: () => api.get<WhatsAppConnectionStatus>('/settings/connection'),
-    enabled: !isAdmin,
+  });
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.get<WhatsAppAccountSettings>('/settings/account'),
+    enabled: isAdmin,
   });
 
   const { data: webhook } = useQuery({
@@ -233,29 +153,96 @@ export default function SettingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
+  if (isLoadingProfile || !profile) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (panel !== 'home') {
+    return (
+      <div className="flex h-full flex-col overflow-y-auto bg-background">
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-card px-2 py-3">
+          <button
+            type="button"
+            onClick={() => setPanel('home')}
+            className="rounded-full p-2 hover:bg-muted"
+            aria-label="Back to settings"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-semibold">{panelTitles[panel]}</h1>
+        </div>
+
+        {panel === 'account' && <SettingsAccountPanel profile={profile} />}
+        {panel === 'notifications' && <SettingsNotificationsPanel profile={profile} />}
+        {panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
+        {panel === 'whatsapp' && (
+          <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
+        )}
+        {panel === 'business' && isAdmin && (
+          <AdminBusinessPanel
+            settings={settings}
+            webhook={webhook}
+            form={form}
+            setForm={setForm}
+            isSaving={saveSettings.isPending}
+            onSave={() => saveSettings.mutate()}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isAdmin
-            ? 'Manage your profile, WhatsApp connection, and workspace configuration.'
-            : 'Update your profile and view workspace connection status.'}
-        </p>
+    <div className="flex h-full flex-col overflow-y-auto bg-muted/20">
+      <div className="border-b bg-card px-4 py-4">
+        <h1 className="text-xl font-semibold">Settings</h1>
       </div>
 
-      {isAdmin ? (
-        <AdminSettingsView
-          settings={settings}
-          webhook={webhook}
-          form={form}
-          setForm={setForm}
-          isSaving={saveSettings.isPending}
-          onSave={() => saveSettings.mutate()}
+      <SettingsProfileHeader
+        profile={profile}
+        avatarVersion={avatarVersion}
+        onClick={() => setPanel('account')}
+      />
+
+      <div className="mt-2 divide-y border-y bg-card">
+        <SettingsMenuItem
+          icon={KeyRound}
+          title="Account"
+          subtitle="Security info, profile, email"
+          onClick={() => setPanel('account')}
         />
-      ) : (
-        <UserSettingsView connection={connection} isLoadingConnection={isLoadingConnection} />
-      )}
+        <SettingsMenuItem
+          icon={Bell}
+          title="Notifications"
+          subtitle="Message alerts, sounds, email summary"
+          onClick={() => setPanel('notifications')}
+        />
+        <SettingsMenuItem
+          icon={Shield}
+          title="Privacy"
+          subtitle="Read receipts, online status, profile photo"
+          onClick={() => setPanel('privacy')}
+        />
+        <SettingsMenuItem
+          icon={MessageCircle}
+          title="WhatsApp"
+          subtitle="Business connection and calling status"
+          onClick={() => setPanel('whatsapp')}
+        />
+        {isAdmin && (
+          <SettingsMenuItem
+            icon={Building2}
+            title="Business configuration"
+            subtitle="API credentials and webhook setup"
+            onClick={() => setPanel('business')}
+            iconClassName="bg-emerald-100 text-emerald-700"
+          />
+        )}
+      </div>
     </div>
   );
 }

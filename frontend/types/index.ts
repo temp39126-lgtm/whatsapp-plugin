@@ -1,9 +1,11 @@
 import type { AuthUser } from '@shared/types/user';
+import type { UserProfile } from '@shared/types/user';
+import type { UserPreferences } from '@shared/types/preferences';
 import type { ConversationDTO } from '@shared/types/conversation';
 import type { MessageDTO } from '@shared/types/message';
 import type { CallDTO } from '@shared/types/call';
 
-export type { AuthUser, ConversationDTO, MessageDTO, CallDTO };
+export type { AuthUser, UserProfile, ConversationDTO, MessageDTO, CallDTO, UserPreferences };
 
 export interface PaginatedResponse<T> {
   data: T[];

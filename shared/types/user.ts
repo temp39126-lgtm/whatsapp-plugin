@@ -1,4 +1,5 @@
 import type { Permission, Role } from '../constants/permissions';
+import type { UserPreferences } from './preferences';
 
 export interface AuthUser {
   userId: string;
@@ -8,4 +9,9 @@ export interface AuthUser {
   email?: string;
   name?: string;
   profileImage?: string;
+}
+
+export interface UserProfile extends AuthUser {
+  about?: string;
+  preferences: UserPreferences;
 }

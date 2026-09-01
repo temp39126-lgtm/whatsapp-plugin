@@ -4,6 +4,7 @@ import { readAvatar } from '../services/avatars/avatarService';
 import {
   getUserProfile,
   updateUserProfile,
+  updateUserPreferences,
   uploadUserAvatar,
   getUserAvatarStorageKey,
 } from '../services/users/userProfileService';
@@ -19,8 +20,17 @@ export async function getProfile(req: AuthenticatedRequest, res: Response, next:
 
 export async function updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const { name } = req.body as { name: string };
-    const profile = await updateUserProfile(req.user!, name);
+    const { name, about } = req.body as { name?: string; about?: string };
+    const profile = await updateUserProfile(req.user!, { name, about });
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePreferences(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const profile = await updateUserPreferences(req.user!, req.body);
     res.json(profile);
   } catch (error) {
     next(error);
