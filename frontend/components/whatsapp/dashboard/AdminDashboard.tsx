@@ -30,11 +30,6 @@ export function AdminDashboard() {
     queryFn: () => api.get<AnalyticsConversations>('/analytics/conversations'),
   });
 
-  const { data: messages } = useQuery({
-    queryKey: ['analytics-messages'],
-    queryFn: () => api.get<{ sent: number; received: number }>('/analytics/messages'),
-  });
-
   const { data: teamWorkload } = useQuery({
     queryKey: ['team-workload'],
     queryFn: () => api.get<TeamAgentWorkloadDTO[]>('/team/workload'),
@@ -113,7 +108,7 @@ export function AdminDashboard() {
 
         <section>
           <h2 className="mb-4 text-lg font-semibold">Status Breakdown</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               label="Pending"
               value={analytics?.pending ?? 0}
@@ -131,13 +126,6 @@ export function AdminDashboard() {
               value={analytics?.closed ?? 0}
               variant="muted"
               href={buildInboxHref({ status: 'CLOSED' })}
-            />
-            <StatCard
-              label="Messages (30d)"
-              value={`${messages?.sent ?? 0} / ${messages?.received ?? 0}`}
-              trend="sent / received"
-              variant="muted"
-              href="/whatsapp/analytics"
             />
           </div>
         </section>
