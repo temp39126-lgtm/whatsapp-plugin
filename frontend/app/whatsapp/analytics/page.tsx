@@ -20,11 +20,6 @@ export default function AnalyticsPage() {
     queryFn: () => api.get<AnalyticsConversations>('/analytics/conversations'),
   });
 
-  const { data: messages } = useQuery({
-    queryKey: ['analytics-messages'],
-    queryFn: () => api.get<{ sent: number; received: number }>('/analytics/messages'),
-  });
-
   const { data: calls } = useQuery({
     queryKey: ['analytics-calls'],
     queryFn: () =>
@@ -64,14 +59,6 @@ export default function AnalyticsPage() {
           <StatCard label="Resolved" value={conversations?.resolved ?? 0} />
           <StatCard label="Closed" value={conversations?.closed ?? 0} />
           <StatCard label="New Today" value={conversations?.newToday ?? 0} />
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-medium">Messages (30 days)</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard label="Sent" value={messages?.sent ?? 0} />
-          <StatCard label="Received" value={messages?.received ?? 0} />
         </div>
       </section>
 
