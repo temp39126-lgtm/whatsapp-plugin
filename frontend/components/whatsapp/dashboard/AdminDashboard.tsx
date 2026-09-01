@@ -193,9 +193,8 @@ export function AdminDashboard() {
                           <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
                         </div>
                       </div>
-                      <div className="shrink-0 flex gap-3 text-sm text-muted-foreground">
-                        <span>{agent.open} open</span>
-                        <span>{agent.pending} pending</span>
+                      <div className="shrink-0 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{agent.total}</span> assigned
                       </div>
                     </Link>
                   ))}
