@@ -24,6 +24,8 @@ export const conversationQuerySchema = z.object({
   status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
   assignedUserId: z.string().optional(),
   unassigned: z.coerce.boolean().optional(),
+  assigned: z.coerce.boolean().optional(),
+  newToday: z.coerce.boolean().optional(),
   unread: z.coerce.boolean().optional(),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
   search: z.string().optional(),

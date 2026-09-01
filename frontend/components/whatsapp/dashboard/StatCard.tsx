@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 
 interface StatCardProps {
   label: string;
@@ -8,6 +9,7 @@ interface StatCardProps {
   trend?: string;
   variant?: 'default' | 'whatsapp' | 'warning' | 'muted';
   className?: string;
+  href?: string;
 }
 
 const variants = {
@@ -24,8 +26,9 @@ export function StatCard({
   trend,
   variant = 'default',
   className,
+  href,
 }: StatCardProps) {
-  return (
+  const content = (
     <div className={cn('rounded-xl border p-5 shadow-sm', variants[variant], className)}>
       <div className="flex items-start justify-between">
         <div>
@@ -40,5 +43,16 @@ export function StatCard({
         )}
       </div>
     </div>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-xl transition-transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-whatsapp"
+    >
+      {content}
+    </Link>
   );
 }

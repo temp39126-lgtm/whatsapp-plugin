@@ -8,10 +8,13 @@ interface ConversationFilters {
   status?: string;
   assignedUserId?: string;
   unassigned?: boolean;
+  assigned?: boolean;
+  newToday?: boolean;
   unread?: boolean;
   priority?: string;
   search?: string;
   mine?: boolean;
+  groups?: boolean;
   page?: number;
   limit?: number;
 }

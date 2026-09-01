@@ -11,6 +11,7 @@ import {
   Inbox,
   UserCog,
   AlertCircle,
+  UserCheck,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
@@ -18,6 +19,7 @@ import { useConversations } from '@/hooks/useConversations';
 import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
 import { getInitials } from '@/lib/utils';
+import { buildInboxHref } from '@/lib/inbox-filters';
 import type { AnalyticsConversations, TeamAgentWorkloadDTO } from '@/types';
 
 export function AdminDashboard() {
@@ -84,23 +86,27 @@ export function AdminDashboard() {
               value={analytics?.total ?? 0}
               icon={MessageSquare}
               variant="whatsapp"
+              href={buildInboxHref()}
             />
             <StatCard
-              label="Open"
-              value={analytics?.open ?? 0}
-              icon={Inbox}
+              label="Assigned"
+              value={analytics?.assigned ?? 0}
+              icon={UserCheck}
               trend={`${analytics?.unread ?? 0} unread`}
+              href={buildInboxHref({ assigned: true })}
             />
             <StatCard
               label="Unassigned"
               value={unassigned.length}
               icon={AlertCircle}
               variant="warning"
+              href={buildInboxHref({ unassigned: true })}
             />
             <StatCard
               label="New Today"
               value={analytics?.newToday ?? 0}
               icon={BarChart3}
+              href={buildInboxHref({ newToday: true })}
             />
           </div>
         </section>
@@ -108,14 +114,30 @@ export function AdminDashboard() {
         <section>
           <h2 className="mb-4 text-lg font-semibold">Status Breakdown</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Pending" value={analytics?.pending ?? 0} variant="muted" />
-            <StatCard label="Resolved" value={analytics?.resolved ?? 0} variant="muted" />
-            <StatCard label="Closed" value={analytics?.closed ?? 0} variant="muted" />
+            <StatCard
+              label="Pending"
+              value={analytics?.pending ?? 0}
+              variant="muted"
+              href={buildInboxHref({ status: 'PENDING' })}
+            />
+            <StatCard
+              label="Resolved"
+              value={analytics?.resolved ?? 0}
+              variant="muted"
+              href={buildInboxHref({ status: 'RESOLVED' })}
+            />
+            <StatCard
+              label="Closed"
+              value={analytics?.closed ?? 0}
+              variant="muted"
+              href={buildInboxHref({ status: 'CLOSED' })}
+            />
             <StatCard
               label="Messages (30d)"
               value={`${messages?.sent ?? 0} / ${messages?.received ?? 0}`}
               trend="sent / received"
               variant="muted"
+              href="/whatsapp/analytics"
             />
           </div>
         </section>
@@ -208,7 +230,7 @@ export function AdminDashboard() {
                   return (
                     <Link
                       key={conv._id}
-                      href="/whatsapp/inbox"
+                      href={buildInboxHref({}, conv._id)}
                       className="flex items-center justify-between p-4 hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-3">
@@ -260,7 +282,7 @@ export function AdminDashboard() {
               Assign agents from the inbox or team page to improve response times.
             </p>
             <Link
-              href="/whatsapp/inbox"
+              href={buildInboxHref({ unassigned: true })}
               className="mt-3 inline-block text-sm font-medium text-orange-800 underline"
             >
               Go to inbox →

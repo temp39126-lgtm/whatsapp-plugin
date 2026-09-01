@@ -22,8 +22,19 @@ function isAllFiltersActive(filters: Record<string, string | boolean | undefined
     !filters.unread &&
     !filters.groups &&
     !filters.mine &&
-    !filters.unassigned
+    !filters.unassigned &&
+    !filters.assigned &&
+    !filters.newToday
   );
+}
+
+function clearAssignmentFilters(filters: Record<string, string | boolean | undefined>) {
+  return {
+    unassigned: undefined,
+    assigned: undefined,
+    newToday: undefined,
+    mine: undefined,
+  };
 }
 
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
@@ -61,10 +72,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           onClick={() =>
             onChange({
               ...filters,
-              status: undefined,
-              groups: undefined,
-              mine: undefined,
-              unassigned: undefined,
+              ...clearAssignmentFilters(filters),
               unread: filters.unread ? undefined : true,
             })
           }
@@ -82,10 +90,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           onClick={() =>
             onChange({
               ...filters,
-              status: undefined,
-              unread: undefined,
-              mine: undefined,
-              unassigned: undefined,
+              ...clearAssignmentFilters(filters),
               groups: filters.groups ? undefined : true,
             })
           }
@@ -130,6 +135,26 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
                 status: filters.status,
                 unread: filters.unread,
                 groups: filters.groups,
+                assigned: true,
+              })
+            }
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+              filters.assigned
+                ? 'bg-whatsapp text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            Assigned
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                search: filters.search,
+                status: filters.status,
+                unread: filters.unread,
+                groups: filters.groups,
                 unassigned: true,
               })
             }
@@ -142,6 +167,26 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           >
             Unassigned
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                search: filters.search,
+                status: filters.status,
+                unread: filters.unread,
+                groups: filters.groups,
+                newToday: true,
+              })
+            }
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+              filters.newToday
+                ? 'bg-whatsapp text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            New Today
+          </button>
         </div>
       )}
 
@@ -153,8 +198,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             onClick={() =>
               onChange({
                 ...filters,
-                mine: undefined,
-                unassigned: undefined,
+                ...clearAssignmentFilters(filters),
                 status: filters.status === f.key ? undefined : f.key,
               })
             }

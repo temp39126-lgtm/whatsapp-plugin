@@ -8,6 +8,7 @@ import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverfl
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
+import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
 
 function InboxLoading() {
   return (
@@ -19,14 +20,16 @@ function InboxLoading() {
 
 function InboxPageContent() {
   const searchParams = useSearchParams();
-  const conversationParam = searchParams.get('conversation');
+  const searchKey = searchParams.toString();
+  const urlFilters = inboxFiltersFromSearchParams(searchParams);
 
-  const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(conversationParam);
+  const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>(urlFilters);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('conversation'));
 
   useEffect(() => {
-    setSelectedId(conversationParam);
-  }, [conversationParam]);
+    setFilters(inboxFiltersFromSearchParams(searchParams));
+    setSelectedId(searchParams.get('conversation'));
+  }, [searchKey, searchParams]);
 
   const { data, isLoading } = useConversations(filters);
   const { data: selectedConversation } = useConversation(selectedId);

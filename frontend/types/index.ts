@@ -76,6 +76,7 @@ export interface AnalyticsConversations {
   total: number;
   newToday: number;
   open: number;
+  assigned: number;
   pending: number;
   resolved: number;
   closed: number;

@@ -11,20 +11,22 @@ export { listTeamUsersFromService as listTeamUsers };
 
 export async function getConversationAnalytics(user: AuthUser) {
   const tenantId = user.tenantId;
-  const [total, open, pending, resolved, closed, unread, newToday] = await Promise.all([
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+  const [total, open, pending, resolved, closed, unread, newToday, assigned] = await Promise.all([
     Conversation.countDocuments({ tenantId }),
     Conversation.countDocuments({ tenantId, status: 'OPEN' }),
     Conversation.countDocuments({ tenantId, status: 'PENDING' }),
     Conversation.countDocuments({ tenantId, status: 'RESOLVED' }),
     Conversation.countDocuments({ tenantId, status: 'CLOSED' }),
     Conversation.countDocuments({ tenantId, unreadCount: { $gt: 0 } }),
+    Conversation.countDocuments({ tenantId, createdAt: { $gte: startOfToday } }),
     Conversation.countDocuments({
       tenantId,
-      createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      assignedUserId: { $exists: true, $ne: null },
     }),
   ]);
 
-  return { total, newToday, open, pending, resolved, closed, unread };
+  return { total, newToday, open, assigned, pending, resolved, closed, unread };
 }
 
 export async function getMessageAnalytics(user: AuthUser, days = 30) {

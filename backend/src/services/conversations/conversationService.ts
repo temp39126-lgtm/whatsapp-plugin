@@ -14,6 +14,8 @@ interface ConversationFilters {
   status?: string;
   assignedUserId?: string;
   unassigned?: boolean;
+  assigned?: boolean;
+  newToday?: boolean;
   unread?: boolean;
   priority?: string;
   tag?: string;
@@ -107,6 +109,12 @@ export async function listConversations(
   if (filters.priority) query.priority = filters.priority;
   if (filters.unassigned) {
     query.$or = [{ assignedUserId: { $exists: false } }, { assignedUserId: null }];
+  }
+  if (filters.assigned) {
+    query.assignedUserId = { $exists: true, $ne: null };
+  }
+  if (filters.newToday) {
+    query.createdAt = { $gte: new Date(new Date().setHours(0, 0, 0, 0)) };
   }
   if (filters.mine) query.assignedUserId = user.userId;
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
