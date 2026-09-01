@@ -20,7 +20,6 @@ const navItems = [
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'USER'] },
-  { href: '/whatsapp/team', label: 'Team', icon: UserCog, roles: ['ADMIN'] },
   { href: '/whatsapp/analytics', label: 'Analytics', icon: BarChart3, roles: ['ADMIN'] },
   { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'USER'] },
 ];
