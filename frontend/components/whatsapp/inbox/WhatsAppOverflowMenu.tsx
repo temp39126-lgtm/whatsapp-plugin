@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/AuthProvider';
 import { useMarkAllRead } from '@/hooks/useConversations';
 import { NewCommunityModal } from './NewCommunityModal';
 import { NewGroupModal } from './NewGroupModal';
@@ -19,6 +20,7 @@ const menuItems = [
 
 export function WhatsAppOverflowMenu() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [feedback, setFeedback] = useState('');
@@ -51,6 +53,10 @@ export function WhatsAppOverflowMenu() {
     const timer = window.setTimeout(() => setFeedback(''), 3000);
     return () => window.clearTimeout(timer);
   }, [feedback]);
+
+  const visibleMenuItems = menuItems.filter(
+    (item) => item.id !== 'settings' || isAdmin
+  );
 
   function handleMenuAction(actionId: (typeof menuItems)[number]['id']) {
     switch (actionId) {
@@ -99,7 +105,7 @@ export function WhatsAppOverflowMenu() {
 
         {open && (
           <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] overflow-hidden rounded-lg border bg-background py-1 shadow-lg">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <button
                 key={item.id}
                 type="button"

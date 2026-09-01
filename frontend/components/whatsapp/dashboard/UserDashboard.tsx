@@ -7,7 +7,6 @@ import {
   Inbox,
   Phone,
   Users,
-  Tags,
   CheckCircle2,
   Clock,
 } from 'lucide-react';
@@ -84,7 +83,7 @@ export function UserDashboard() {
 
         <section>
           <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <QuickAction
               href="/whatsapp/inbox"
               label="My Inbox"
@@ -102,12 +101,6 @@ export function UserDashboard() {
               label="Calls"
               description="Call history"
               icon={Phone}
-            />
-            <QuickAction
-              href="/whatsapp/tags"
-              label="Tags"
-              description="Organize conversations"
-              icon={Tags}
             />
           </div>
         </section>

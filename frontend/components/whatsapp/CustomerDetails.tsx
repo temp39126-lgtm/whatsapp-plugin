@@ -293,11 +293,16 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           </h4>
           <p className="mb-2 text-[10px] text-muted-foreground">
             {isAdmin
-              ? 'Create a new tag below or open the Tags page to manage all tags.'
-              : 'Tags are created by admins. Click a tag to assign it to this chat.'}{' '}
-            <Link href="/whatsapp/tags" className="text-whatsapp underline">
-              Tags page
-            </Link>
+              ? 'Create a new tag below or manage all tags from the admin Tags page.'
+              : 'Click a tag to assign it to this chat. Ask an admin to create new tags.'}
+            {isAdmin && (
+              <>
+                {' '}
+                <Link href="/whatsapp/tags" className="text-whatsapp underline">
+                  Tags page
+                </Link>
+              </>
+            )}
           </p>
           {isAdmin && (
             <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
