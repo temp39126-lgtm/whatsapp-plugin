@@ -1,28 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Bell, Cloud } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowLeft } from 'lucide-react';
 import { AdminMetaCloudPanel } from '@/components/whatsapp/admin/AdminMetaCloudPanel';
 import { AdminEmailSettingsPanel } from '@/components/whatsapp/admin/AdminEmailSettingsPanel';
 
-type AdminSettingsTab = 'meta' | 'email' | 'notifications';
-
-const tabs: Array<{ id: AdminSettingsTab; label: string; icon: typeof Cloud }> = [
-  { id: 'meta', label: 'Meta Cloud API', icon: Cloud },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-];
-
-function resolveTab(tabParam: string | null): AdminSettingsTab {
-  if (tabParam === 'email' || tabParam === 'notifications') return 'notifications';
-  return 'meta';
-}
-
 export function AdminSettingsPage() {
-  const searchParams = useSearchParams();
-  const activeTab = resolveTab(searchParams.get('tab'));
-
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-whatsapp-light/30 via-background to-background">
       <div className="border-b bg-background/80 px-6 py-6 backdrop-blur-sm">
@@ -36,34 +19,17 @@ export function AdminSettingsPage() {
         <p className="text-sm font-medium text-whatsapp-dark">Admin Configuration</p>
         <h1 className="mt-1 text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Meta Cloud API and SMTP email configuration for your tenant.
+          Meta Cloud API credentials and tenant notification settings.
         </p>
       </div>
 
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap gap-2 border-b pb-4">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <Link
-                key={tab.id}
-                href={`/whatsapp/admin/settings?tab=${tab.id}`}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'border-whatsapp bg-whatsapp text-white'
-                    : 'bg-card text-foreground hover:bg-muted/50'
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </Link>
-            );
-          })}
-        </div>
+      <div className="space-y-8 p-6">
+        <AdminMetaCloudPanel />
 
-        {activeTab === 'notifications' ? <AdminEmailSettingsPanel /> : <AdminMetaCloudPanel />}
+        <section id="notifications">
+          <h2 className="mb-4 text-lg font-semibold">Notifications</h2>
+          <AdminEmailSettingsPanel />
+        </section>
       </div>
     </div>
   );
