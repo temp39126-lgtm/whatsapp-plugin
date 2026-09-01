@@ -3,7 +3,6 @@
 import { Phone } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ConversationActionsMenu } from './ConversationActionsMenu';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import {
@@ -116,7 +115,6 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
           <Button variant="ghost" size="icon" onClick={onStartCall} disabled={!onStartCall}>
             <Phone className="h-5 w-5" />
           </Button>
-          <ConversationActionsMenu conversation={conversation} />
         </div>
       </header>
 

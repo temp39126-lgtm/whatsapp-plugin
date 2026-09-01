@@ -19,6 +19,8 @@ import contactRoutes from './routes/contact.routes';
 import tagRoutes from './routes/tag.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import settingsRoutes from './routes/settings.routes';
+import groupRoutes from './routes/group.routes';
+import communityRoutes from './routes/community.routes';
 import webhookRoutes from './routes/webhook.routes';
 
 const app = express();
@@ -44,6 +46,8 @@ app.use('/api/whatsapp/calls', callRoutes);
 app.use('/api/whatsapp/contacts', contactRoutes);
 app.use('/api/whatsapp/tags', tagRoutes);
 app.use('/api/whatsapp/analytics', analyticsRoutes);
+app.use('/api/whatsapp/groups', groupRoutes);
+app.use('/api/whatsapp/communities', communityRoutes);
 app.use('/api/whatsapp', settingsRoutes);
 
 app.use(errorHandler);

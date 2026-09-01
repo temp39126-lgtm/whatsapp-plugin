@@ -197,3 +197,36 @@ export async function markConversationRead(
 
   return getConversation(user, conversation._id.toString());
 }
+
+export async function markAllConversationsRead(user: AuthUser) {
+  const filter = buildConversationFilter(user, { unreadCount: { $gt: 0 } });
+  const conversations = await Conversation.find(filter).select('_id');
+
+  if (conversations.length === 0) {
+    return { markedCount: 0 };
+  }
+
+  await Conversation.updateMany(filter, { unreadCount: 0 });
+
+  const { ConversationRead } = await import('../../models/ConversationRead');
+  const now = new Date();
+  await Promise.all(
+    conversations.map((conversation) =>
+      ConversationRead.findOneAndUpdate(
+        {
+          tenantId: user.tenantId,
+          conversationId: conversation._id,
+          userId: user.userId,
+        },
+        { lastReadAt: now },
+        { upsert: true }
+      )
+    )
+  );
+
+  await logActivity(user, 'conversations.read_all', 'tenant', user.tenantId, {
+    markedCount: conversations.length,
+  });
+
+  return { markedCount: conversations.length };
+}

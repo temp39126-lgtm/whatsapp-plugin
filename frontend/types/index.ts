@@ -77,3 +77,24 @@ export interface WhatsAppAccountSettings {
   webhookConfigured?: boolean;
   callingEnabled?: boolean;
 }
+
+export interface GroupDTO {
+  _id: string;
+  tenantId: string;
+  name: string;
+  contactIds: ContactDTO[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityDTO {
+  _id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  groupIds: Array<{ _id: string; name: string }>;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}

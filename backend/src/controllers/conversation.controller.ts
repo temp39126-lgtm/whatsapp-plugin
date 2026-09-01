@@ -125,3 +125,12 @@ export async function markRead(req: AuthenticatedRequest, res: Response, next: N
     next(error);
   }
 }
+
+export async function markAllRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await conversationService.markAllConversationsRead(req.user!);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

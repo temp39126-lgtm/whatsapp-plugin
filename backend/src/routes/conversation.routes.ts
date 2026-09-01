@@ -20,6 +20,7 @@ const router = Router();
 router.use(authenticate, tenantAccess);
 
 router.get('/', validateQuery(conversationQuerySchema), controller.listConversations);
+router.post('/read-all', controller.markAllRead);
 router.get('/:id', conversationAccess(), controller.getConversation);
 router.post(
   '/:id/assign',

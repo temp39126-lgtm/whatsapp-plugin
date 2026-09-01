@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFilters';
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
+import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
@@ -19,8 +20,9 @@ export default function InboxPage() {
   return (
     <div className="flex h-full">
       <div className="flex w-80 shrink-0 flex-col border-r bg-background lg:w-96">
-        <div className="border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
+          <WhatsAppOverflowMenu />
         </div>
         <ConversationFilters filters={filters} onChange={setFilters} />
         <ConversationList

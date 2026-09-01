@@ -110,3 +110,13 @@ export function useMarkConversationRead() {
     },
   });
 }
+
+export function useMarkAllRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ markedCount: number }>('/conversations/read-all'),
+    onSuccess: () => {
+      invalidateConversationQueries(queryClient);
+    },
+  });
+}
