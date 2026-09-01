@@ -40,6 +40,7 @@ export default function SettingsPage() {
   const { data: connection, isLoading: isLoadingConnection } = useQuery({
     queryKey: ['settings-connection'],
     queryFn: () => api.get<WhatsAppConnectionStatus>('/settings/connection'),
+    enabled: !isAdmin,
   });
 
   if (isLoadingProfile || !profile) {
@@ -67,8 +68,8 @@ export default function SettingsPage() {
 
         {panel === 'account' && <SettingsAccountPanel profile={profile} />}
         {panel === 'notifications' && <SettingsNotificationsPanel profile={profile} />}
-        {panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
-        {panel === 'whatsapp' && (
+        {!isAdmin && panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
+        {!isAdmin && panel === 'whatsapp' && (
           <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
         )}
       </div>
@@ -106,21 +107,27 @@ export default function SettingsPage() {
         <SettingsMenuItem
           icon={Bell}
           title="Notifications"
-          subtitle="Message alerts, sounds, and SMTP (admin)"
+          subtitle={
+            isAdmin ? 'Message alerts, sounds, and SMTP' : 'Message alerts, sounds, assignment emails'
+          }
           onClick={() => setPanel('notifications')}
         />
-        <SettingsMenuItem
-          icon={Shield}
-          title="Privacy"
-          subtitle="Read receipts, online status, profile photo"
-          onClick={() => setPanel('privacy')}
-        />
-        <SettingsMenuItem
-          icon={MessageCircle}
-          title="WhatsApp"
-          subtitle="Business connection and calling status"
-          onClick={() => setPanel('whatsapp')}
-        />
+        {!isAdmin && (
+          <SettingsMenuItem
+            icon={Shield}
+            title="Privacy"
+            subtitle="Read receipts, online status, profile photo"
+            onClick={() => setPanel('privacy')}
+          />
+        )}
+        {!isAdmin && (
+          <SettingsMenuItem
+            icon={MessageCircle}
+            title="WhatsApp"
+            subtitle="Business connection and calling status"
+            onClick={() => setPanel('whatsapp')}
+          />
+        )}
       </div>
     </div>
   );
