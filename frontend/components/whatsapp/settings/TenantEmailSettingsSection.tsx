@@ -7,15 +7,20 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
-import { SettingsToggle } from '@/components/whatsapp/settings/SettingsToggle';
 import type { TenantNotificationSettings } from '@/types';
 
-type EmailFormState = Omit<TenantNotificationSettings, 'smtpPasswordConfigured'> & {
+type EmailFormState = {
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
   smtpPassword: string;
+  fromEmail: string;
+  fromName: string;
+  adminAlertEmail: string;
 };
 
 const defaultForm: EmailFormState = {
-  enabled: false,
   smtpHost: '',
   smtpPort: 587,
   smtpSecure: false,
@@ -23,11 +28,12 @@ const defaultForm: EmailFormState = {
   smtpPassword: '',
   fromEmail: '',
   fromName: 'WhatsApp CRM',
-  emailOnAssignment: true,
-  notifyAdminOnUnassigned: false,
   adminAlertEmail: '',
-  dailyDigestEnabled: false,
 };
+
+function smtpReady(form: EmailFormState, passwordConfigured?: boolean) {
+  return Boolean(form.smtpHost.trim() && form.fromEmail.trim() && (form.smtpPassword.trim() || passwordConfigured));
+}
 
 function Field({
   label,
@@ -68,7 +74,6 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
     if (!settings) return;
     setForm((current) => ({
       ...current,
-      enabled: settings.enabled,
       smtpHost: settings.smtpHost,
       smtpPort: settings.smtpPort,
       smtpSecure: settings.smtpSecure,
@@ -76,17 +81,14 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
       smtpPassword: '',
       fromEmail: settings.fromEmail,
       fromName: settings.fromName,
-      emailOnAssignment: settings.emailOnAssignment,
-      notifyAdminOnUnassigned: settings.notifyAdminOnUnassigned,
       adminAlertEmail: settings.adminAlertEmail,
-      dailyDigestEnabled: settings.dailyDigestEnabled,
     }));
   }, [settings]);
 
   const saveSettings = useMutation({
     mutationFn: () =>
       api.put<TenantNotificationSettings>('/settings/notifications', {
-        enabled: form.enabled,
+        enabled: smtpReady(form, settings?.smtpPasswordConfigured),
         smtpHost: form.smtpHost.trim(),
         smtpPort: form.smtpPort,
         smtpSecure: form.smtpSecure,
@@ -94,10 +96,7 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
         ...(form.smtpPassword.trim() ? { smtpPassword: form.smtpPassword.trim() } : {}),
         fromEmail: form.fromEmail.trim(),
         fromName: form.fromName.trim(),
-        emailOnAssignment: form.emailOnAssignment,
-        notifyAdminOnUnassigned: form.notifyAdminOnUnassigned,
         adminAlertEmail: form.adminAlertEmail.trim(),
-        dailyDigestEnabled: form.dailyDigestEnabled,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-notification-settings'] });
@@ -219,35 +218,6 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
           />
           Use secure SMTP (TLS on port 465)
         </label>
-      </div>
-
-      <div className={compact ? '' : 'rounded-xl border bg-card p-5 shadow-sm'}>
-        <h2 className={`font-semibold ${compact ? 'mb-3' : 'mb-4 text-lg'}`}>
-          Email delivery rules
-        </h2>
-        <div className="divide-y rounded-xl border bg-background">
-          <SettingsToggle
-            label="Enable email delivery"
-            description="Turn on SMTP for this tenant"
-            checked={form.enabled}
-            disabled={saveSettings.isPending}
-            onChange={(checked) => setForm({ ...form, enabled: checked })}
-          />
-          <SettingsToggle
-            label="Email agents on assignment"
-            description="Send an email when you assign a conversation to an agent"
-            checked={form.emailOnAssignment}
-            disabled={saveSettings.isPending || !form.enabled}
-            onChange={(checked) => setForm({ ...form, emailOnAssignment: checked })}
-          />
-          <SettingsToggle
-            label="Alert admin on new unassigned conversations"
-            description="Email the admin address when a new customer conversation arrives"
-            checked={form.notifyAdminOnUnassigned}
-            disabled={saveSettings.isPending || !form.enabled}
-            onChange={(checked) => setForm({ ...form, notifyAdminOnUnassigned: checked })}
-          />
-        </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button
             variant="whatsapp"
@@ -261,7 +231,7 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
           </Button>
           <Button
             variant="outline"
-            disabled={sendTestEmail.isPending || !form.enabled}
+            disabled={sendTestEmail.isPending || !smtpReady(form, settings?.smtpPasswordConfigured)}
             onClick={() => {
               setMessage('');
               sendTestEmail.mutate();
