@@ -147,7 +147,7 @@ export function AdminDashboard() {
             <QuickAction
               href="/whatsapp/admin/settings"
               label="Admin Settings"
-              description="Meta API and notifications"
+              description="Meta Cloud API and email"
               icon={Settings}
             />
           </div>

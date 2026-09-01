@@ -81,7 +81,7 @@ export default function SettingsPage() {
         <h1 className="text-xl font-semibold">Settings</h1>
         {isAdmin && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Personal account settings. Meta Cloud API and tenant notifications are managed in{' '}
+            Personal account settings. Meta Cloud API and SMTP email are managed in{' '}
             <Link href="/whatsapp/admin/settings" className="text-whatsapp-dark hover:underline">
               Admin Settings
             </Link>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,11 @@ import { useAuth } from '@/components/AuthProvider';
 import { SettingsToggle } from '@/components/whatsapp/settings/SettingsToggle';
 import type { TenantNotificationSettings } from '@/types';
 
-type NotificationFormState = Omit<TenantNotificationSettings, 'smtpPasswordConfigured'> & {
+type EmailFormState = Omit<TenantNotificationSettings, 'smtpPasswordConfigured'> & {
   smtpPassword: string;
 };
 
-const defaultForm: NotificationFormState = {
+const defaultForm: EmailFormState = {
   enabled: false,
   smtpHost: '',
   smtpPort: 587,
@@ -29,10 +29,30 @@ const defaultForm: NotificationFormState = {
   dailyDigestEnabled: false,
 };
 
-export function AdminNotificationSettingsPanel() {
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+export function AdminEmailSettingsPanel() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<NotificationFormState>(defaultForm);
+  const [form, setForm] = useState<EmailFormState>(defaultForm);
   const [message, setMessage] = useState('');
 
   const { data: settings, isLoading } = useQuery({
@@ -78,10 +98,10 @@ export function AdminNotificationSettingsPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-notification-settings'] });
       setForm((current) => ({ ...current, smtpPassword: '' }));
-      setMessage('Notification settings saved.');
+      setMessage('Email settings saved.');
     },
     onError: (error) =>
-      setMessage(error instanceof Error ? error.message : 'Failed to save notification settings'),
+      setMessage(error instanceof Error ? error.message : 'Failed to save email settings'),
   });
 
   const sendTestEmail = useMutation({
@@ -106,17 +126,89 @@ export function AdminNotificationSettingsPanel() {
     <div className="space-y-6">
       <div className="rounded-xl border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
-          <Bell className="h-5 w-5 text-whatsapp" />
-          <h2 className="text-lg font-semibold">Notification management</h2>
+          <Mail className="h-5 w-5 text-whatsapp" />
+          <h2 className="text-lg font-semibold">SMTP server</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Configure tenant-wide email notifications for assignment alerts and admin alerts.
+          Configure the SMTP server used to send assignment and admin alert emails.
         </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="SMTP host" required>
+            <Input
+              placeholder="smtp.example.com"
+              value={form.smtpHost}
+              onChange={(event) => setForm({ ...form, smtpHost: event.target.value })}
+            />
+          </Field>
+          <Field label="SMTP port" required>
+            <Input
+              type="number"
+              placeholder="587"
+              value={form.smtpPort}
+              onChange={(event) =>
+                setForm({ ...form, smtpPort: Number(event.target.value) || 587 })
+              }
+            />
+          </Field>
+          <Field label="SMTP username">
+            <Input
+              placeholder="Username"
+              value={form.smtpUser}
+              onChange={(event) => setForm({ ...form, smtpUser: event.target.value })}
+            />
+          </Field>
+          <Field label="SMTP password" required={!settings?.smtpPasswordConfigured}>
+            <Input
+              type="password"
+              placeholder={
+                settings?.smtpPasswordConfigured
+                  ? 'Leave blank to keep current password'
+                  : 'Password'
+              }
+              value={form.smtpPassword}
+              onChange={(event) => setForm({ ...form, smtpPassword: event.target.value })}
+            />
+          </Field>
+          <Field label="From email" required>
+            <Input
+              type="email"
+              placeholder="noreply@yourcompany.com"
+              value={form.fromEmail}
+              onChange={(event) => setForm({ ...form, fromEmail: event.target.value })}
+            />
+          </Field>
+          <Field label="From name">
+            <Input
+              placeholder="WhatsApp CRM"
+              value={form.fromName}
+              onChange={(event) => setForm({ ...form, fromName: event.target.value })}
+            />
+          </Field>
+          <Field label="Admin alert email">
+            <Input
+              type="email"
+              placeholder="admin@yourcompany.com"
+              value={form.adminAlertEmail}
+              onChange={(event) => setForm({ ...form, adminAlertEmail: event.target.value })}
+            />
+          </Field>
+        </div>
+        <label className="mt-4 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.smtpSecure}
+            onChange={(event) => setForm({ ...form, smtpSecure: event.target.checked })}
+          />
+          Use secure SMTP (TLS on port 465)
+        </label>
+      </div>
 
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold">Email delivery rules</h2>
         <div className="divide-y rounded-xl border bg-background">
           <SettingsToggle
-            label="Enable email notifications"
-            description="Turn on SMTP delivery for this tenant"
+            label="Enable email delivery"
+            description="Turn on SMTP for this tenant"
             checked={form.enabled}
             disabled={saveSettings.isPending}
             onChange={(checked) => setForm({ ...form, enabled: checked })}
@@ -135,76 +227,7 @@ export function AdminNotificationSettingsPanel() {
             disabled={saveSettings.isPending || !form.enabled}
             onChange={(checked) => setForm({ ...form, notifyAdminOnUnassigned: checked })}
           />
-          <SettingsToggle
-            label="Daily digest"
-            description="Send a daily summary email (coming soon)"
-            checked={form.dailyDigestEnabled}
-            disabled
-            onChange={(checked) => setForm({ ...form, dailyDigestEnabled: checked })}
-          />
         </div>
-      </div>
-
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <Mail className="h-5 w-5 text-whatsapp" />
-          <h2 className="text-lg font-semibold">SMTP settings</h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Input
-            placeholder="SMTP host"
-            value={form.smtpHost}
-            onChange={(event) => setForm({ ...form, smtpHost: event.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="SMTP port"
-            value={form.smtpPort}
-            onChange={(event) =>
-              setForm({ ...form, smtpPort: Number(event.target.value) || 587 })
-            }
-          />
-          <Input
-            placeholder="SMTP username"
-            value={form.smtpUser}
-            onChange={(event) => setForm({ ...form, smtpUser: event.target.value })}
-          />
-          <Input
-            type="password"
-            placeholder={
-              settings?.smtpPasswordConfigured
-                ? 'SMTP password (leave blank to keep current)'
-                : 'SMTP password'
-            }
-            value={form.smtpPassword}
-            onChange={(event) => setForm({ ...form, smtpPassword: event.target.value })}
-          />
-          <Input
-            type="email"
-            placeholder="From email"
-            value={form.fromEmail}
-            onChange={(event) => setForm({ ...form, fromEmail: event.target.value })}
-          />
-          <Input
-            placeholder="From name"
-            value={form.fromName}
-            onChange={(event) => setForm({ ...form, fromName: event.target.value })}
-          />
-          <Input
-            type="email"
-            placeholder="Admin alert email"
-            value={form.adminAlertEmail}
-            onChange={(event) => setForm({ ...form, adminAlertEmail: event.target.value })}
-          />
-        </div>
-        <label className="mt-4 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.smtpSecure}
-            onChange={(event) => setForm({ ...form, smtpSecure: event.target.checked })}
-          />
-          Use secure SMTP (TLS on port 465)
-        </label>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button
             variant="whatsapp"
@@ -214,7 +237,7 @@ export function AdminNotificationSettingsPanel() {
               saveSettings.mutate();
             }}
           >
-            {saveSettings.isPending ? 'Saving...' : 'Save notification settings'}
+            {saveSettings.isPending ? 'Saving...' : 'Save email settings'}
           </Button>
           <Button
             variant="outline"
