@@ -101,6 +101,21 @@ export interface WhatsAppConnectionStatus {
   callingEnabled?: boolean;
 }
 
+export interface TenantNotificationSettings {
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPasswordConfigured: boolean;
+  fromEmail: string;
+  fromName: string;
+  emailOnAssignment: boolean;
+  notifyAdminOnUnassigned: boolean;
+  adminAlertEmail: string;
+  dailyDigestEnabled: boolean;
+}
+
 export interface GroupDTO {
   _id: string;
   tenantId: string;

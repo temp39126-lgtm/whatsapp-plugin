@@ -17,6 +17,7 @@ export interface IUser extends Document {
       sound?: boolean;
       desktopNotifications?: boolean;
       emailSummary?: boolean;
+      emailOnAssignment?: boolean;
     };
     privacy?: {
       readReceipts?: boolean;
@@ -44,6 +45,7 @@ const userSchema = new Schema<IUser>(
         sound: { type: Boolean, default: true },
         desktopNotifications: { type: Boolean, default: true },
         emailSummary: { type: Boolean, default: false },
+        emailOnAssignment: { type: Boolean, default: true },
       },
       privacy: {
         readReceipts: { type: Boolean, default: true },

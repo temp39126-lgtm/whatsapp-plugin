@@ -8,6 +8,14 @@ import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
 import { getUserProfile } from '../services/users/userProfileService';
+import {
+  getTenantNotificationSettings,
+  updateTenantNotificationSettings,
+} from '../services/settings/tenantSettingsService';
+import {
+  sendTestNotificationEmail,
+} from '../services/email/emailService';
+import { AppError } from '../types';
 
 export async function listTags(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -153,13 +161,21 @@ export async function getConnectionStatus(req: AuthenticatedRequest, res: Respon
 
 export async function updateAccountSettings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
+    const existing = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });
+    if (!req.body.accessToken && !existing) {
+      throw new AppError(400, 'Access token is required for initial WhatsApp configuration');
+    }
+
     const account = await saveWhatsAppAccount(req.user!.tenantId, req.body);
     await tagService.seedDefaultTags(req.user!.tenantId, req.user!.userId);
     res.json({
+      configured: true,
       phoneNumberId: account.phoneNumberId,
       businessAccountId: account.businessAccountId,
       displayPhoneNumber: account.displayPhoneNumber,
       connectionStatus: account.connectionStatus,
+      webhookConfigured: account.webhookConfigured,
+      callingEnabled: env.CALLING_ENABLED,
     });
   } catch (error) {
     next(error);
@@ -193,6 +209,49 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response, n
   try {
     const profile = await getUserProfile(req.user!);
     res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getNotificationSettings(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const settings = await getTenantNotificationSettings(req.user!.tenantId);
+    res.json(settings);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateNotificationSettings(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const settings = await updateTenantNotificationSettings(req.user!.tenantId, req.body);
+    res.json(settings);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function sendNotificationTestEmail(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const recipientEmail = req.body.recipientEmail ?? req.user!.email;
+    if (!recipientEmail) {
+      throw new AppError(400, 'Recipient email is required');
+    }
+    await sendTestNotificationEmail(req.user!.tenantId, recipientEmail);
+    res.json({ success: true, recipientEmail });
   } catch (error) {
     next(error);
   }

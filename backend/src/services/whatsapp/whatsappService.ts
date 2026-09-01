@@ -92,6 +92,12 @@ export async function findOrCreateConversation(
     await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.created', {
       conversation: conversation.toObject(),
     });
+
+    const { sendUnassignedAlertEmail } = await import('../email/emailService');
+    void sendUnassignedAlertEmail({
+      tenantId: account.tenantId,
+      conversationLabel: contact.name ?? contact.phone ?? 'New customer',
+    }).catch(() => undefined);
   }
 
   return conversation;
@@ -412,10 +418,18 @@ export async function saveWhatsAppAccount(
     phoneNumberId: string;
     businessAccountId: string;
     displayPhoneNumber: string;
-    accessToken: string;
+    accessToken?: string;
   }
 ): Promise<IWhatsAppAccount> {
-  const encryptedAccessToken = encrypt(data.accessToken);
+  const existing = await WhatsAppAccount.findOne({ tenantId, phoneNumberId: data.phoneNumberId });
+  const encryptedAccessToken = data.accessToken
+    ? encrypt(data.accessToken)
+    : existing?.encryptedAccessToken;
+
+  if (!encryptedAccessToken) {
+    throw new Error('Access token is required for new WhatsApp account configuration');
+  }
+
   return WhatsAppAccount.findOneAndUpdate(
     { tenantId, phoneNumberId: data.phoneNumberId },
     {

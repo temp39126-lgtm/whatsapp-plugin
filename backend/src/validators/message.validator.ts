@@ -40,6 +40,7 @@ export const updatePreferencesSchema = z.object({
       sound: z.boolean().optional(),
       desktopNotifications: z.boolean().optional(),
       emailSummary: z.boolean().optional(),
+      emailOnAssignment: z.boolean().optional(),
     })
     .optional(),
   privacy: z

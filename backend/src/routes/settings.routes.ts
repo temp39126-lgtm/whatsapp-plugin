@@ -5,6 +5,11 @@ import { requireRole } from '../middleware/requireRole';
 import { requirePermission } from '../middleware/requirePermission';
 import { validateBody } from '../middleware/validate';
 import { whatsAppAccountSchema, updateProfileSchema, updatePreferencesSchema } from '../validators/message.validator';
+import {
+  updateWhatsAppAccountSchema,
+  updateTenantNotificationSettingsSchema,
+  testNotificationEmailSchema,
+} from '../validators/settings.validator';
 import { createTeamUserSchema } from '../validators/auth.validator';
 import { avatarUploadMiddleware } from '../middleware/upload';
 import * as controller from '../controllers/settings.controller';
@@ -35,8 +40,28 @@ router.put(
   '/settings/account',
   requireRole('ADMIN'),
   requirePermission('manage_settings'),
-  validateBody(whatsAppAccountSchema),
+  validateBody(updateWhatsAppAccountSchema),
   controller.updateAccountSettings
+);
+router.get(
+  '/settings/notifications',
+  requireRole('ADMIN'),
+  requirePermission('manage_settings'),
+  controller.getNotificationSettings
+);
+router.put(
+  '/settings/notifications',
+  requireRole('ADMIN'),
+  requirePermission('manage_settings'),
+  validateBody(updateTenantNotificationSettingsSchema),
+  controller.updateNotificationSettings
+);
+router.post(
+  '/settings/notifications/test',
+  requireRole('ADMIN'),
+  requirePermission('manage_settings'),
+  validateBody(testNotificationEmailSchema),
+  controller.sendNotificationTestEmail
 );
 router.get('/settings/webhook', requireRole('ADMIN'), controller.getWebhookInfo);
 router.get('/team/workload', requireRole('ADMIN'), requirePermission('manage_team'), controller.getTeamWorkload);

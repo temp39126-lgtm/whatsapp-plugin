@@ -1,19 +1,17 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useState } from 'react';
 import {
   ArrowLeft,
   Bell,
-  Building2,
   KeyRound,
   MessageCircle,
   Shield,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { WhatsAppAccountSettings, WhatsAppConnectionStatus } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import type { WhatsAppConnectionStatus } from '@/types';
 import { useAuth } from '@/components/AuthProvider';
 import { useUserProfile } from '@/hooks/useProfile';
 import { SettingsMenuItem } from '@/components/whatsapp/settings/SettingsMenuItem';
@@ -23,102 +21,17 @@ import { SettingsNotificationsPanel } from '@/components/whatsapp/settings/Setti
 import { SettingsPrivacyPanel } from '@/components/whatsapp/settings/SettingsPrivacyPanel';
 import { SettingsWhatsAppPanel } from '@/components/whatsapp/settings/SettingsWhatsAppPanel';
 
-type SettingsPanel =
-  | 'home'
-  | 'account'
-  | 'notifications'
-  | 'privacy'
-  | 'whatsapp'
-  | 'business';
+type SettingsPanel = 'home' | 'account' | 'notifications' | 'privacy' | 'whatsapp';
 
 const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   account: 'Account',
   notifications: 'Notifications',
   privacy: 'Privacy',
   whatsapp: 'WhatsApp',
-  business: 'Business configuration',
 };
-
-function AdminBusinessPanel({
-  settings,
-  webhook,
-  form,
-  setForm,
-  isSaving,
-  onSave,
-}: {
-  settings?: WhatsAppAccountSettings;
-  webhook?: { webhookUrl: string; verifyToken: string };
-  form: {
-    phoneNumberId: string;
-    businessAccountId: string;
-    displayPhoneNumber: string;
-    accessToken: string;
-  };
-  setForm: React.Dispatch<
-    React.SetStateAction<{
-      phoneNumberId: string;
-      businessAccountId: string;
-      displayPhoneNumber: string;
-      accessToken: string;
-    }>
-  >;
-  isSaving: boolean;
-  onSave: () => void;
-}) {
-  return (
-    <div className="space-y-6 p-4">
-      <div className="space-y-3">
-        <Input
-          placeholder="Phone Number ID"
-          value={form.phoneNumberId}
-          onChange={(e) => setForm({ ...form, phoneNumberId: e.target.value })}
-        />
-        <Input
-          placeholder="Business Account ID"
-          value={form.businessAccountId}
-          onChange={(e) => setForm({ ...form, businessAccountId: e.target.value })}
-        />
-        <Input
-          placeholder="Display Phone Number"
-          value={form.displayPhoneNumber}
-          onChange={(e) => setForm({ ...form, displayPhoneNumber: e.target.value })}
-        />
-        <Input
-          type="password"
-          placeholder="Access Token"
-          value={form.accessToken}
-          onChange={(e) => setForm({ ...form, accessToken: e.target.value })}
-        />
-        <Button variant="whatsapp" onClick={onSave} disabled={isSaving}>
-          Save configuration
-        </Button>
-      </div>
-
-      {webhook && (
-        <div className="rounded-xl border bg-card p-4 text-sm">
-          <p className="font-medium">Webhook configuration</p>
-          <p className="mt-2">
-            <span className="font-medium">URL:</span> {webhook.webhookUrl}
-          </p>
-          <p className="mt-2">
-            <span className="font-medium">Verify token:</span> {webhook.verifyToken}
-          </p>
-        </div>
-      )}
-
-      {settings?.configured && (
-        <p className="text-sm text-green-700">
-          Connected: {settings.displayPhoneNumber} · {settings.connectionStatus}
-        </p>
-      )}
-    </div>
-  );
-}
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth();
-  const queryClient = useQueryClient();
   const [panel, setPanel] = useState<SettingsPanel>('home');
   const [avatarVersion, setAvatarVersion] = useState(0);
 
@@ -127,30 +40,6 @@ export default function SettingsPage() {
   const { data: connection, isLoading: isLoadingConnection } = useQuery({
     queryKey: ['settings-connection'],
     queryFn: () => api.get<WhatsAppConnectionStatus>('/settings/connection'),
-  });
-
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => api.get<WhatsAppAccountSettings>('/settings/account'),
-    enabled: isAdmin,
-  });
-
-  const { data: webhook } = useQuery({
-    queryKey: ['webhook-info'],
-    queryFn: () => api.get<{ webhookUrl: string; verifyToken: string }>('/settings/webhook'),
-    enabled: isAdmin,
-  });
-
-  const [form, setForm] = useState({
-    phoneNumberId: '',
-    businessAccountId: '',
-    displayPhoneNumber: '',
-    accessToken: '',
-  });
-
-  const saveSettings = useMutation({
-    mutationFn: () => api.put('/settings/account', form),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
   if (isLoadingProfile || !profile) {
@@ -182,16 +71,6 @@ export default function SettingsPage() {
         {panel === 'whatsapp' && (
           <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
         )}
-        {panel === 'business' && isAdmin && (
-          <AdminBusinessPanel
-            settings={settings}
-            webhook={webhook}
-            form={form}
-            setForm={setForm}
-            isSaving={saveSettings.isPending}
-            onSave={() => saveSettings.mutate()}
-          />
-        )}
       </div>
     );
   }
@@ -200,6 +79,15 @@ export default function SettingsPage() {
     <div className="flex h-full flex-col overflow-y-auto bg-muted/20">
       <div className="border-b bg-card px-4 py-4">
         <h1 className="text-xl font-semibold">Settings</h1>
+        {isAdmin && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Personal account settings. Meta Cloud API and tenant notifications are managed in{' '}
+            <Link href="/whatsapp/admin/settings" className="text-whatsapp-dark hover:underline">
+              Admin Settings
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       <SettingsProfileHeader
@@ -218,7 +106,7 @@ export default function SettingsPage() {
         <SettingsMenuItem
           icon={Bell}
           title="Notifications"
-          subtitle="Message alerts, sounds, email summary"
+          subtitle="Message alerts, sounds, assignment emails"
           onClick={() => setPanel('notifications')}
         />
         <SettingsMenuItem
@@ -233,15 +121,6 @@ export default function SettingsPage() {
           subtitle="Business connection and calling status"
           onClick={() => setPanel('whatsapp')}
         />
-        {isAdmin && (
-          <SettingsMenuItem
-            icon={Building2}
-            title="Business configuration"
-            subtitle="API credentials and webhook setup"
-            onClick={() => setPanel('business')}
-            iconClassName="bg-emerald-100 text-emerald-700"
-          />
-        )}
       </div>
     </div>
   );

@@ -5,12 +5,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import {
   MessageSquare,
-  Users,
   BarChart3,
   Settings,
   Inbox,
   AlertCircle,
   UserCheck,
+  Cloud,
+  Bell,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
@@ -130,73 +131,102 @@ export function AdminDashboard() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <QuickAction
-                href="/whatsapp/inbox"
-                label="Inbox"
-                description="View all conversations"
-                icon={Inbox}
-              />
-              <QuickAction
-                href="/whatsapp/analytics"
-                label="Analytics"
-                description="Reports and metrics"
-                icon={BarChart3}
-              />
-              <QuickAction
-                href="/whatsapp/settings"
-                label="Settings"
-                description="WhatsApp configuration"
-                icon={Settings}
-              />
-            </div>
+        <section>
+          <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <QuickAction
+              href="/whatsapp/inbox"
+              label="Inbox"
+              description="View all conversations"
+              icon={Inbox}
+            />
+            <QuickAction
+              href="/whatsapp/analytics"
+              label="Analytics"
+              description="Reports and metrics"
+              icon={BarChart3}
+            />
+            <QuickAction
+              href="/whatsapp/admin/settings"
+              label="Admin Settings"
+              description="Meta API and notifications"
+              icon={Settings}
+            />
           </div>
+        </section>
 
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Users</h2>
-                <p className="text-xs text-muted-foreground">
-                  Agents only — click to view profile and assigned conversations
-                </p>
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Configuration</h2>
+              <p className="text-xs text-muted-foreground">
+                Tenant-wide Meta Cloud API and email notification settings
+              </p>
+            </div>
+            <Link
+              href="/whatsapp/admin/settings"
+              className="text-sm text-whatsapp-dark hover:underline"
+            >
+              Open settings
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <QuickAction
+              href="/whatsapp/admin/settings?tab=meta"
+              label="Meta Cloud API"
+              description="WhatsApp credentials and webhook"
+              icon={Cloud}
+            />
+            <QuickAction
+              href="/whatsapp/admin/settings?tab=notifications"
+              label="Notifications"
+              description="SMTP and assignment emails"
+              icon={Bell}
+            />
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Users</h2>
+              <p className="text-xs text-muted-foreground">
+                Agents only — click to view profile and assigned conversations
+              </p>
+            </div>
+            <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
+              Add agent
+            </Link>
+          </div>
+          <div className="rounded-xl border bg-card shadow-sm">
+            {(teamWorkload ?? []).length === 0 ? (
+              <p className="p-6 text-sm text-muted-foreground">No agents yet</p>
+            ) : (
+              <div className="divide-y">
+                {(teamWorkload ?? []).map((agent) => (
+                  <Link
+                    key={agent._id}
+                    href={`/whatsapp/team/${agent._id}`}
+                    className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProfileAvatar
+                        name={agent.name}
+                        imageUrl={agent.profileImage}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{agent.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{agent.total}</span> assigned
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
-                Add agent
-              </Link>
-            </div>
-            <div className="rounded-xl border bg-card shadow-sm">
-              {(teamWorkload ?? []).length === 0 ? (
-                <p className="p-6 text-sm text-muted-foreground">No agents yet</p>
-              ) : (
-                <div className="divide-y">
-                  {(teamWorkload ?? []).map((agent) => (
-                    <Link
-                      key={agent._id}
-                      href={`/whatsapp/team/${agent._id}`}
-                      className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ProfileAvatar
-                          name={agent.name}
-                          imageUrl={agent.profileImage}
-                          size="sm"
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{agent.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{agent.total}</span> assigned
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </section>
 

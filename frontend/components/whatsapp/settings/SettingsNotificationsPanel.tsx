@@ -52,6 +52,13 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
         onChange={(checked) => updateNotification('desktopNotifications', checked)}
       />
       <SettingsToggle
+        label="Email on assignment"
+        description="Receive an email when an admin assigns you a conversation"
+        checked={notifications.emailOnAssignment}
+        disabled={isSaving}
+        onChange={(checked) => updateNotification('emailOnAssignment', checked)}
+      />
+      <SettingsToggle
         label="Email summary"
         description="Receive a daily email digest of unread conversations"
         checked={notifications.emailSummary}

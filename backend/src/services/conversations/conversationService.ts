@@ -9,6 +9,7 @@ import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { enrichConversations } from './conversationEnrichment';
 import { syncGroupInboxConversations } from '../groups/groupInboxService';
 import { Group } from '../../models/Group';
+import { sendAssignmentNotificationEmail } from '../email/emailService';
 
 interface ConversationFilters {
   status?: string;
@@ -234,6 +235,18 @@ export async function assignConversation(
     conversationId: conversation._id.toString(),
     assignedUserId,
   });
+
+  const contact = conversation.contactId
+    ? await Contact.findById(conversation.contactId).lean()
+    : null;
+  const conversationLabel = contact?.name ?? 'Customer conversation';
+
+  void sendAssignmentNotificationEmail({
+    tenantId: user.tenantId,
+    assigneeUserId: assignedUserId,
+    conversationLabel,
+    assignedByName: user.name ?? 'Admin',
+  }).catch(() => undefined);
 
   return getConversation(user, conversation._id.toString());
 }
