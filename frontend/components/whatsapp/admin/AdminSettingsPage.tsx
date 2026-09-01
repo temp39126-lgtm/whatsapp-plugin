@@ -3,20 +3,17 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Bell, Cloud } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { QuickAction } from '@/components/whatsapp/dashboard/QuickAction';
 import { AdminMetaCloudPanel } from '@/components/whatsapp/admin/AdminMetaCloudPanel';
 import { AdminNotificationSettingsPanel } from '@/components/whatsapp/admin/AdminNotificationSettingsPanel';
 
 type AdminSettingsTab = 'meta' | 'notifications';
 
-const tabs: Array<{ id: AdminSettingsTab; label: string; icon: typeof Cloud }> = [
-  { id: 'meta', label: 'Meta Cloud API', icon: Cloud },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-];
-
 export function AdminSettingsPage() {
   const searchParams = useSearchParams();
-  const activeTab = (searchParams.get('tab') as AdminSettingsTab) || 'meta';
+  const tabParam = searchParams.get('tab');
+  const activeTab =
+    tabParam === 'meta' || tabParam === 'notifications' ? tabParam : null;
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-whatsapp-light/30 via-background to-background">
@@ -35,34 +32,30 @@ export function AdminSettingsPage() {
         </p>
       </div>
 
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <Link
-                key={tab.id}
-                href={`/whatsapp/admin/settings?tab=${tab.id}`}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'border-whatsapp bg-whatsapp text-white'
-                    : 'bg-card text-foreground hover:bg-muted/50'
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </Link>
-            );
-          })}
-        </div>
+      <div className="space-y-8 p-6">
+        <section>
+          <h2 className="mb-1 text-lg font-semibold">Configuration</h2>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Tenant-wide Meta Cloud API and email notification settings
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <QuickAction
+              href="/whatsapp/admin/settings?tab=meta"
+              label="Meta Cloud API"
+              description="WhatsApp credentials and webhook"
+              icon={Cloud}
+            />
+            <QuickAction
+              href="/whatsapp/admin/settings?tab=notifications"
+              label="Notifications"
+              description="SMTP and assignment emails"
+              icon={Bell}
+            />
+          </div>
+        </section>
 
-        {activeTab === 'notifications' ? (
-          <AdminNotificationSettingsPanel />
-        ) : (
-          <AdminMetaCloudPanel />
-        )}
+        {activeTab === 'notifications' && <AdminNotificationSettingsPanel />}
+        {activeTab === 'meta' && <AdminMetaCloudPanel />}
       </div>
     </div>
   );

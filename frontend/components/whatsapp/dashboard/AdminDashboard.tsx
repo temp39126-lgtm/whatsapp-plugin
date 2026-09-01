@@ -10,8 +10,6 @@ import {
   Inbox,
   AlertCircle,
   UserCheck,
-  Cloud,
-  Bell,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
@@ -151,37 +149,6 @@ export function AdminDashboard() {
               label="Admin Settings"
               description="Meta API and notifications"
               icon={Settings}
-            />
-          </div>
-        </section>
-
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Configuration</h2>
-              <p className="text-xs text-muted-foreground">
-                Tenant-wide Meta Cloud API and email notification settings
-              </p>
-            </div>
-            <Link
-              href="/whatsapp/admin/settings"
-              className="text-sm text-whatsapp-dark hover:underline"
-            >
-              Open settings
-            </Link>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <QuickAction
-              href="/whatsapp/admin/settings?tab=meta"
-              label="Meta Cloud API"
-              description="WhatsApp credentials and webhook"
-              icon={Cloud}
-            />
-            <QuickAction
-              href="/whatsapp/admin/settings?tab=notifications"
-              label="Notifications"
-              description="SMTP and assignment emails"
-              icon={Bell}
             />
           </div>
         </section>
