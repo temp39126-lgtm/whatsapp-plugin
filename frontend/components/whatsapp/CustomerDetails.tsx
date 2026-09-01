@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import {
   useAssignConversation,
   useCreateTag,
+  useDeleteTag,
   useTags,
   useTeamUsers,
   useUpdateConversationPriority,
@@ -49,6 +50,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const uploadGroupAvatar = useUploadGroupAvatar();
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
+  const deleteTag = useDeleteTag();
   const { data: teamUsers = [] } = useTeamUsers(isAdmin);
 
   const { data: notes } = useQuery({
@@ -75,7 +77,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const group = conversation.group;
   const isGroup = Boolean(group);
   const displayName = group?.name ?? contact?.name ?? 'Unknown';
-  const selectedTagIds = conversation.tags.map((tag) => tag._id);
+  const selectedTagIds = (conversation.tags ?? []).map((tag) => tag._id);
   const isDeleting = deleteContact.isPending || deleteGroup.isPending;
   const isUploading = uploadContactAvatar.isPending || uploadGroupAvatar.isPending;
 
@@ -87,6 +89,18 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
     updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds });
   }
 
+  function handleDeleteTag(tagId: string, tagName: string) {
+    const confirmed = window.confirm(
+      `Delete tag "${tagName}"? It will be removed from all conversations.`
+    );
+    if (!confirmed) return;
+
+    deleteTag.mutate(tagId, {
+      onSuccess: () => setActionMessage(`Tag "${tagName}" deleted`),
+      onError: (error) =>
+        setActionMessage(error instanceof Error ? error.message : 'Failed to delete tag'),
+    });
+  }
   function handleCreateTag(event: React.FormEvent) {
     event.preventDefault();
     const name = newTagName.trim();
@@ -292,7 +306,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Tags
           </h4>
           <p className="mb-2 text-[10px] text-muted-foreground">
-            Click a tag to assign it to this chat, or create a new tag below.
+            Click a tag to assign it to this chat. Use × to delete a tag from the workspace.
             {isAdmin && (
               <>
                 {' '}
@@ -318,20 +332,31 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             {tags.map((tag) => {
               const selected = selectedTagIds.includes(tag._id);
               return (
-                <button
+                <span
                   key={tag._id}
-                  type="button"
-                  onClick={() => toggleTag(tag._id)}
-                  disabled={updateTags.isPending}
                   className={cn(
-                    'rounded-full px-2 py-0.5 text-xs transition-colors',
-                    selected
-                      ? 'bg-whatsapp text-white'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    'inline-flex items-center overflow-hidden rounded-full text-xs transition-colors',
+                    selected ? 'bg-whatsapp text-white' : 'bg-muted text-muted-foreground'
                   )}
                 >
-                  {tag.name}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleTag(tag._id)}
+                    disabled={updateTags.isPending}
+                    className="px-2 py-0.5 hover:opacity-90 disabled:opacity-50"
+                  >
+                    {tag.name}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete tag ${tag.name}`}
+                    disabled={deleteTag.isPending}
+                    onClick={() => handleDeleteTag(tag._id, tag.name)}
+                    className="border-l border-white/20 px-1.5 py-0.5 text-[10px] hover:bg-black/10 disabled:opacity-50"
+                  >
+                    ×
+                  </button>
+                </span>
               );
             })}
           </div>

@@ -14,6 +14,6 @@ router.use(authenticate, tenantAccess);
 router.get('/', controller.listTags);
 router.post('/', validateBody(createTagSchema), controller.createTag);
 router.put('/:id', requireRole('ADMIN'), controller.updateTag);
-router.delete('/:id', requireRole('ADMIN'), controller.deleteTag);
+router.delete('/:id', controller.deleteTag);
 
 export default router;

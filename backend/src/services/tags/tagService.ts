@@ -1,5 +1,7 @@
 import { AuthUser } from '../../types';
 import { Tag } from '../../models/Tag';
+import { Conversation } from '../../models/Conversation';
+import { Contact } from '../../models/Contact';
 import { DEFAULT_TAGS } from '../../constants/tags';
 import { AppError } from '../../types';
 
@@ -26,6 +28,15 @@ export async function updateTag(user: AuthUser, tagId: string, name: string) {
 export async function deleteTag(user: AuthUser, tagId: string) {
   const tag = await Tag.findOneAndDelete({ _id: tagId, tenantId: user.tenantId });
   if (!tag) throw new AppError(404, 'Tag not found');
+
+  await Promise.all([
+    Conversation.updateMany(
+      { tenantId: user.tenantId, tags: tagId },
+      { $pull: { tags: tagId } }
+    ),
+    Contact.updateMany({ tenantId: user.tenantId, tags: tagId }, { $pull: { tags: tagId } }),
+  ]);
+
   return tag;
 }
 

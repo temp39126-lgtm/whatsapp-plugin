@@ -57,6 +57,18 @@ export function useCreateTag() {
   });
 }
 
+export function useDeleteTag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/tags/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation'] });
+    },
+  });
+}
+
 function invalidateConversationQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   conversationId?: string
