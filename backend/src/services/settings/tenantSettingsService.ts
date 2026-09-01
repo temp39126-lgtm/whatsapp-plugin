@@ -7,7 +7,7 @@ import { encrypt } from '../../utils/encryption';
 import type {
   TenantNotificationSettingsDTO,
   UpdateTenantNotificationSettingsInput,
-} from '@shared/types/tenantSettings';
+} from '../../types/tenantSettings';
 
 function toDto(settings: ITenantSettings): TenantNotificationSettingsDTO {
   const notifications = settings.notifications ?? DEFAULT_TENANT_NOTIFICATIONS;
