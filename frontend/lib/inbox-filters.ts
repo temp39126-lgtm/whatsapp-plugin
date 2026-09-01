@@ -1,5 +1,6 @@
 export type InboxFilterParams = {
   status?: string;
+  assignedUserId?: string;
   unassigned?: boolean;
   assigned?: boolean;
   newToday?: boolean;
@@ -12,6 +13,7 @@ export function buildInboxHref(filters: InboxFilterParams = {}, conversationId?:
   const params = new URLSearchParams();
 
   if (filters.status) params.set('status', filters.status);
+  if (filters.assignedUserId) params.set('assignedUserId', filters.assignedUserId);
   if (filters.unassigned) params.set('unassigned', 'true');
   if (filters.assigned) params.set('assigned', 'true');
   if (filters.newToday) params.set('newToday', 'true');
@@ -31,6 +33,8 @@ export function inboxFiltersFromSearchParams(
 
   const status = searchParams.get('status');
   if (status) filters.status = status;
+  const assignedUserId = searchParams.get('assignedUserId');
+  if (assignedUserId) filters.assignedUserId = assignedUserId;
   if (searchParams.get('unassigned') === 'true') filters.unassigned = true;
   if (searchParams.get('assigned') === 'true') filters.assigned = true;
   if (searchParams.get('newToday') === 'true') filters.newToday = true;

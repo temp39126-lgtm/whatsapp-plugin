@@ -19,6 +19,7 @@ const statusFilters = [
 function isAllFiltersActive(filters: Record<string, string | boolean | undefined>) {
   return (
     !filters.status &&
+    !filters.assignedUserId &&
     !filters.unread &&
     !filters.groups &&
     !filters.mine &&
@@ -32,6 +33,7 @@ function clearAssignmentFilters(filters: Record<string, string | boolean | undef
   return {
     unassigned: undefined,
     assigned: undefined,
+    assignedUserId: undefined,
     newToday: undefined,
     mine: undefined,
   };

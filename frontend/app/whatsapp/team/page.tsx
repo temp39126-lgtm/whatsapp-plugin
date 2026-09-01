@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { UserPlus } from 'lucide-react';
@@ -118,7 +119,11 @@ export default function TeamPage() {
               ) : (
                 <div className="divide-y">
                   {teamUsers.map((member) => (
-                    <div key={member._id} className="flex items-center gap-3 p-4">
+                    <Link
+                      key={member._id}
+                      href={`/whatsapp/team/${member._id}`}
+                      className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/50"
+                    >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
                         {getInitials(member.name)}
                       </div>
@@ -129,7 +134,7 @@ export default function TeamPage() {
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                         {member.role === 'ADMIN' ? 'Admin' : 'Agent'}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -148,7 +153,11 @@ export default function TeamPage() {
               ) : (
                 <div className="divide-y">
                   {workload.map((agent) => (
-                    <div key={agent._id} className="flex items-center justify-between gap-4 p-4">
+                    <Link
+                      key={agent._id}
+                      href={`/whatsapp/team/${agent._id}`}
+                      className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50"
+                    >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
                           {getInitials(agent.name)}
@@ -163,7 +172,7 @@ export default function TeamPage() {
                         <p>{agent.pending} pending</p>
                         <p className="font-medium text-foreground">{agent.total} total</p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

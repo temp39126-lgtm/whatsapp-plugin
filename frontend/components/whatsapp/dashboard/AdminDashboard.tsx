@@ -164,9 +164,9 @@ export function AdminDashboard() {
           <div>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Agent Workload</h2>
+                <h2 className="text-lg font-semibold">Users</h2>
                 <p className="text-xs text-muted-foreground">
-                  Includes all team members; counts update after inbox assignment
+                  Click a user to view profile and assigned conversations
                 </p>
               </div>
               <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
@@ -179,7 +179,11 @@ export function AdminDashboard() {
               ) : (
                 <div className="divide-y">
                   {(teamWorkload ?? []).slice(0, 5).map((agent) => (
-                    <div key={agent._id} className="flex items-center justify-between p-4">
+                    <Link
+                      key={agent._id}
+                      href={`/whatsapp/team/${agent._id}`}
+                      className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
+                    >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-whatsapp text-xs font-semibold text-white">
                           {getInitials(agent.name)}
@@ -193,7 +197,7 @@ export function AdminDashboard() {
                         <span>{agent.open} open</span>
                         <span>{agent.pending} pending</span>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
