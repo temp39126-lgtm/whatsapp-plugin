@@ -41,6 +41,12 @@ router.put(
 router.get('/settings/webhook', requireRole('ADMIN'), controller.getWebhookInfo);
 router.get('/team/workload', requireRole('ADMIN'), requirePermission('manage_team'), controller.getTeamWorkload);
 router.get('/team/users', requireRole('ADMIN'), requirePermission('manage_team'), controller.listTeamUsers);
+router.get(
+  '/team/users/:id/avatar',
+  requireRole('ADMIN'),
+  requirePermission('manage_team'),
+  controller.getTeamUserAvatar
+);
 router.post(
   '/team/users',
   requireRole('ADMIN'),

@@ -58,6 +58,7 @@ export interface TeamUserDTO {
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
+  profileImage?: string;
 }
 
 export interface TeamAgentWorkloadDTO extends TeamUserDTO {

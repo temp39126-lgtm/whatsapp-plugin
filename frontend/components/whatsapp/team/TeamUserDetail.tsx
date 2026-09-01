@@ -5,8 +5,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Inbox, Mail, Shield, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { getInitials } from '@/lib/utils';
 import { buildInboxHref } from '@/lib/inbox-filters';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { useConversations } from '@/hooks/useConversations';
 import type { TeamAgentWorkloadDTO, TeamUserDTO } from '@/types';
 
@@ -69,9 +69,7 @@ export function TeamUserDetail({
 
       <div className="mt-6 rounded-xl border bg-card p-6 shadow-sm">
         <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-whatsapp text-xl font-semibold text-white">
-            {getInitials(user.name)}
-          </div>
+          <ProfileAvatar name={user.name} imageUrl={user.profileImage} size="lg" />
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold">{user.name}</h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">

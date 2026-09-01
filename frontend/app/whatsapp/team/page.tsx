@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getInitials } from '@/lib/utils';
 import type { TeamAgentWorkloadDTO, TeamUserDTO } from '@/types';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 
 export default function TeamPage() {
   const queryClient = useQueryClient();
@@ -124,9 +125,11 @@ export default function TeamPage() {
                       href={`/whatsapp/team/${member._id}`}
                       className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/50"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
-                        {getInitials(member.name)}
-                      </div>
+                      <ProfileAvatar
+                        name={member.name}
+                        imageUrl={member.profileImage}
+                        size="md"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">{member.name}</p>
                         <p className="truncate text-sm text-muted-foreground">{member.email}</p>
@@ -159,9 +162,11 @@ export default function TeamPage() {
                       className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
-                          {getInitials(agent.name)}
-                        </div>
+                        <ProfileAvatar
+                          name={agent.name}
+                          imageUrl={agent.profileImage}
+                          size="md"
+                        />
                         <div className="min-w-0">
                           <p className="font-medium">{agent.name}</p>
                           <p className="truncate text-sm text-muted-foreground">{agent.email}</p>

@@ -2,6 +2,35 @@ import bcrypt from 'bcryptjs';
 import { User } from '../../models/User';
 import { AuthUser, AppError } from '../../types';
 
+export function teamUserAvatarUrl(userId: string, profileImage?: string) {
+  return profileImage ? `/api/whatsapp/team/users/${userId}/avatar` : undefined;
+}
+
+function mapTeamUser(entry: {
+  _id: { toString(): string };
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'USER';
+  profileImage?: string;
+}) {
+  const id = entry._id.toString();
+  return {
+    _id: id,
+    name: entry.name,
+    email: entry.email,
+    role: entry.role,
+    profileImage: teamUserAvatarUrl(id, entry.profileImage),
+  };
+}
+
+export async function getTeamUserAvatarStorageKey(viewer: AuthUser, userId: string): Promise<string> {
+  const record = await User.findOne({ _id: userId, tenantId: viewer.tenantId, isActive: true });
+  if (!record?.profileImage) {
+    throw new AppError(404, 'Avatar not found');
+  }
+  return record.profileImage;
+}
+
 export async function createTeamUser(
   admin: AuthUser,
   input: { name: string; email: string; password: string }
@@ -34,14 +63,9 @@ export async function listTeamUsers(user: AuthUser, options?: { agentsOnly?: boo
   const query: Record<string, unknown> = { tenantId: user.tenantId, isActive: true };
   if (options?.agentsOnly) query.role = 'USER';
 
-  const users = await User.find(query, 'name email role').sort({ name: 1 }).lean();
+  const users = await User.find(query, 'name email role profileImage').sort({ name: 1 }).lean();
 
-  return users.map((entry) => ({
-    _id: entry._id.toString(),
-    name: entry.name,
-    email: entry.email,
-    role: entry.role as 'ADMIN' | 'USER',
-  }));
+  return users.map((entry) => mapTeamUser(entry));
 }
 
 function isAgentRole(role: 'ADMIN' | 'USER') {
@@ -53,11 +77,15 @@ type AgentStatRow = { _id: string };
 export async function enrichAgentStats<T extends AgentStatRow>(
   tenantId: string,
   stats: T[]
-): Promise<Array<T & { name: string; email: string; role: 'ADMIN' | 'USER' }>> {
+): Promise<
+  Array<
+    T & { name: string; email: string; role: 'ADMIN' | 'USER'; profileImage?: string }
+  >
+> {
   if (stats.length === 0) return [];
 
   const userIds = stats.map((row) => row._id);
-  const users = await User.find({ _id: { $in: userIds }, tenantId }, 'name email role').lean();
+  const users = await User.find({ _id: { $in: userIds }, tenantId }, 'name email role profileImage').lean();
   const userMap = new Map(users.map((entry) => [entry._id.toString(), entry]));
 
   return stats.map((row) => {
@@ -67,6 +95,7 @@ export async function enrichAgentStats<T extends AgentStatRow>(
       name: user?.name ?? 'Unknown agent',
       email: user?.email ?? '',
       role: (user?.role ?? 'USER') as 'ADMIN' | 'USER',
+      profileImage: teamUserAvatarUrl(row._id, user?.profileImage),
     };
   });
 }
@@ -76,7 +105,11 @@ type WorkloadCounts = { open: number; pending: number; total: number };
 export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
   admin: AuthUser,
   stats: Array<{ _id: string } & T>
-): Promise<Array<{ _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & T>> {
+): Promise<
+  Array<
+    { _id: string; name: string; email: string; role: 'ADMIN' | 'USER'; profileImage?: string } & T
+  >
+> {
   const enriched = (await enrichAgentStats(admin.tenantId, stats)).filter((row) =>
     isAgentRole(row.role)
   );
@@ -93,10 +126,11 @@ export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
         name: member.name,
         email: member.email,
         role: member.role,
+        profileImage: member.profileImage,
         open: 0,
         pending: 0,
         total: 0,
-      } as { _id: string; name: string; email: string; role: 'ADMIN' | 'USER' } & T;
+      } as { _id: string; name: string; email: string; role: 'ADMIN' | 'USER'; profileImage?: string } & T;
     })
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 }
@@ -125,6 +159,7 @@ export async function mergeTeamUsersWithAgentAnalytics(
         name: member.name,
         email: member.email,
         role: member.role,
+        profileImage: member.profileImage,
         total: 0,
         resolved: 0,
         open: 0,

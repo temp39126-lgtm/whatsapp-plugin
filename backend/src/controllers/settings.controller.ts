@@ -2,7 +2,8 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as tagService from '../services/tags/tagService';
 import * as analyticsService from '../services/analytics/analyticsService';
-import { createTeamUser } from '../services/users/teamUserService';
+import { createTeamUser, getTeamUserAvatarStorageKey } from '../services/users/teamUserService';
+import { readAvatar } from '../services/avatars/avatarService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
@@ -171,6 +172,18 @@ export async function getWebhookInfo(req: AuthenticatedRequest, res: Response, n
       webhookUrl: `${req.protocol}://${req.get('host')}/api/whatsapp/webhook`,
       verifyToken: env.META_VERIFY_TOKEN,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getTeamUserAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const storageKey = await getTeamUserAvatarStorageKey(req.user!, getParam(req.params.id));
+    const { body, mimeType } = await readAvatar(storageKey);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(body);
   } catch (error) {
     next(error);
   }

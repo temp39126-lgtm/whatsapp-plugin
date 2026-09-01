@@ -18,9 +18,10 @@ import { useAuth } from '@/components/AuthProvider';
 import { useConversations } from '@/hooks/useConversations';
 import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
-import { getInitials } from '@/lib/utils';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { buildInboxHref } from '@/lib/inbox-filters';
 import type { AnalyticsConversations, TeamAgentWorkloadDTO } from '@/types';
+import { getInitials } from '@/lib/utils';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -185,9 +186,11 @@ export function AdminDashboard() {
                       className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-whatsapp text-xs font-semibold text-white">
-                          {getInitials(agent.name)}
-                        </div>
+                        <ProfileAvatar
+                          name={agent.name}
+                          imageUrl={agent.profileImage}
+                          size="sm"
+                        />
                         <div className="min-w-0">
                           <p className="truncate font-medium">{agent.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
