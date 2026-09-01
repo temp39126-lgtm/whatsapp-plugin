@@ -120,3 +120,35 @@ export async function sendUnassignedAlertEmail(params: {
     html: `<p>A new unassigned conversation needs attention: <strong>${params.conversationLabel}</strong>.</p>`,
   });
 }
+
+export async function sendPasswordResetEmail(params: {
+  tenantId: string;
+  to: string;
+  name: string;
+  resetUrl: string;
+}): Promise<boolean> {
+  const settings = await getTenantSettingsDocument(params.tenantId);
+  const subject = 'Reset your WhatsApp CRM password';
+  const text = [
+    `Hi ${params.name},`,
+    '',
+    'We received a request to reset your password.',
+    `Open this link to choose a new password (expires in 1 hour):`,
+    params.resetUrl,
+    '',
+    'If you did not request this, you can ignore this email.',
+  ].join('\n');
+  const html = `
+    <p>Hi ${params.name},</p>
+    <p>We received a request to reset your password.</p>
+    <p><a href="${params.resetUrl}">Reset your password</a></p>
+    <p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>
+  `;
+
+  return sendTenantEmail(settings, {
+    to: params.to,
+    subject,
+    text,
+    html,
+  });
+}

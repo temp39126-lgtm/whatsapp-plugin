@@ -11,6 +11,8 @@ export interface IUser extends Document {
   isActive: boolean;
   profileImage?: string;
   about?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
   preferences?: {
     notifications?: {
       messageAlerts?: boolean;
@@ -39,6 +41,8 @@ const userSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     profileImage: { type: String },
     about: { type: String, default: '', maxlength: 139 },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
     preferences: {
       notifications: {
         messageAlerts: { type: Boolean, default: true },

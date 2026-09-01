@@ -40,6 +40,8 @@ const envSchema = z.object({
   PRESIGNED_URL_EXPIRY: z.coerce.number().default(3600),
   CALLING_ENABLED: z.coerce.boolean().default(false),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
+  PASSWORD_RESET_EXPIRES_MINUTES: z.coerce.number().default(60),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),

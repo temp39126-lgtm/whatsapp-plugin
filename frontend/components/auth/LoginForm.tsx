@@ -72,6 +72,15 @@ export function LoginForm() {
           required
         />
 
+        <div className="flex justify-end">
+          <Link
+            href={AUTH_ROUTES.forgotPassword}
+            className="text-sm font-medium text-whatsapp-dark hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
+
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input
             type="checkbox"

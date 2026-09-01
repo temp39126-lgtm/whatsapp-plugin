@@ -1,9 +1,12 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { User } from '../../models/User';
 import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 import { AuthUser, AppError } from '../../types';
 import { ADMIN_PERMISSIONS } from '../../constants/permissions';
+import { sendPasswordResetEmail } from '../email/emailService';
 
 export function userToAuthUser(user: {
   _id: { toString(): string };
@@ -100,6 +103,78 @@ export async function loginWithPassword(
     token: signAuthToken(authUser),
     user: authUser,
   };
+}
+
+const PASSWORD_RESET_MESSAGE =
+  'If an account exists for that email, a password reset link has been sent.';
+
+function hashPasswordResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function buildPasswordResetUrl(token: string): string {
+  const base = env.FRONTEND_URL.replace(/\/$/, '');
+  return `${base}/auth/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+export async function requestPasswordReset(
+  email: string
+): Promise<{ message: string; resetUrl?: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail, isActive: true }).select(
+    '+passwordResetToken +passwordResetExpires'
+  );
+
+  if (!user) {
+    return { message: PASSWORD_RESET_MESSAGE };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetToken = hashPasswordResetToken(rawToken);
+  user.passwordResetExpires = new Date(
+    Date.now() + env.PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000
+  );
+  await user.save();
+
+  const resetUrl = buildPasswordResetUrl(rawToken);
+  const emailSent = await sendPasswordResetEmail({
+    tenantId: user.tenantId,
+    to: user.email,
+    name: user.name,
+    resetUrl,
+  });
+
+  if (!emailSent) {
+    logger.info({ email: user.email, resetUrl }, 'Password reset link (SMTP not configured)');
+  }
+
+  return {
+    message: PASSWORD_RESET_MESSAGE,
+    ...(!emailSent ? { resetUrl } : {}),
+  };
+}
+
+export async function resetPasswordWithToken(
+  token: string,
+  password: string
+): Promise<{ message: string }> {
+  const tokenHash = hashPasswordResetToken(token);
+  const user = await User.findOne({
+    passwordResetToken: tokenHash,
+    passwordResetExpires: { $gt: new Date() },
+    isActive: true,
+  }).select('+passwordResetToken +passwordResetExpires');
+
+  if (!user) {
+    throw new AppError(400, 'Invalid or expired password reset link');
+  }
+
+  user.passwordHash = await bcrypt.hash(password, 10);
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  return { message: 'Password updated. You can sign in with your new password.' };
 }
 
 export async function seedDefaultUsers(tenantId: string): Promise<void> {

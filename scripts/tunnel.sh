@@ -73,6 +73,12 @@ sleep 8
 FRONTEND_URL=$(extract_tunnel_url /tmp/cf-frontend.log tail)
 echo "Frontend tunnel: $FRONTEND_URL"
 
+echo "==> Restarting backend with FRONTEND_URL for password reset links"
+pkill -f "tsx watch src/server.ts" 2>/dev/null || true
+sleep 1
+(cd "$ROOT/backend" && FRONTEND_URL="$FRONTEND_URL" npm run dev > /tmp/backend-dev.log 2>&1 &)
+sleep 3
+
 echo ""
 echo "============================================"
 echo "  App:     $FRONTEND_URL/whatsapp/inbox"

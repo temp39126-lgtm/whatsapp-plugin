@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types';
-import { loginWithPassword, registerUser } from '../services/auth/authService';
+import { loginWithPassword, registerUser, requestPasswordReset, resetPasswordWithToken } from '../services/auth/authService';
 import { getUserProfile } from '../services/users/userProfileService';
 
 export async function login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -38,4 +38,24 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response, n
 
 export async function logout(_req: AuthenticatedRequest, res: Response) {
   res.status(204).send();
+}
+
+export async function forgotPassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { email } = req.body as { email: string };
+    const result = await requestPasswordReset(email);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resetPassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { token, password } = req.body as { token: string; password: string };
+    const result = await resetPasswordWithToken(token, password);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 }

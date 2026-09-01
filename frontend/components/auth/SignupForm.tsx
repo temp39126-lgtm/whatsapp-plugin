@@ -91,6 +91,10 @@ export function SignupForm() {
         <Link href={AUTH_ROUTES.login} className="font-medium text-whatsapp-dark hover:underline">
           Sign in
         </Link>
+        {' · '}
+        <Link href={AUTH_ROUTES.forgotPassword} className="font-medium text-whatsapp-dark hover:underline">
+          Forgot password?
+        </Link>
       </p>
     </>
   );
