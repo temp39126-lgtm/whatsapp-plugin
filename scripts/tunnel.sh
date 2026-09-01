@@ -53,8 +53,13 @@ fi
 cd frontend
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run start > /tmp/next-prod.log 2>&1 &
-sleep 4
-if ! lsof -i :3000 >/dev/null 2>&1; then
+for _ in $(seq 1 30); do
+  if curl -sf http://127.0.0.1:3000 >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+if ! curl -sf http://127.0.0.1:3000 >/dev/null 2>&1; then
   echo "ERROR: Production frontend failed to start on port 3000" >&2
   tail -30 /tmp/next-prod.log >&2 || true
   exit 1
