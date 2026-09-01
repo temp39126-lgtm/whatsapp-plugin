@@ -7,8 +7,11 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/AuthProvider';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
+import Link from 'next/link';
+import { Input } from '@/components/ui/input';
 import {
   useAssignConversation,
+  useCreateTag,
   useTags,
   useTeamUsers,
   useUpdateConversationPriority,
@@ -34,6 +37,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const queryClient = useQueryClient();
   const [showMembers, setShowMembers] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
+  const [newTagName, setNewTagName] = useState('');
 
   const updateStatus = useUpdateConversationStatus();
   const updatePriority = useUpdateConversationPriority();
@@ -44,6 +48,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const uploadContactAvatar = useUploadContactAvatar();
   const uploadGroupAvatar = useUploadGroupAvatar();
   const { data: tags = [] } = useTags();
+  const createTag = useCreateTag();
   const { data: teamUsers = [] } = useTeamUsers(isAdmin);
 
   const { data: notes } = useQuery({
@@ -80,6 +85,23 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
       : [...selectedTagIds, tagId];
 
     updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds });
+  }
+
+  function handleCreateTag(event: React.FormEvent) {
+    event.preventDefault();
+    const name = newTagName.trim();
+    if (!name) return;
+
+    createTag.mutate(name, {
+      onSuccess: (tag) => {
+        setNewTagName('');
+        updateTags.mutate({ id: conversation!._id, tagIds: [...selectedTagIds, tag._id] });
+        setActionMessage(`Tag "${tag.name}" created and applied`);
+      },
+      onError: (error) => {
+        setActionMessage(error instanceof Error ? error.message : 'Failed to create tag');
+      },
+    });
   }
 
   function handleAvatarUpload(file: File) {
@@ -219,7 +241,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Status
           </h4>
           <p className="mb-2 text-[10px] text-muted-foreground">
-            Status values are fixed (Open, Pending, Resolved, Closed). Create tags from the Tags page.
+            Status values are fixed. Click tags below to assign them to this conversation.
           </p>
           <div className="flex flex-wrap gap-1">
             {statuses.map((status) => (
@@ -269,6 +291,28 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Tags
           </h4>
+          <p className="mb-2 text-[10px] text-muted-foreground">
+            {isAdmin
+              ? 'Create a new tag below or open the Tags page to manage all tags.'
+              : 'Tags are created by admins. Click a tag to assign it to this chat.'}{' '}
+            <Link href="/whatsapp/tags" className="text-whatsapp underline">
+              Tags page
+            </Link>
+          </p>
+          {isAdmin && (
+            <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
+              <Input
+                value={newTagName}
+                onChange={(event) => setNewTagName(event.target.value)}
+                placeholder="New tag name..."
+                className="h-8 text-sm"
+                maxLength={50}
+              />
+              <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
+                {createTag.isPending ? 'Adding...' : 'Create'}
+              </Button>
+            </form>
+          )}
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => {
               const selected = selectedTagIds.includes(tag._id);

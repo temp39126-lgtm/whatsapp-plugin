@@ -28,7 +28,13 @@ export default function TagsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Tags</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Tags</h1>
+      <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
+        Tags label conversations (for example Complaint, VIP, Refund).{' '}
+        {isAdmin
+          ? 'As an admin, create tags here or from the right panel while viewing any chat.'
+          : 'Only admins can create tags. You can assign existing tags from the right panel in Inbox.'}
+      </p>
 
       {isAdmin && (
         <form

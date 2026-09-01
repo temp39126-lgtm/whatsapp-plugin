@@ -47,6 +47,16 @@ export function useTags() {
   });
 }
 
+export function useCreateTag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.post<TagDTO>('/tags', { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+}
+
 function invalidateConversationQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   conversationId?: string
