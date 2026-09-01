@@ -9,12 +9,6 @@ interface ConversationFiltersProps {
   onChange: (filters: Record<string, string | boolean | undefined>) => void;
 }
 
-const adminFilters = [
-  { key: 'all', label: 'All', patch: {} as Record<string, string | boolean | undefined> },
-  { key: 'mine', label: 'My Conversations', patch: { mine: true, unassigned: undefined } },
-  { key: 'unassigned', label: 'Unassigned', patch: { unassigned: true, mine: undefined } },
-];
-
 const statusFilters = [
   { key: 'OPEN', label: 'Open' },
   { key: 'PENDING', label: 'Pending' },
@@ -22,8 +16,23 @@ const statusFilters = [
   { key: 'CLOSED', label: 'Closed' },
 ];
 
+function isAllFiltersActive(filters: Record<string, string | boolean | undefined>) {
+  return (
+    !filters.status &&
+    !filters.unread &&
+    !filters.groups &&
+    !filters.mine &&
+    !filters.unassigned
+  );
+}
+
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
   const { isAdmin } = useAuth();
+  const allActive = isAllFiltersActive(filters);
+
+  function showAllConversations() {
+    onChange({ search: filters.search });
+  }
 
   return (
     <div className="space-y-3 border-b p-3">
@@ -34,29 +43,105 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         className="h-9"
       />
 
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={showAllConversations}
+          className={cn(
+            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+            allActive
+              ? 'bg-whatsapp text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          )}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              ...filters,
+              status: undefined,
+              groups: undefined,
+              mine: undefined,
+              unassigned: undefined,
+              unread: filters.unread ? undefined : true,
+            })
+          }
+          className={cn(
+            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+            filters.unread
+              ? 'bg-whatsapp text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          )}
+        >
+          Unread
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              ...filters,
+              status: undefined,
+              unread: undefined,
+              mine: undefined,
+              unassigned: undefined,
+              groups: filters.groups ? undefined : true,
+            })
+          }
+          className={cn(
+            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+            filters.groups
+              ? 'bg-emerald-700 text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          )}
+        >
+          Groups
+        </button>
+      </div>
+
       {isAdmin && (
         <div className="flex flex-wrap gap-1">
-          {adminFilters.map((f) => {
-            const active =
-              (f.key === 'all' && !filters.mine && !filters.unassigned) ||
-              (f.key === 'mine' && filters.mine === true) ||
-              (f.key === 'unassigned' && filters.unassigned === true);
-
-            return (
-              <button
-                key={f.key}
-                onClick={() => onChange({ ...filters, ...f.patch })}
-                className={cn(
-                  'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                  active
-                    ? 'bg-whatsapp text-white'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                )}
-              >
-                {f.label}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                search: filters.search,
+                status: filters.status,
+                unread: filters.unread,
+                groups: filters.groups,
+                mine: true,
+              })
+            }
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+              filters.mine
+                ? 'bg-whatsapp text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            My Conversations
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                search: filters.search,
+                status: filters.status,
+                unread: filters.unread,
+                groups: filters.groups,
+                unassigned: true,
+              })
+            }
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+              filters.unassigned
+                ? 'bg-whatsapp text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            Unassigned
+          </button>
         </div>
       )}
 
@@ -64,9 +149,12 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         {statusFilters.map((f) => (
           <button
             key={f.key}
+            type="button"
             onClick={() =>
               onChange({
                 ...filters,
+                mine: undefined,
+                unassigned: undefined,
                 status: filters.status === f.key ? undefined : f.key,
               })
             }
@@ -80,32 +168,6 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             {f.label}
           </button>
         ))}
-        <button
-          onClick={() =>
-            onChange({ ...filters, unread: filters.unread ? undefined : true })
-          }
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            filters.unread
-              ? 'bg-whatsapp text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          )}
-        >
-          Unread
-        </button>
-        <button
-          onClick={() =>
-            onChange({ ...filters, groups: filters.groups ? undefined : true })
-          }
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            filters.groups
-              ? 'bg-emerald-700 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          )}
-        >
-          Groups
-        </button>
       </div>
     </div>
   );
