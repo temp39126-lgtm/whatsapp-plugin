@@ -2,8 +2,13 @@ import { AuthUser } from '../../types';
 import { Contact, IContact } from '../../models/Contact';
 import { Conversation } from '../../models/Conversation';
 import { Call } from '../../models/Call';
+import { Group } from '../../models/Group';
+import { Message } from '../../models/Message';
+import { InternalNote } from '../../models/InternalNote';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
+import { logActivity } from '../rbac/activityLog';
+import { storeAvatar } from '../avatars/avatarService';
 
 export async function listContacts(user: AuthUser, page = 1, limit = 20, search?: string) {
   const query: Record<string, unknown> = { tenantId: user.tenantId };
@@ -55,4 +60,56 @@ export async function assignContact(user: AuthUser, contactId: string, assignedU
   );
   if (!contact) throw new AppError(404, 'Contact not found');
   return contact;
+}
+
+export async function deleteContact(user: AuthUser, contactId: string) {
+  const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
+  if (!contact) throw new AppError(404, 'Contact not found');
+
+  const conversations = await Conversation.find({
+    tenantId: user.tenantId,
+    contactId: contact._id,
+  }).select('_id');
+  const conversationIds = conversations.map((conversation) => conversation._id);
+
+  await Promise.all([
+    Group.updateMany(
+      { tenantId: user.tenantId, contactIds: contact._id },
+      { $pull: { contactIds: contact._id } }
+    ),
+    Message.deleteMany({ tenantId: user.tenantId, contactId: contact._id }),
+    InternalNote.deleteMany({ tenantId: user.tenantId, conversationId: { $in: conversationIds } }),
+    Conversation.deleteMany({ tenantId: user.tenantId, contactId: contact._id }),
+    Call.deleteMany({ tenantId: user.tenantId, contactId: contact._id }),
+    Contact.deleteOne({ _id: contact._id }),
+  ]);
+
+  await logActivity(user, 'contact.deleted', 'contact', contactId, { name: contact.name });
+
+  return { deleted: true };
+}
+
+export async function uploadContactAvatar(
+  user: AuthUser,
+  contactId: string,
+  file: Express.Multer.File
+) {
+  const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
+  if (!contact) throw new AppError(404, 'Contact not found');
+
+  const storageKey = await storeAvatar(
+    user.tenantId,
+    'contacts',
+    contactId,
+    file.originalname,
+    file.buffer,
+    file.mimetype
+  );
+
+  contact.profileImage = storageKey;
+  await contact.save();
+
+  return {
+    profileImage: `/api/whatsapp/contacts/${contactId}/avatar`,
+  };
 }

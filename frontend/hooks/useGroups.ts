@@ -42,3 +42,30 @@ export function useCreateCommunity() {
     },
   });
 }
+
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => api.delete(`/groups/${groupId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+export function useUploadGroupAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, file }: { groupId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      return api.upload<{ profileImage: string }>(`/groups/${groupId}/avatar`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation'] });
+    },
+  });
+}

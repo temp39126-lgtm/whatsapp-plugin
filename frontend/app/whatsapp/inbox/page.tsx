@@ -36,7 +36,10 @@ export default function InboxPage() {
       <ChatWindow conversation={selected} />
 
       <div className="hidden w-80 shrink-0 border-l bg-background xl:block">
-        <CustomerDetails conversation={selected} />
+        <CustomerDetails
+          conversation={selected}
+          onDeleted={() => setSelectedId(null)}
+        />
       </div>
     </div>
   );

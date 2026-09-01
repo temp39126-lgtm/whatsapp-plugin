@@ -83,3 +83,11 @@ export function resolveMediaUrl(pathOrUrl: string): string {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   return `${base}${pathOrUrl}`;
 }
+
+export function getContactAvatarUrl(contactId: string): string {
+  return resolveMediaUrl(`/api/whatsapp/contacts/${contactId}/avatar`);
+}
+
+export function getGroupAvatarUrl(groupId: string): string {
+  return resolveMediaUrl(`/api/whatsapp/groups/${groupId}/avatar`);
+}

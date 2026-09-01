@@ -32,5 +32,13 @@ export interface ConversationDTO {
     _id: string;
     name: string;
     memberCount: number;
+    profileImage?: string;
+    members?: Array<{
+      _id: string;
+      name: string;
+      phone: string;
+      whatsappId: string;
+      profileImage?: string;
+    }>;
   };
 }

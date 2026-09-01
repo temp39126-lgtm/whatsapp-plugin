@@ -21,22 +21,74 @@ interface ConversationFilters {
   mine?: boolean;
 }
 
+type PopulatedGroupMember = {
+  _id: { toString(): string };
+  name: string;
+  phone: string;
+  whatsappId: string;
+  profileImage?: string;
+};
+
 type PopulatedGroup = {
   _id: { toString(): string };
   name: string;
-  contactIds?: unknown[];
+  profileImage?: string;
+  contactIds?: Array<PopulatedGroupMember | { toString(): string }>;
 };
 
-function mapPopulatedGroup(groupId: unknown) {
+function mapPopulatedGroup(groupId: unknown, includeMembers = false) {
   if (typeof groupId !== 'object' || groupId === null || !('name' in groupId)) {
     return undefined;
   }
 
   const group = groupId as PopulatedGroup;
+  const groupIdStr = group._id.toString();
+  const members =
+    includeMembers && Array.isArray(group.contactIds)
+      ? group.contactIds
+          .filter(
+            (member): member is PopulatedGroupMember =>
+              typeof member === 'object' && member !== null && 'name' in member
+          )
+          .map((member) => ({
+            _id: member._id.toString(),
+            name: member.name,
+            phone: member.phone,
+            whatsappId: member.whatsappId,
+            profileImage: member.profileImage
+              ? `/api/whatsapp/contacts/${member._id.toString()}/avatar`
+              : undefined,
+          }))
+      : undefined;
+
   return {
-    _id: group._id.toString(),
+    _id: groupIdStr,
     name: group.name,
     memberCount: Array.isArray(group.contactIds) ? group.contactIds.length : 0,
+    profileImage: group.profileImage ? `/api/whatsapp/groups/${groupIdStr}/avatar` : undefined,
+    members,
+  };
+}
+
+function mapPopulatedContact(contactId: unknown) {
+  if (typeof contactId !== 'object' || contactId === null || !('name' in contactId)) {
+    return undefined;
+  }
+
+  const contact = contactId as {
+    _id: { toString(): string };
+    name: string;
+    phone: string;
+    whatsappId: string;
+    profileImage?: string;
+  };
+
+  return {
+    ...contact,
+    _id: contact._id.toString(),
+    profileImage: contact.profileImage
+      ? `/api/whatsapp/contacts/${contact._id.toString()}/avatar`
+      : undefined,
   };
 }
 
@@ -83,7 +135,7 @@ export async function listConversations(
     .skip(skip)
     .limit(lim)
     .populate('contactId', 'name phone whatsappId profileImage')
-    .populate('groupId', 'name contactIds')
+    .populate('groupId', 'name contactIds profileImage')
     .populate('tags', 'name')
     .lean();
 
@@ -92,10 +144,7 @@ export async function listConversations(
     conversations.map((conversation) => {
       return {
         ...conversation,
-        contact:
-          typeof conversation.contactId === 'object' && conversation.contactId !== null
-            ? conversation.contactId
-            : undefined,
+        contact: mapPopulatedContact(conversation.contactId),
         group: mapPopulatedGroup(conversation.groupId),
       };
     })
@@ -110,7 +159,11 @@ export async function getConversation(user: AuthUser, conversationId: string) {
     tenantId: user.tenantId,
   })
     .populate('contactId')
-    .populate('groupId', 'name contactIds')
+    .populate({
+      path: 'groupId',
+      select: 'name contactIds profileImage',
+      populate: { path: 'contactIds', select: 'name phone whatsappId profileImage' },
+    })
     .populate('tags', 'name');
 
   if (!conversation) return null;
@@ -119,8 +172,8 @@ export async function getConversation(user: AuthUser, conversationId: string) {
   const [enriched] = await enrichConversations([
     {
       ...obj,
-      contact: typeof obj.contactId === 'object' && obj.contactId !== null ? obj.contactId : undefined,
-      group: mapPopulatedGroup(obj.groupId),
+      contact: mapPopulatedContact(obj.contactId),
+      group: mapPopulatedGroup(obj.groupId, true),
     },
   ]);
 

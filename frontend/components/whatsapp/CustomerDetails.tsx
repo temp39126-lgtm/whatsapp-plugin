@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/AuthProvider';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import {
   useAssignConversation,
   useTags,
@@ -12,25 +15,34 @@ import {
   useUpdateConversationStatus,
   useUpdateConversationTags,
 } from '@/hooks/useConversations';
+import { useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
+import { useDeleteGroup, useUploadGroupAvatar } from '@/hooks/useGroups';
 import type { ConversationDTO, InternalNoteDTO } from '@/types';
-import { getInitials } from '@/lib/utils';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface CustomerDetailsProps {
   conversation: ConversationDTO | null;
+  onDeleted?: () => void;
 }
 
 const statuses = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const;
 const priorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
 
-export function CustomerDetails({ conversation }: CustomerDetailsProps) {
+export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProps) {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [showMembers, setShowMembers] = useState(true);
+  const [actionMessage, setActionMessage] = useState('');
+
   const updateStatus = useUpdateConversationStatus();
   const updatePriority = useUpdateConversationPriority();
   const updateTags = useUpdateConversationTags();
   const assignConversation = useAssignConversation();
+  const deleteContact = useDeleteContact();
+  const deleteGroup = useDeleteGroup();
+  const uploadContactAvatar = useUploadContactAvatar();
+  const uploadGroupAvatar = useUploadGroupAvatar();
   const { data: tags = [] } = useTags();
   const { data: teamUsers = [] } = useTeamUsers(isAdmin);
 
@@ -55,7 +67,12 @@ export function CustomerDetails({ conversation }: CustomerDetailsProps) {
   }
 
   const contact = conversation.contact;
+  const group = conversation.group;
+  const isGroup = Boolean(group);
+  const displayName = group?.name ?? contact?.name ?? 'Unknown';
   const selectedTagIds = conversation.tags.map((tag) => tag._id);
+  const isDeleting = deleteContact.isPending || deleteGroup.isPending;
+  const isUploading = uploadContactAvatar.isPending || uploadGroupAvatar.isPending;
 
   function toggleTag(tagId: string) {
     const nextTagIds = selectedTagIds.includes(tagId)
@@ -65,22 +82,145 @@ export function CustomerDetails({ conversation }: CustomerDetailsProps) {
     updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds });
   }
 
+  function handleAvatarUpload(file: File) {
+    if (isGroup && group) {
+      uploadGroupAvatar.mutate(
+        { groupId: group._id, file },
+        {
+          onSuccess: () => setActionMessage('Group photo updated'),
+          onError: (error) =>
+            setActionMessage(error instanceof Error ? error.message : 'Upload failed'),
+        }
+      );
+      return;
+    }
+
+    if (contact?._id) {
+      uploadContactAvatar.mutate(
+        { contactId: contact._id, file },
+        {
+          onSuccess: () => setActionMessage('Profile photo updated'),
+          onError: (error) =>
+            setActionMessage(error instanceof Error ? error.message : 'Upload failed'),
+        }
+      );
+    }
+  }
+
+  function handleDelete() {
+    if (isGroup && group) {
+      const confirmed = window.confirm(
+        `Delete group "${group.name}"? This removes the group and its inbox conversation.`
+      );
+      if (!confirmed) return;
+
+      deleteGroup.mutate(group._id, {
+        onSuccess: () => {
+          onDeleted?.();
+          setActionMessage('Group deleted');
+        },
+        onError: (error) =>
+          setActionMessage(error instanceof Error ? error.message : 'Failed to delete group'),
+      });
+      return;
+    }
+
+    if (contact?._id) {
+      const confirmed = window.confirm(
+        `Delete contact "${contact.name}"? This removes their conversations and messages from the CRM.`
+      );
+      if (!confirmed) return;
+
+      deleteContact.mutate(contact._id, {
+        onSuccess: () => {
+          onDeleted?.();
+          setActionMessage('Contact deleted');
+        },
+        onError: (error) =>
+          setActionMessage(error instanceof Error ? error.message : 'Failed to delete contact'),
+      });
+    }
+  }
+
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="border-b p-4 text-center">
-        <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-whatsapp text-2xl font-semibold text-white">
-          {getInitials(contact?.name ?? 'U')}
+        <div className="mx-auto mb-3 flex justify-center">
+          <ProfileAvatar
+            name={displayName}
+            imageUrl={group?.profileImage ?? contact?.profileImage}
+            size="lg"
+            isGroup={isGroup}
+            editable
+            uploading={isUploading}
+            onUpload={handleAvatarUpload}
+          />
         </div>
-        <h3 className="font-semibold">{contact?.name}</h3>
-        <p className="text-sm text-muted-foreground">{contact?.phone}</p>
-        <p className="text-xs text-muted-foreground">ID: {contact?.whatsappId}</p>
+        <h3 className="font-semibold">{displayName}</h3>
+        {isGroup ? (
+          <p className="text-sm text-muted-foreground">{group?.memberCount ?? 0} participants</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">{contact?.phone}</p>
+            <p className="text-xs text-muted-foreground">ID: {contact?.whatsappId}</p>
+          </>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3 text-red-600 hover:bg-red-50 hover:text-red-700"
+          disabled={isDeleting || (!isGroup && !contact?._id)}
+          onClick={handleDelete}
+        >
+          <Trash2 className="mr-1 h-4 w-4" />
+          {isDeleting ? 'Deleting...' : isGroup ? 'Delete group' : 'Delete contact'}
+        </Button>
+
+        {actionMessage && (
+          <p className="mt-2 text-xs text-muted-foreground">{actionMessage}</p>
+        )}
       </div>
+
+      {isGroup && group?.members && group.members.length > 0 && (
+        <section className="border-b p-4">
+          <button
+            type="button"
+            onClick={() => setShowMembers((current) => !current)}
+            className="mb-2 flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            <span>Group members ({group.members.length})</span>
+            {showMembers ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+          {showMembers && (
+            <div className="space-y-2">
+              {group.members.map((member) => (
+                <div key={member._id} className="flex items-center gap-3 rounded-lg border p-2">
+                  <ProfileAvatar
+                    name={member.name}
+                    imageUrl={member.profileImage}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{member.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{member.phone}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="space-y-4 p-4">
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Status
           </h4>
+          <p className="mb-2 text-[10px] text-muted-foreground">
+            Status values are fixed (Open, Pending, Resolved, Closed). Create tags from the Tags page.
+          </p>
           <div className="flex flex-wrap gap-1">
             {statuses.map((status) => (
               <button
@@ -176,9 +316,7 @@ export function CustomerDetails({ conversation }: CustomerDetailsProps) {
               ))}
             </select>
           ) : (
-            <p className="text-sm">
-              {conversation.assignedUser?.name ?? 'Unassigned'}
-            </p>
+            <p className="text-sm">{conversation.assignedUser?.name ?? 'Unassigned'}</p>
           )}
         </section>
 

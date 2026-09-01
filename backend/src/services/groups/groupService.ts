@@ -1,15 +1,29 @@
 import { AuthUser } from '../../types';
 import { Group } from '../../models/Group';
 import { Contact } from '../../models/Contact';
+import { Conversation } from '../../models/Conversation';
+import { Community } from '../../models/Community';
 import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 import { createGroupInboxConversation } from './groupInboxService';
+import { storeAvatar } from '../avatars/avatarService';
+
+const memberFields = 'name phone whatsappId profileImage';
 
 export async function listGroups(user: AuthUser) {
   return Group.find({ tenantId: user.tenantId })
     .sort({ createdAt: -1 })
-    .populate('contactIds', 'name phone whatsappId')
+    .populate('contactIds', memberFields)
     .lean();
+}
+
+export async function getGroup(user: AuthUser, groupId: string) {
+  const group = await Group.findOne({ _id: groupId, tenantId: user.tenantId })
+    .populate('contactIds', memberFields)
+    .lean();
+
+  if (!group) throw new AppError(404, 'Group not found');
+  return group;
 }
 
 export async function createGroup(
@@ -44,5 +58,49 @@ export async function createGroup(
 
   await createGroupInboxConversation(user, group);
 
-  return Group.findById(group._id).populate('contactIds', 'name phone whatsappId').lean();
+  return Group.findById(group._id).populate('contactIds', memberFields).lean();
+}
+
+export async function deleteGroup(user: AuthUser, groupId: string) {
+  const group = await Group.findOne({ _id: groupId, tenantId: user.tenantId });
+  if (!group) throw new AppError(404, 'Group not found');
+
+  await Promise.all([
+    Conversation.deleteMany({ tenantId: user.tenantId, groupId: group._id }),
+    Community.updateMany(
+      { tenantId: user.tenantId, groupIds: group._id },
+      { $pull: { groupIds: group._id } }
+    ),
+  ]);
+
+  await Group.deleteOne({ _id: group._id });
+
+  await logActivity(user, 'group.deleted', 'group', groupId, { name: group.name });
+
+  return { deleted: true };
+}
+
+export async function uploadGroupAvatar(
+  user: AuthUser,
+  groupId: string,
+  file: Express.Multer.File
+) {
+  const group = await Group.findOne({ _id: groupId, tenantId: user.tenantId });
+  if (!group) throw new AppError(404, 'Group not found');
+
+  const storageKey = await storeAvatar(
+    user.tenantId,
+    'groups',
+    groupId,
+    file.originalname,
+    file.buffer,
+    file.mimetype
+  );
+
+  group.profileImage = storageKey;
+  await group.save();
+
+  return {
+    profileImage: `/api/whatsapp/groups/${groupId}/avatar`,
+  };
 }

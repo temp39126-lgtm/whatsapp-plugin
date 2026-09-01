@@ -1,8 +1,8 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Users } from 'lucide-react';
-import { cn, getInitials } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import type { ConversationDTO } from '@/types';
 
 interface ConversationListProps {
@@ -52,14 +52,12 @@ export function ConversationList({
               isSelected && 'bg-whatsapp-light'
             )}
           >
-            <div
-              className={cn(
-                'flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white',
-                isGroup ? 'bg-emerald-700' : 'bg-whatsapp'
-              )}
-            >
-              {isGroup ? <Users className="h-5 w-5" /> : getInitials(name)}
-            </div>
+            <ProfileAvatar
+              name={name}
+              imageUrl={group?.profileImage ?? contact?.profileImage}
+              size="md"
+              isGroup={isGroup}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-medium">{name}</span>

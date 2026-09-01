@@ -56,4 +56,18 @@ export async function syncGroupInboxConversations(user: AuthUser) {
       })
     )
   );
+
+  for (const group of groups) {
+    const conversations = await Conversation.find({
+      tenantId: user.tenantId,
+      groupId: group._id,
+    })
+      .sort({ createdAt: -1 })
+      .select('_id');
+
+    if (conversations.length > 1) {
+      const duplicateIds = conversations.slice(1).map((conversation) => conversation._id);
+      await Conversation.deleteMany({ _id: { $in: duplicateIds } });
+    }
+  }
 }

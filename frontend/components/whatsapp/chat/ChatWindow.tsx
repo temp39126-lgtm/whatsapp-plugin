@@ -1,8 +1,8 @@
 'use client';
 
-import { Phone, Users } from 'lucide-react';
-import { getInitials } from '@/lib/utils';
+import { Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
@@ -26,7 +26,9 @@ interface ChatWindowProps {
 export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const membersRef = useRef<HTMLDivElement>(null);
 
   const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null);
   const sendMessage = useSendMessage();
@@ -54,6 +56,23 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
       markRead.mutate(conversation._id);
     }
   }, [conversation?._id, conversation?.unreadCount]);
+
+  useEffect(() => {
+    setShowMembers(false);
+  }, [conversation?._id]);
+
+  useEffect(() => {
+    if (!showMembers) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (membersRef.current && !membersRef.current.contains(event.target as Node)) {
+        setShowMembers(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMembers]);
 
   if (!conversation) {
     return (
@@ -108,18 +127,44 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
 
   return (
     <div className="flex flex-1 flex-col bg-chat-bg">
-      <header className="flex items-center justify-between border-b bg-background px-4 py-3">
+      <header className="relative flex items-center justify-between border-b bg-background px-4 py-3">
         <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${
-              isGroup ? 'bg-emerald-700' : 'bg-whatsapp'
-            }`}
-          >
-            {isGroup ? <Users className="h-5 w-5" /> : getInitials(headerName)}
-          </div>
-          <div>
+          <ProfileAvatar
+            name={headerName}
+            imageUrl={group?.profileImage ?? contact?.profileImage}
+            size="sm"
+            isGroup={isGroup}
+          />
+          <div ref={membersRef}>
             <h2 className="font-medium">{headerName}</h2>
-            <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
+            {isGroup ? (
+              <button
+                type="button"
+                onClick={() => setShowMembers((current) => !current)}
+                className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                {headerSubtitle} · tap to view members
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
+            )}
+
+            {isGroup && showMembers && group?.members && (
+              <div className="absolute left-16 top-full z-20 mt-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-background shadow-lg">
+                <div className="border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Group members
+                </div>
+                {group.members.map((member) => (
+                  <div key={member._id} className="flex items-center gap-3 border-b px-3 py-2 last:border-b-0">
+                    <ProfileAvatar name={member.name} imageUrl={member.profileImage} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{member.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{member.phone}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
