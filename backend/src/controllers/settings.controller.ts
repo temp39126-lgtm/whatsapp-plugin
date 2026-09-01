@@ -134,7 +134,7 @@ export async function getAccountSettings(req: AuthenticatedRequest, res: Respons
       phoneNumberId: account.phoneNumberId,
       businessAccountId: account.businessAccountId,
       displayPhoneNumber: account.displayPhoneNumber,
-      webhookVerifyToken: account.webhookVerifyToken || env.META_VERIFY_TOKEN,
+      webhookVerifyToken: account.webhookVerifyToken,
       metaApiVersion: account.metaApiVersion || env.META_API_VERSION,
       connectionStatus: account.connectionStatus,
       webhookConfigured: account.webhookConfigured,
@@ -200,7 +200,7 @@ export async function getWebhookInfo(req: AuthenticatedRequest, res: Response, n
     const host = req.get('x-forwarded-host') || req.get('host');
     res.json({
       webhookUrl: `${protocol}://${host}/api/whatsapp/webhook`,
-      verifyToken: account?.webhookVerifyToken || env.META_VERIFY_TOKEN,
+      verifyToken: account?.webhookVerifyToken ?? '',
     });
   } catch (error) {
     next(error);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cloud, Link2 } from 'lucide-react';
+import { Check, Cloud, Copy, Link2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ export function AdminMetaCloudPanel() {
     metaApiVersion: 'v21.0',
   });
   const [message, setMessage] = useState('');
+  const [copiedField, setCopiedField] = useState<'callbackUrl' | null>(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
@@ -63,7 +64,7 @@ export function AdminMetaCloudPanel() {
 
   const { data: webhook } = useQuery({
     queryKey: ['webhook-info'],
-    queryFn: () => api.get<{ webhookUrl: string; verifyToken: string }>('/settings/webhook'),
+    queryFn: () => api.get<{ webhookUrl: string }>('/settings/webhook'),
   });
 
   useEffect(() => {
@@ -103,6 +104,16 @@ export function AdminMetaCloudPanel() {
     onError: (error) =>
       setMessage(error instanceof Error ? error.message : 'Failed to save configuration'),
   });
+
+  async function copyToClipboard(value: string, field: 'callbackUrl') {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      setMessage('Could not copy to clipboard.');
+    }
+  }
 
   function validateForm(): string | null {
     if (!form.metaAppId.trim()) return 'Meta App ID is required.';
@@ -223,18 +234,6 @@ export function AdminMetaCloudPanel() {
             />
           </Field>
 
-          <Field
-            label="Webhook verify token"
-            required
-            hint="Must match the verify token you enter in Meta webhook setup"
-          >
-            <Input
-              value={form.webhookVerifyToken}
-              onChange={(event) => setForm({ ...form, webhookVerifyToken: event.target.value })}
-              placeholder="Custom verify token"
-            />
-          </Field>
-
           <Field label="Meta API version" required hint="Usually v21.0 or latest Graph API version">
             <Input
               value={form.metaApiVersion}
@@ -277,18 +276,42 @@ export function AdminMetaCloudPanel() {
             <Link2 className="h-5 w-5 text-whatsapp" />
             <h2 className="text-lg font-semibold">Webhook setup in Meta</h2>
           </div>
-          <p className="mb-3 text-sm text-muted-foreground">
+          <p className="mb-4 text-sm text-muted-foreground">
             Copy these values into Meta Developer Dashboard → WhatsApp → Configuration → Webhook.
           </p>
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="font-medium">Callback URL:</span>{' '}
-              <code className="break-all text-xs">{webhook.webhookUrl}</code>
-            </p>
-            <p>
-              <span className="font-medium">Verify token:</span>{' '}
-              <code className="break-all text-xs">{webhook.verifyToken}</code>
-            </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field
+              label="Callback URL"
+              hint="Generated from your server URL. Paste this into Meta as the webhook callback."
+            >
+              <div className="flex gap-2">
+                <Input readOnly value={webhook.webhookUrl} className="font-mono text-xs" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 px-3"
+                  onClick={() => copyToClipboard(webhook.webhookUrl, 'callbackUrl')}
+                >
+                  {copiedField === 'callbackUrl' ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </Field>
+
+            <Field
+              label="Verify token"
+              required
+              hint="Choose a secret string, save here, then paste the same value into Meta."
+            >
+              <Input
+                value={form.webhookVerifyToken}
+                onChange={(event) => setForm({ ...form, webhookVerifyToken: event.target.value })}
+                placeholder="e.g. my-secret-verify-token"
+              />
+            </Field>
           </div>
         </div>
       )}
