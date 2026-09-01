@@ -28,6 +28,7 @@ export const conversationQuerySchema = z.object({
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
   search: z.string().optional(),
   mine: z.coerce.boolean().optional(),
+  groups: z.coerce.boolean().optional(),
   page: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
 });

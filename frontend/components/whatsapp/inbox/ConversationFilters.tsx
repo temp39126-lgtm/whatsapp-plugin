@@ -93,6 +93,19 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         >
           Unread
         </button>
+        <button
+          onClick={() =>
+            onChange({ ...filters, groups: filters.groups ? undefined : true })
+          }
+          className={cn(
+            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+            filters.groups
+              ? 'bg-emerald-700 text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          )}
+        >
+          Groups
+        </button>
       </div>
     </div>
   );

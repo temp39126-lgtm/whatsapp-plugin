@@ -13,6 +13,9 @@ export interface IMessage extends Document {
   sentByUserId?: string;
   isPinned: boolean;
   isStarred: boolean;
+  deletedAt?: Date;
+  deletedForEveryone?: boolean;
+  deletedByUserId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +38,9 @@ const messageSchema = new Schema<IMessage>(
     sentByUserId: { type: String },
     isPinned: { type: Boolean, default: false },
     isStarred: { type: Boolean, default: false },
+    deletedAt: { type: Date },
+    deletedForEveryone: { type: Boolean, default: false },
+    deletedByUserId: { type: String },
   },
   { timestamps: true }
 );

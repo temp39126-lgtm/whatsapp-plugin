@@ -98,6 +98,19 @@ export function useRetryMessage() {
   });
 }
 
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, scope }: { messageId: string; scope: 'me' | 'everyone' }) =>
+      api.post(`/messages/${messageId}/delete`, { scope }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ['pinned'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
 export function usePinnedMessages(conversationId: string | null) {
   return useQuery({
     queryKey: ['pinned', conversationId],

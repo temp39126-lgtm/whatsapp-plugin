@@ -4,7 +4,7 @@ import { tenantAccess } from '../middleware/tenantAccess';
 import { conversationAccess } from '../middleware/conversationAccess';
 import { validateBody } from '../middleware/validate';
 import { uploadMiddleware } from '../middleware/upload';
-import { createMessageSchema, reactionSchema } from '../validators/message.validator';
+import { createMessageSchema, reactionSchema, deleteMessageSchema } from '../validators/message.validator';
 import * as conversationController from '../controllers/conversation.controller';
 import * as messageController from '../controllers/message.controller';
 
@@ -36,6 +36,11 @@ router.post(
 router.post('/messages/:id/pin', messageController.togglePin);
 router.post('/messages/:id/star', messageController.toggleStar);
 router.post('/messages/:id/retry', messageController.retryMessage);
+router.post(
+  '/messages/:id/delete',
+  validateBody(deleteMessageSchema),
+  messageController.deleteMessage
+);
 router.get('/messages/:id/media', messageController.downloadMedia);
 
 export default router;

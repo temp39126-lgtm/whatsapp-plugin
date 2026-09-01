@@ -13,6 +13,8 @@ import {
   useTogglePin,
   useToggleStar,
   useRetryMessage,
+  useDeleteMessage,
+  usePinnedMessages,
 } from '@/hooks/useMessages';
 import { useMarkConversationRead } from '@/hooks/useConversations';
 import type { ConversationDTO, MessageDTO } from '@/types';
@@ -36,7 +38,10 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
   const togglePin = useTogglePin();
   const toggleStar = useToggleStar();
   const retryMessage = useRetryMessage();
+  const deleteMessage = useDeleteMessage();
   const markRead = useMarkConversationRead();
+
+  const { data: pinnedMessages = [] } = usePinnedMessages(conversation?._id ?? null);
 
   const messages = messagesData?.data ?? [];
   const contact = conversation?.contact;
@@ -176,6 +181,21 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {pinnedMessages.length > 0 && (
+          <div className="rounded-lg border border-whatsapp/30 bg-whatsapp-light/40 px-3 py-2">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-whatsapp-dark">
+              Pinned messages
+            </p>
+            <div className="space-y-1">
+              {pinnedMessages.slice(0, 3).map((pinned) => (
+                <p key={pinned._id} className="truncate text-sm text-muted-foreground">
+                  {(pinned.content as { text?: string })?.text ?? `[${pinned.type}]`}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
@@ -188,6 +208,13 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
               onReply={setReplyTo}
               onPin={(id) => togglePin.mutate(id)}
               onStar={(id) => toggleStar.mutate(id)}
+              onDelete={(id) => deleteMessage.mutate({ messageId: id, scope: 'me' })}
+              onDeleteForEveryone={(id) => {
+                const confirmed = window.confirm(
+                  'Delete this message for everyone in this conversation?'
+                );
+                if (confirmed) deleteMessage.mutate({ messageId: id, scope: 'everyone' });
+              }}
               onRetry={(id) => retryMessage.mutate(id)}
             />
           ))

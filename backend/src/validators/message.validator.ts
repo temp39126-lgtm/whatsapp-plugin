@@ -13,6 +13,10 @@ export const reactionSchema = z.object({
   emoji: z.string().min(1).max(10),
 });
 
+export const deleteMessageSchema = z.object({
+  scope: z.enum(['me', 'everyone']),
+});
+
 export const whatsAppAccountSchema = z.object({
   phoneNumberId: z.string().min(1),
   businessAccountId: z.string().min(1),

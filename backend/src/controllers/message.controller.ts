@@ -85,6 +85,16 @@ export async function retryMessage(req: AuthenticatedRequest, res: Response, nex
   }
 }
 
+export async function deleteMessage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const message = await messageService.getMessageById(req.user!, getParam(req.params.id));
+    const result = await messageService.deleteMessage(req.user!, message, req.body.scope);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function downloadMedia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const media = await messageService.downloadMessageMedia(req.user!, getParam(req.params.id));

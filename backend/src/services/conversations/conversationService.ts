@@ -19,6 +19,7 @@ interface ConversationFilters {
   tag?: string;
   search?: string;
   mine?: boolean;
+  groups?: boolean;
 }
 
 type PopulatedGroupMember = {
@@ -108,6 +109,7 @@ export async function listConversations(
   if (filters.mine) query.assignedUserId = user.userId;
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
   if (filters.unread) query.unreadCount = { $gt: 0 };
+  if (filters.groups) query.groupId = { $exists: true, $ne: null };
 
   if (filters.search) {
     const matchingContacts = await Contact.find({
