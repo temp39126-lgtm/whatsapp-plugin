@@ -4,6 +4,7 @@ import {
   TenantSettings,
 } from '../../models/TenantSettings';
 import { encrypt } from '../../utils/encryption';
+import { resolveSmtpFromEmail, resolveSmtpSecure } from '../../utils/smtp';
 import type {
   TenantNotificationSettingsDTO,
   UpdateTenantNotificationSettingsInput,
@@ -70,6 +71,26 @@ export async function updateTenantNotificationSettings(
 
   if (input.smtpPassword && input.smtpPassword.trim()) {
     nextNotifications.encryptedSmtpPassword = encrypt(input.smtpPassword.trim());
+  }
+
+  if (input.smtpHost !== undefined || input.smtpUser !== undefined) {
+    nextNotifications.fromEmail = resolveSmtpFromEmail(
+      nextNotifications.smtpUser,
+      nextNotifications.smtpHost
+    );
+  }
+
+  if (input.smtpPort !== undefined) {
+    nextNotifications.smtpSecure = resolveSmtpSecure(nextNotifications.smtpPort);
+  }
+
+  if (input.enabled === undefined && input.smtpHost && input.smtpUser) {
+    const hasPassword = Boolean(
+      input.smtpPassword?.trim() || nextNotifications.encryptedSmtpPassword
+    );
+    if (hasPassword) {
+      nextNotifications.enabled = true;
+    }
   }
 
   const settings = await TenantSettings.findOneAndUpdate(

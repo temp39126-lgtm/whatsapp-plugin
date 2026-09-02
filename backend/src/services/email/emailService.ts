@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { decrypt } from '../../utils/encryption';
+import { resolveSmtpFromEmail } from '../../utils/smtp';
 import { logger } from '../../config/logger';
 import { User } from '../../models/User';
 import { DEFAULT_TENANT_NOTIFICATIONS, ITenantSettings } from '../../models/TenantSettings';
@@ -15,10 +16,20 @@ interface SendEmailOptions {
 function getNotificationConfig(settings: ITenantSettings | null) {
   const notifications = settings?.notifications ?? DEFAULT_TENANT_NOTIFICATIONS;
   if (!notifications.enabled) return null;
-  if (!notifications.smtpHost || !notifications.fromEmail || !notifications.encryptedSmtpPassword) {
+  if (!notifications.smtpHost || !notifications.smtpUser || !notifications.encryptedSmtpPassword) {
     return null;
   }
   return notifications;
+}
+
+function getFromAddress(notifications: ITenantSettings['notifications']) {
+  const fromEmail =
+    notifications.fromEmail.trim() ||
+    resolveSmtpFromEmail(notifications.smtpUser, notifications.smtpHost);
+
+  return notifications.fromName
+    ? `"${notifications.fromName}" <${fromEmail}>`
+    : fromEmail;
 }
 
 async function sendTenantEmail(
@@ -40,9 +51,7 @@ async function sendTenantEmail(
     });
 
     await transporter.sendMail({
-      from: notifications.fromName
-        ? `"${notifications.fromName}" <${notifications.fromEmail}>`
-        : notifications.fromEmail,
+      from: getFromAddress(notifications),
       to: options.to,
       subject: options.subject,
       text: options.text,

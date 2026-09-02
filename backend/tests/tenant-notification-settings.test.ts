@@ -39,19 +39,16 @@ describe('Tenant notification settings', () => {
 
   it('updates tenant notification settings', async () => {
     const updated = await updateTenantNotificationSettings('tenant-001', {
-      enabled: true,
       smtpHost: 'smtp.example.com',
       smtpPort: 587,
-      smtpUser: 'mailer',
+      smtpUser: 'mailer@example.com',
       smtpPassword: 'secret',
-      fromEmail: 'noreply@example.com',
-      emailOnAssignment: true,
-      adminAlertEmail: 'admin@example.com',
     });
 
     expect(updated.enabled).toBe(true);
     expect(updated.smtpHost).toBe('smtp.example.com');
     expect(updated.smtpPasswordConfigured).toBe(true);
-    expect(updated.adminAlertEmail).toBe('admin@example.com');
+    expect(updated.fromEmail).toBe('mailer@example.com');
+    expect(updated.smtpSecure).toBe(false);
   });
 });

@@ -18,7 +18,7 @@ export function AdminSettingsPage() {
         <p className="text-sm font-medium text-whatsapp-dark">Admin Configuration</p>
         <h1 className="mt-1 text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tenant notification and SMTP settings. Meta Cloud API is under{' '}
+          SMTP email delivery for assignment and notification emails. Meta Cloud API is under{' '}
           <Link href="/whatsapp/settings" className="text-whatsapp-dark hover:underline">
             Settings → Meta Cloud API
           </Link>
@@ -28,7 +28,6 @@ export function AdminSettingsPage() {
 
       <div className="space-y-8 p-6">
         <section id="notifications">
-          <h2 className="mb-4 text-lg font-semibold">Notifications</h2>
           <AdminEmailSettingsPanel />
         </section>
       </div>

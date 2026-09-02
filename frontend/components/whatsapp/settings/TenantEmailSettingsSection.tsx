@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,27 +12,23 @@ import type { TenantNotificationSettings } from '@/types';
 type EmailFormState = {
   smtpHost: string;
   smtpPort: number;
-  smtpSecure: boolean;
   smtpUser: string;
   smtpPassword: string;
-  fromEmail: string;
-  fromName: string;
-  adminAlertEmail: string;
 };
 
 const defaultForm: EmailFormState = {
   smtpHost: '',
   smtpPort: 587,
-  smtpSecure: false,
   smtpUser: '',
   smtpPassword: '',
-  fromEmail: '',
-  fromName: 'WhatsApp CRM',
-  adminAlertEmail: '',
 };
 
 function smtpReady(form: EmailFormState, passwordConfigured?: boolean) {
-  return Boolean(form.smtpHost.trim() && form.fromEmail.trim() && (form.smtpPassword.trim() || passwordConfigured));
+  return Boolean(
+    form.smtpHost.trim() &&
+      form.smtpUser.trim() &&
+      (form.smtpPassword.trim() || passwordConfigured)
+  );
 }
 
 function Field({
@@ -45,8 +41,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium">
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
@@ -72,17 +68,12 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
 
   useEffect(() => {
     if (!settings) return;
-    setForm((current) => ({
-      ...current,
+    setForm({
       smtpHost: settings.smtpHost,
       smtpPort: settings.smtpPort,
-      smtpSecure: settings.smtpSecure,
       smtpUser: settings.smtpUser,
       smtpPassword: '',
-      fromEmail: settings.fromEmail,
-      fromName: settings.fromName,
-      adminAlertEmail: settings.adminAlertEmail,
-    }));
+    });
   }, [settings]);
 
   const saveSettings = useMutation({
@@ -91,12 +82,8 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
         enabled: smtpReady(form, settings?.smtpPasswordConfigured),
         smtpHost: form.smtpHost.trim(),
         smtpPort: form.smtpPort,
-        smtpSecure: form.smtpSecure,
         smtpUser: form.smtpUser.trim(),
         ...(form.smtpPassword.trim() ? { smtpPassword: form.smtpPassword.trim() } : {}),
-        fromEmail: form.fromEmail.trim(),
-        fromName: form.fromName.trim(),
-        adminAlertEmail: form.adminAlertEmail.trim(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-notification-settings'] });
@@ -125,39 +112,31 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
     );
   }
 
-  const wrapperClass = compact ? 'space-y-4 px-4 pb-4' : 'space-y-6';
+  const cardClass = compact
+    ? 'space-y-5 px-4 pb-4 pt-4'
+    : 'rounded-xl border bg-card p-6 shadow-sm';
 
   return (
-    <div className={wrapperClass}>
-      <div className={compact ? 'pt-4' : 'rounded-xl border bg-card p-5 shadow-sm'}>
-        {!compact && (
-          <div className="mb-4 flex items-center gap-2">
-            <Mail className="h-5 w-5 text-whatsapp" />
-            <h2 className="text-lg font-semibold">SMTP server</h2>
-          </div>
-        )}
-        {compact && (
-          <div className="mb-4">
-            <h2 className="font-semibold">SMTP server</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Tenant email server for assignment and alert emails.
-            </p>
-          </div>
-        )}
-        {!compact && (
-          <p className="mb-4 text-sm text-muted-foreground">
-            Configure the SMTP server used to send assignment and admin alert emails.
+    <div className={compact ? '' : 'space-y-6'}>
+      <div className={cardClass}>
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-foreground">SMTP (Nodemailer)</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            All transactional and notification emails are sent through your SMTP server (SendGrid,
+            Gmail, etc.).
           </p>
-        )}
-        <div className={`grid gap-4 ${compact ? '' : 'md:grid-cols-2'}`}>
-          <Field label="SMTP host" required>
+        </div>
+
+        <div className="space-y-5">
+          <Field label="SMTP Host" required>
             <Input
               placeholder="smtp.example.com"
               value={form.smtpHost}
               onChange={(event) => setForm({ ...form, smtpHost: event.target.value })}
             />
           </Field>
-          <Field label="SMTP port" required>
+
+          <Field label="SMTP Port" required>
             <Input
               type="number"
               placeholder="587"
@@ -167,82 +146,59 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
               }
             />
           </Field>
-          <Field label="SMTP username">
+
+          <Field label="SMTP Username" required>
             <Input
-              placeholder="Username"
+              placeholder="your-email@company.com"
               value={form.smtpUser}
               onChange={(event) => setForm({ ...form, smtpUser: event.target.value })}
             />
           </Field>
-          <Field label="SMTP password" required={!settings?.smtpPasswordConfigured}>
+
+          <Field label="SMTP Password" required={!settings?.smtpPasswordConfigured}>
             <Input
               type="password"
               placeholder={
                 settings?.smtpPasswordConfigured
                   ? 'Leave blank to keep current password'
-                  : 'Password'
+                  : 'Enter SMTP password'
               }
               value={form.smtpPassword}
               onChange={(event) => setForm({ ...form, smtpPassword: event.target.value })}
             />
           </Field>
-          <Field label="From email" required>
-            <Input
-              type="email"
-              placeholder="noreply@yourcompany.com"
-              value={form.fromEmail}
-              onChange={(event) => setForm({ ...form, fromEmail: event.target.value })}
-            />
-          </Field>
-          <Field label="From name">
-            <Input
-              placeholder="WhatsApp CRM"
-              value={form.fromName}
-              onChange={(event) => setForm({ ...form, fromName: event.target.value })}
-            />
-          </Field>
-          <Field label="Admin alert email">
-            <Input
-              type="email"
-              placeholder="admin@yourcompany.com"
-              value={form.adminAlertEmail}
-              onChange={(event) => setForm({ ...form, adminAlertEmail: event.target.value })}
-            />
-          </Field>
         </div>
-        <label className="mt-4 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.smtpSecure}
-            onChange={(event) => setForm({ ...form, smtpSecure: event.target.checked })}
-          />
-          Use secure SMTP (TLS on port 465)
-        </label>
-        <div className="mt-4 flex flex-wrap gap-3">
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button
             variant="whatsapp"
-            disabled={saveSettings.isPending}
+            disabled={saveSettings.isPending || !smtpReady(form, settings?.smtpPasswordConfigured)}
             onClick={() => {
               setMessage('');
               saveSettings.mutate();
             }}
           >
-            {saveSettings.isPending ? 'Saving...' : 'Save SMTP settings'}
+            <Save className="mr-2 h-4 w-4" />
+            {saveSettings.isPending ? 'Saving...' : 'Save Settings'}
           </Button>
-          <Button
-            variant="outline"
-            disabled={sendTestEmail.isPending || !smtpReady(form, settings?.smtpPasswordConfigured)}
-            onClick={() => {
-              setMessage('');
-              sendTestEmail.mutate();
-            }}
-          >
-            {sendTestEmail.isPending ? 'Sending...' : 'Send test email'}
-          </Button>
+
+          {!compact && (
+            <Button
+              variant="outline"
+              disabled={sendTestEmail.isPending || !smtpReady(form, settings?.smtpPasswordConfigured)}
+              onClick={() => {
+                setMessage('');
+                sendTestEmail.mutate();
+              }}
+            >
+              {sendTestEmail.isPending ? 'Sending...' : 'Send test email'}
+            </Button>
+          )}
         </div>
+
         {message && (
           <p
-            className={`mt-3 text-sm ${
+            className={`mt-4 text-sm ${
               saveSettings.isError || sendTestEmail.isError ? 'text-red-600' : 'text-whatsapp-dark'
             }`}
           >
