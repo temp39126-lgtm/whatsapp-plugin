@@ -48,11 +48,11 @@ function InboxPageContent() {
   const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-w-0">
+    <div className="flex h-full min-w-0 overflow-hidden">
       <div
         className={cn(
-          'flex min-w-0 flex-col border-r bg-background md:w-80 md:shrink-0 lg:w-96',
-          selectedId ? 'hidden md:flex' : 'flex w-full'
+          'flex min-w-0 flex-col overflow-hidden border-r bg-background lg:w-80 lg:shrink-0 xl:w-96',
+          selectedId ? 'hidden lg:flex' : 'flex flex-1 lg:flex-none'
         )}
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
@@ -70,8 +70,8 @@ function InboxPageContent() {
 
       <div
         className={cn(
-          'flex min-w-0 flex-1 flex-col',
-          selectedId ? 'flex w-full' : 'hidden md:flex'
+          'flex min-w-0 flex-1 flex-col overflow-hidden',
+          selectedId ? 'flex' : 'hidden lg:flex'
         )}
       >
         {outboundCall.activeCall && selected && (

@@ -90,7 +90,7 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       <button
         type="button"
         onClick={handleDownload}
-        className="flex w-full min-w-[220px] items-center gap-3 rounded-lg border border-black/10 bg-white/70 px-3 py-2 text-left transition-colors hover:bg-white"
+        className="flex w-full min-w-0 max-w-full items-center gap-3 rounded-lg border border-black/10 bg-white/70 px-3 py-2 text-left transition-colors hover:bg-white"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp-light">
           <MediaIcon type={message.type} />

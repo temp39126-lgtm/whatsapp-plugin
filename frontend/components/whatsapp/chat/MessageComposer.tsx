@@ -59,7 +59,7 @@ export function MessageComposer({
   };
 
   return (
-    <div className="border-t bg-background p-3">
+    <div className="border-t bg-background p-3 shrink-0">
       {replyTo && (
         <div className="mb-2 flex items-center justify-between rounded bg-muted px-3 py-2 text-sm">
           <span className="truncate text-muted-foreground">

@@ -11,7 +11,7 @@ export default function WhatsAppLayout({ children }: { children: React.ReactNode
     <AuthGate>
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
-        <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
       </div>
     </AuthGate>
   );
