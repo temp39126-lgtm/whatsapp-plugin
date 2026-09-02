@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { WhatsAppConnectionStatus } from '@/types';
+import { cn } from '@/lib/utils';
 import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFilters';
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
@@ -47,8 +48,13 @@ function InboxPageContent() {
   const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full">
-      <div className="flex w-80 shrink-0 flex-col border-r bg-background lg:w-96">
+    <div className="flex h-full min-w-0">
+      <div
+        className={cn(
+          'flex min-w-0 flex-col border-r bg-background md:w-80 md:shrink-0 lg:w-96',
+          selectedId ? 'hidden md:flex' : 'flex w-full'
+        )}
+      >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
           <WhatsAppOverflowMenu />
@@ -62,7 +68,12 @@ function InboxPageContent() {
         />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 flex-col',
+          selectedId ? 'flex w-full' : 'hidden md:flex'
+        )}
+      >
         {outboundCall.activeCall && selected && (
           <ActiveCallBar
             call={outboundCall.activeCall}
@@ -73,6 +84,7 @@ function InboxPageContent() {
 
         <ChatWindow
           conversation={selected}
+          onBack={selectedId ? () => setSelectedId(null) : undefined}
           onStartCall={
             connection?.callingEnabled && selected && !selected.group
               ? () => {

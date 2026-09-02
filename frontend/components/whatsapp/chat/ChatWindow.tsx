@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone } from 'lucide-react';
+import { ArrowLeft, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
@@ -24,9 +24,10 @@ interface ChatWindowProps {
   conversation: ConversationDTO | null;
   onStartCall?: () => void;
   callDisabled?: boolean;
+  onBack?: () => void;
 }
 
-export function ChatWindow({ conversation, onStartCall, callDisabled = false }: ChatWindowProps) {
+export function ChatWindow({ conversation, onStartCall, callDisabled = false, onBack }: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
   const [showMembers, setShowMembers] = useState(false);
@@ -134,15 +135,20 @@ export function ChatWindow({ conversation, onStartCall, callDisabled = false }: 
   return (
     <div className="flex flex-1 flex-col bg-chat-bg">
       <header className="relative flex items-center justify-between border-b bg-background px-4 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back to conversations">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <ProfileAvatar
             name={headerName}
             imageUrl={group?.profileImage ?? contact?.profileImage}
             size="sm"
             isGroup={isGroup}
           />
-          <div ref={membersRef}>
-            <h2 className="font-medium">{headerName}</h2>
+          <div className="min-w-0" ref={membersRef}>
+            <h2 className="truncate font-medium">{headerName}</h2>
             {isGroup ? (
               <button
                 type="button"
