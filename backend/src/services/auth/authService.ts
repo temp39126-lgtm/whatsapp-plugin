@@ -80,7 +80,7 @@ async function startEmailOtpChallenge(params: {
 
   return {
     ...buildOtpChallengeResponse(challengeId, params.email),
-    ...(!emailSent ? { devOtpCode: code } : {}),
+    ...(!emailSent ? { devOtpCode: code, emailDeliveryFailed: true } : { emailSent: true }),
   };
 }
 
@@ -206,7 +206,7 @@ export async function completeLoginAfterOtp(challenge: {
 }
 
 const PASSWORD_RESET_MESSAGE =
-  'If an account exists for that email, a verification code has been sent.';
+  'If an account exists for that email, a password reset link has been sent.';
 
 function hashPasswordResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -219,10 +219,7 @@ function buildPasswordResetUrl(token: string): string {
 
 export async function requestPasswordReset(
   email: string
-): Promise<
-  | { message: string; resetUrl?: string }
-  | (ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string })
-> {
+): Promise<{ message: string; resetUrl?: string; emailSent?: boolean }> {
   const normalizedEmail = email.toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail, isActive: true }).select(
     '+passwordResetToken +passwordResetExpires'
@@ -230,16 +227,6 @@ export async function requestPasswordReset(
 
   if (!user) {
     return { message: PASSWORD_RESET_MESSAGE };
-  }
-
-  if (await isTenantEmailConfigured(user.tenantId)) {
-    return startEmailOtpChallenge({
-      email: user.email,
-      tenantId: user.tenantId,
-      purpose: 'password_reset',
-      payload: { userId: user._id.toString() },
-      name: user.name,
-    });
   }
 
   const rawToken = crypto.randomBytes(32).toString('hex');
@@ -258,12 +245,18 @@ export async function requestPasswordReset(
   });
 
   if (!emailSent) {
-    logger.info({ email: user.email, resetUrl }, 'Password reset link (SMTP not configured)');
+    logger.info({ email: user.email, resetUrl }, 'Password reset link (email delivery failed)');
+    return {
+      message:
+        'We could not send the reset email. Check SMTP settings or use the link below to continue.',
+      resetUrl,
+      emailSent: false,
+    };
   }
 
   return {
-    message: 'If an account exists for that email, a password reset link has been sent.',
-    ...(!emailSent ? { resetUrl } : {}),
+    message: PASSWORD_RESET_MESSAGE,
+    emailSent: true,
   };
 }
 

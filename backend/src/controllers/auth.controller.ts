@@ -85,7 +85,7 @@ export async function resendOtp(req: AuthenticatedRequest, res: Response, next: 
     res.json({
       challengeId: nextChallengeId,
       message: 'A new verification code has been sent to your email.',
-      ...(!emailSent ? { devOtpCode: code } : {}),
+      ...(!emailSent ? { devOtpCode: code, emailDeliveryFailed: true } : { emailSent: true }),
     });
   } catch (error) {
     next(error);

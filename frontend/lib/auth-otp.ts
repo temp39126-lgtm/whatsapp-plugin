@@ -6,6 +6,8 @@ export interface AuthOtpChallengeResponse {
   maskedEmail: string;
   message: string;
   devOtpCode?: string;
+  emailDeliveryFailed?: boolean;
+  emailSent?: boolean;
 }
 
 export interface AuthSuccessResponse {

@@ -44,6 +44,7 @@ async function sendTenantEmail(
       host: notifications.smtpHost,
       port: notifications.smtpPort,
       secure: notifications.smtpSecure,
+      requireTLS: !notifications.smtpSecure && notifications.smtpPort === 587,
       auth: {
         user: notifications.smtpUser,
         pass: decrypt(notifications.encryptedSmtpPassword!),
@@ -60,7 +61,15 @@ async function sendTenantEmail(
 
     return true;
   } catch (error) {
-    logger.error({ err: error }, 'Failed to send tenant email');
+    logger.error(
+      {
+        err: error,
+        smtpHost: notifications.smtpHost,
+        smtpPort: notifications.smtpPort,
+        smtpUser: notifications.smtpUser,
+      },
+      'Failed to send tenant email'
+    );
     return false;
   }
 }

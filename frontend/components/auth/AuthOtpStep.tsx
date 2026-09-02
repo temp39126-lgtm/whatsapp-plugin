@@ -119,8 +119,9 @@ export function AuthOtpStep({
       </div>
 
       {devOtpCode && (
-        <p className="rounded-lg border border-dashed border-whatsapp/40 bg-whatsapp-light/20 px-3 py-2 text-sm text-whatsapp-dark">
-          SMTP is not configured. Dev code: <strong>{devOtpCode}</strong>
+        <p className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Email delivery failed. SMTP is configured but the server could not send the message.
+          Use this code to continue: <strong>{devOtpCode}</strong>
         </p>
       )}
 

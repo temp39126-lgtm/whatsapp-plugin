@@ -48,7 +48,7 @@ describe('Password reset service', () => {
 
   it('creates reset token and returns dev reset URL', async () => {
     const result = await requestPasswordReset('user@example.com');
-    expect(result.message).toContain('If an account exists');
+    expect(result.message).toContain('could not send the reset email');
     expect(result.resetUrl).toMatch(/reset-password\?token=/);
 
     const user = await User.findOne({ email: 'user@example.com' }).select(
@@ -66,8 +66,8 @@ describe('Password reset service', () => {
     const token = new URL(result.resetUrl).searchParams.get('token');
     expect(token).toBeTruthy();
 
-    const result = await resetPasswordWithToken(token!, 'newpassword123');
-    expect(result.message).toContain('Password updated');
+    const resetResult = await resetPasswordWithToken(token!, 'newpassword123');
+    expect(resetResult.message).toContain('Password updated');
 
     await expect(loginWithPassword('user@example.com', 'user123')).rejects.toBeInstanceOf(AppError);
     const loginResult = await loginWithPassword('user@example.com', 'newpassword123');

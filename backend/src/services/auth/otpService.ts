@@ -88,7 +88,7 @@ export async function sendOtpChallengeEmail(params: {
   if (!sent) {
     logger.info(
       { email: params.email, purpose: params.purpose, code: params.code },
-      'OTP code (SMTP not configured)'
+      'OTP code (email delivery failed)'
     );
   }
 
