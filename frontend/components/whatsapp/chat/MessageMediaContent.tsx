@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Download, Film, Music } from 'lucide-react';
+import { FileText, Download, Check, Film, Music } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth';
 import { getWhatsAppMediaUrl, resolveMediaUrl } from '@/lib/api';
 import type { MessageDTO } from '@/types';
@@ -21,6 +21,11 @@ function MediaIcon({ type }: { type: string }) {
 
 export function MessageMediaContent({ message }: { message: MessageDTO }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem(`chat-downloaded:${message._id}`) === '1'
+  );
   const content = message.content as { caption?: string; fileName?: string; text?: string };
   const fileName = message.media?.fileName ?? content.fileName ?? 'Attachment';
   const caption = content.caption?.trim();
@@ -74,15 +79,29 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
   }
 
   async function handleDownload() {
-    const response = await fetch(resolveMediaUrl(mediaPath), { headers: getAuthHeaders() });
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    try {
+      if (blobUrl) {
+        const anchor = document.createElement('a');
+        anchor.href = blobUrl;
+        anchor.download = fileName;
+        anchor.click();
+      } else {
+        const response = await fetch(resolveMediaUrl(mediaPath), { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+
+      setDownloaded(true);
+      sessionStorage.setItem(`chat-downloaded:${message._id}`, '1');
+    } catch {
+      // Keep download icon if the save failed.
+    }
   }
 
   return (
@@ -90,6 +109,7 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       <button
         type="button"
         onClick={handleDownload}
+        aria-label={downloaded ? `${fileName} downloaded` : `Download ${fileName}`}
         className="flex w-full min-w-0 max-w-full items-center gap-3 rounded-lg border border-black/10 bg-white/70 px-3 py-2 text-left transition-colors hover:bg-white"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp-light">
@@ -98,11 +118,18 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{fileName}</p>
           <p className="text-xs text-muted-foreground">
-            {message.media?.mimeType?.split('/').pop()?.toUpperCase() ?? message.type}
-            {message.media?.fileSize ? ` · ${formatFileSize(message.media.fileSize)}` : ''}
+            {downloaded
+              ? 'Downloaded'
+              : `${message.media?.mimeType?.split('/').pop()?.toUpperCase() ?? message.type}${
+                  message.media?.fileSize ? ` · ${formatFileSize(message.media.fileSize)}` : ''
+                }`}
           </p>
         </div>
-        <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+        {downloaded ? (
+          <Check className="h-4 w-4 shrink-0 text-whatsapp" aria-hidden="true" />
+        ) : (
+          <Download className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        )}
       </button>
       {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
     </div>
