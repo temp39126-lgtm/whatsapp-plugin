@@ -41,6 +41,12 @@ async function seed() {
   const tenantId = env.MOCK_TENANT_ID;
   await seedDefaultUsers(tenantId);
 
+  if (env.NODE_ENV === 'production') {
+    logger.info('Production seed complete (admin user only)');
+    await disconnectDatabase();
+    return;
+  }
+
   const { User } = await import('../models/User');
   const supportUser = await User.findOne({ email: 'user@example.com', tenantId });
   const adminUser = await User.findOne({ email: 'admin@example.com', tenantId });

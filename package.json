@@ -18,7 +18,9 @@
     "mobile:install": "npm install --prefix mobile",
     "mobile:sync": "npm run cap:sync --prefix mobile",
     "mobile:debug": "bash mobile/scripts/build-debug.sh",
-    "mobile:release": "bash mobile/scripts/build-release.sh"
+    "mobile:release": "bash mobile/scripts/build-release.sh",
+    "deploy:secrets": "bash scripts/generate-deploy-secrets.sh",
+    "deploy:production": "bash scripts/deploy-production.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -45,6 +45,8 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),
+  ADMIN_EMAIL: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

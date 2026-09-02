@@ -179,20 +179,31 @@ export async function resetPasswordWithToken(
 
 export async function seedDefaultUsers(tenantId: string): Promise<void> {
   const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
-  const defaults = [
-    {
-      email: 'admin@example.com',
-      password: 'admin123',
-      name: 'Admin User',
-      role: 'ADMIN' as const,
-    },
-    {
-      email: 'user@example.com',
-      password: 'user123',
-      name: 'Support User',
-      role: 'USER' as const,
-    },
-  ];
+
+  const defaults =
+    env.NODE_ENV === 'production' && env.ADMIN_EMAIL && env.ADMIN_PASSWORD
+      ? [
+          {
+            email: env.ADMIN_EMAIL,
+            password: env.ADMIN_PASSWORD,
+            name: 'Admin',
+            role: 'ADMIN' as const,
+          },
+        ]
+      : [
+          {
+            email: 'admin@example.com',
+            password: 'admin123',
+            name: 'Admin User',
+            role: 'ADMIN' as const,
+          },
+          {
+            email: 'user@example.com',
+            password: 'user123',
+            name: 'Support User',
+            role: 'USER' as const,
+          },
+        ];
 
   for (const entry of defaults) {
     const existing = await User.findOne({ email: entry.email, tenantId: targetTenant });

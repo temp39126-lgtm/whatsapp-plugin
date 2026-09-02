@@ -68,6 +68,8 @@ bash scripts/generate-keystore.sh
 
 Public HTTPS URL where the Next.js app is hosted, **no trailing slash**.
 
+For production deployment, see **[deploy/HOSTING.md](../deploy/HOSTING.md)** — buy a domain, point DNS, run `npm run deploy:production`.
+
 Example:
 
 ```env
