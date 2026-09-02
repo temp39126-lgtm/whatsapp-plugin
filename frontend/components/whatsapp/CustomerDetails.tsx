@@ -198,7 +198,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
         ) : (
           <>
             <p className="text-sm text-muted-foreground">{contact?.phone}</p>
-            <p className="text-xs text-muted-foreground">ID: {contact?.whatsappId}</p>
+            <p className="truncate text-xs text-muted-foreground">ID: {contact?.whatsappId}</p>
           </>
         )}
 
@@ -321,7 +321,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
               value={newTagName}
               onChange={(event) => setNewTagName(event.target.value)}
               placeholder="New tag name..."
-              className="h-8 text-sm"
+              className="h-8 min-w-0 flex-1 text-sm"
               maxLength={50}
             />
             <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
@@ -427,14 +427,14 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                 input.value = '';
               }
             }}
-            className="mb-3 flex gap-2"
+            className="mb-3 flex min-w-0 gap-2"
           >
             <input
               name="note"
               placeholder="Add internal note..."
-              className="flex-1 rounded border px-2 py-1 text-sm"
+              className="min-w-0 flex-1 rounded border px-2 py-1 text-sm"
             />
-            <Button type="submit" size="sm" variant="outline" disabled={addNote.isPending}>
+            <Button type="submit" size="sm" variant="outline" disabled={addNote.isPending} className="shrink-0">
               Add
             </Button>
           </form>

@@ -110,8 +110,8 @@ export function MessageBubble({
             onClick={() => setMenuOpen((current) => !current)}
             className={cn(
               'absolute top-1 rounded-full p-1 text-muted-foreground hover:bg-muted/80 hover:text-foreground',
-              isOutgoing ? '-left-7' : '-right-7',
-              menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              isOutgoing ? 'left-1 lg:-left-7' : 'right-1 lg:-right-7',
+              menuOpen ? 'opacity-100' : 'opacity-100 lg:opacity-0 lg:group-hover:opacity-100'
             )}
           >
             <ChevronDown className="h-4 w-4" />

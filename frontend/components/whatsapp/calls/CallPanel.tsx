@@ -29,7 +29,7 @@ export function CallPanel() {
   }
 
   return (
-    <div className="p-6">
+    <div className="min-w-0 p-4 sm:p-6">
       <h1 className="mb-6 text-2xl font-semibold">Call History</h1>
 
       {connection?.callingEnabled ? (
@@ -39,8 +39,9 @@ export function CallPanel() {
         </p>
       ) : (
         <p className="mb-4 text-sm text-muted-foreground">
-          Voice calling is disabled on this server. Set <code>CALLING_ENABLED=true</code> in the
-          backend environment to enable it.
+          Voice calling is disabled on this server. Set{' '}
+          <code className="break-all text-xs">CALLING_ENABLED=true</code> in the backend environment
+          to enable it.
         </p>
       )}
 
@@ -57,24 +58,24 @@ export function CallPanel() {
           {calls.map((call) => (
             <div
               key={call._id}
-              className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50"
+              className="flex items-center justify-between gap-3 rounded-lg border p-4 hover:bg-muted/50"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 {call.direction === 'INCOMING' ? (
-                  <PhoneIncoming className="h-5 w-5 text-blue-500" />
+                  <PhoneIncoming className="h-5 w-5 shrink-0 text-blue-500" />
                 ) : (
-                  <PhoneOutgoing className="h-5 w-5 text-green-500" />
+                  <PhoneOutgoing className="h-5 w-5 shrink-0 text-green-500" />
                 )}
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">{call.direction} Call</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="truncate text-sm text-muted-foreground">
                     {call.startedAt
                       ? format(new Date(call.startedAt), 'MMM d, yyyy HH:mm')
                       : 'Unknown time'}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="shrink-0 text-right">
                 <span
                   className={cn(
                     'rounded-full px-2 py-0.5 text-xs font-medium',

@@ -38,7 +38,7 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="overflow-y-auto p-6">
+    <div className="overflow-y-auto p-4 sm:p-6">
       <div className="mb-6">
         <Link
           href="/whatsapp/admin"
@@ -66,7 +66,7 @@ export default function TeamPage() {
           New agents can also sign up at <code className="text-xs">/auth/signup</code>. Use this
           form when you want to create their account directly.
         </p>
-        <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <form onSubmit={handleCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Input
             placeholder="Full name"
             value={name}
@@ -89,7 +89,12 @@ export default function TeamPage() {
             required
             minLength={6}
           />
-          <Button type="submit" variant="whatsapp" disabled={createUser.isPending}>
+          <Button
+            type="submit"
+            variant="whatsapp"
+            disabled={createUser.isPending}
+            className="w-full sm:w-auto xl:col-span-1"
+          >
             {createUser.isPending ? 'Creating...' : 'Create user'}
           </Button>
         </form>

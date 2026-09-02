@@ -62,7 +62,7 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
     return (
       <div className="space-y-2">
         {blobUrl ? (
-          <img src={blobUrl} alt={fileName} className="max-h-48 rounded object-cover" />
+          <img src={blobUrl} alt={fileName} className="max-h-48 max-w-full rounded object-cover" />
         ) : (
           <div className="flex h-24 items-center justify-center rounded bg-black/5 text-xs text-muted-foreground">
             Loading image...

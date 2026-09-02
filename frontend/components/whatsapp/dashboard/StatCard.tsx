@@ -29,12 +29,12 @@ export function StatCard({
   href,
 }: StatCardProps) {
   const content = (
-    <div className={cn('rounded-xl border p-5 shadow-sm', variants[variant], className)}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+    <div className={cn('min-w-0 rounded-xl border p-5 shadow-sm', variants[variant], className)}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
           <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
-          {trend && <p className="mt-1 text-xs text-muted-foreground">{trend}</p>}
+          {trend && <p className="mt-1 truncate text-xs text-muted-foreground">{trend}</p>}
         </div>
         {Icon && (
           <div className="rounded-lg bg-whatsapp/10 p-2.5">

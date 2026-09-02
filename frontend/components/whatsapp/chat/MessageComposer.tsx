@@ -61,8 +61,8 @@ export function MessageComposer({
   return (
     <div className="border-t bg-background p-3 shrink-0">
       {replyTo && (
-        <div className="mb-2 flex items-center justify-between rounded bg-muted px-3 py-2 text-sm">
-          <span className="truncate text-muted-foreground">
+        <div className="mb-2 flex items-center justify-between gap-2 rounded bg-muted px-3 py-2 text-sm">
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">
             Replying to:{' '}
             {replyTo.type === 'TEXT'
               ? (replyTo.content as { text?: string })?.text
@@ -116,7 +116,7 @@ export function MessageComposer({
           <Paperclip className="h-5 w-5" />
         </Button>
 
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <Input
             ref={inputRef}
             value={text}
@@ -134,13 +134,16 @@ export function MessageComposer({
             <Smile className="h-5 w-5" />
           </button>
           {showEmoji && (
-            <div className="absolute bottom-12 right-0 z-10">
-              <EmojiPicker
-                onEmojiClick={(emoji) => {
-                  setText((prev) => prev + emoji.emoji);
-                  inputRef.current?.focus();
-                }}
-              />
+            <div className="absolute bottom-12 left-0 right-0 z-10 flex justify-center sm:left-auto sm:right-0 sm:justify-end">
+              <div className="max-w-[min(100vw-1.5rem,350px)] overflow-hidden rounded-lg shadow-lg [&_.EmojiPickerReact]:!w-full">
+                <EmojiPicker
+                  width={Math.min(350, typeof window !== 'undefined' ? window.innerWidth - 24 : 350)}
+                  onEmojiClick={(emoji) => {
+                    setText((prev) => prev + emoji.emoji);
+                    inputRef.current?.focus();
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>

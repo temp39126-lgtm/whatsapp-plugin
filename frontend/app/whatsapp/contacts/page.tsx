@@ -55,8 +55,8 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b px-6 py-4">
+    <div className="flex h-full min-w-0 flex-col">
+      <div className="border-b px-4 py-4 sm:px-6">
         <h1 className="text-2xl font-semibold">Contacts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {isAdmin
@@ -105,7 +105,7 @@ export default function ContactsPage() {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
@@ -132,8 +132,8 @@ export default function ContactsPage() {
                     }
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{contact.name}</p>
-                    <p className="text-sm text-muted-foreground">{contact.phone}</p>
+                    <p className="truncate font-medium">{contact.name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
                     <Button
                       type="button"
                       variant="outline"

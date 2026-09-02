@@ -20,9 +20,9 @@ export function ActiveCallBar({ call, contactName, isEnding, onEnd }: ActiveCall
         : 'Connecting...';
 
   return (
-    <div className="flex items-center justify-between border-b bg-whatsapp px-4 py-3 text-white">
-      <div>
-        <p className="text-sm font-medium">{contactName ?? 'Voice call'}</p>
+    <div className="flex items-center justify-between gap-2 border-b bg-whatsapp px-4 py-3 text-white">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{contactName ?? 'Voice call'}</p>
         <p className="text-xs text-white/80">{statusLabel}</p>
       </div>
       <Button
@@ -31,7 +31,7 @@ export function ActiveCallBar({ call, contactName, isEnding, onEnd }: ActiveCall
         size="sm"
         disabled={isEnding}
         onClick={onEnd}
-        className="gap-2"
+        className="shrink-0 gap-2"
       >
         <PhoneOff className="h-4 w-4" />
         {isEnding ? 'Ending...' : 'End call'}

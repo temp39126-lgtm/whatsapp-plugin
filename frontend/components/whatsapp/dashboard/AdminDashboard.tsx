@@ -215,20 +215,20 @@ export function AdminDashboard() {
                     <Link
                       key={conv._id}
                       href={buildInboxHref({}, conv._id)}
-                      className="flex items-center justify-between p-4 hover:bg-muted/50"
+                      className="flex items-center justify-between gap-3 p-4 hover:bg-muted/50"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp text-sm font-semibold text-white">
                           {getInitials(contact?.name ?? 'U')}
                         </div>
-                        <div>
-                          <p className="font-medium">{contact?.name ?? 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground truncate max-w-xs">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{contact?.name ?? 'Unknown'}</p>
+                          <p className="truncate text-sm text-muted-foreground">
                             {conv.lastMessage ?? 'No messages'}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right text-sm">
+                      <div className="shrink-0 text-right text-sm">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                             conv.status === 'OPEN'

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Phone } from 'lucide-react';
+import { ArrowLeft, PanelRightOpen, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
@@ -25,9 +25,16 @@ interface ChatWindowProps {
   onStartCall?: () => void;
   callDisabled?: boolean;
   onBack?: () => void;
+  onShowDetails?: () => void;
 }
 
-export function ChatWindow({ conversation, onStartCall, callDisabled = false, onBack }: ChatWindowProps) {
+export function ChatWindow({
+  conversation,
+  onStartCall,
+  callDisabled = false,
+  onBack,
+  onShowDetails,
+}: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
   const [showMembers, setShowMembers] = useState(false);
@@ -168,7 +175,7 @@ export function ChatWindow({ conversation, onStartCall, callDisabled = false, on
             )}
 
             {isGroup && showMembers && group?.members && (
-              <div className="absolute left-16 top-full z-20 mt-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-background shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border bg-background shadow-lg sm:left-0 sm:right-auto sm:w-72">
                 <div className="border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Group members
                 </div>
@@ -186,6 +193,17 @@ export function ChatWindow({ conversation, onStartCall, callDisabled = false, on
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {onShowDetails && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onShowDetails}
+              className="xl:hidden"
+              aria-label="View contact details"
+            >
+              <PanelRightOpen className="h-5 w-5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

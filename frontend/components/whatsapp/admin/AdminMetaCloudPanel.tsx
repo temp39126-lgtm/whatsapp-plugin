@@ -291,8 +291,12 @@ export function AdminMetaCloudPanel() {
               label="Callback URL"
               hint="Generated from your server URL. Paste this into Meta as the webhook callback."
             >
-              <div className="flex gap-2">
-                <Input readOnly value={webhook.webhookUrl} className="font-mono text-xs" />
+              <div className="flex min-w-0 gap-2">
+                <Input
+                  readOnly
+                  value={webhook.webhookUrl}
+                  className="min-w-0 flex-1 font-mono text-xs"
+                />
                 <Button
                   type="button"
                   variant="outline"

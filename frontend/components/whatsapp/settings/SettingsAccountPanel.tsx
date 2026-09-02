@@ -107,15 +107,15 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
 
       <div className="rounded-xl border bg-card divide-y">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <div>
+          <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Email</p>
-            <p className="text-sm font-medium">{profile.email ?? '—'}</p>
+            <p className="truncate text-sm font-medium">{profile.email ?? '—'}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 px-4 py-3">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <div>
+          <Shield className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Role</p>
             <p className="text-sm font-medium">{profile.role === 'ADMIN' ? 'Admin' : 'User'}</p>
           </div>

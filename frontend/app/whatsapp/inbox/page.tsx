@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFilters';
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
+import { CustomerDetailsSheet } from '@/components/whatsapp/inbox/CustomerDetailsSheet';
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
@@ -31,11 +32,16 @@ function InboxPageContent() {
 
   const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>(urlFilters);
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('conversation'));
+  const [showDetailsMobile, setShowDetailsMobile] = useState(false);
 
   useEffect(() => {
     setFilters(inboxFiltersFromSearchParams(searchParams));
     setSelectedId(searchParams.get('conversation'));
   }, [searchKey, searchParams]);
+
+  useEffect(() => {
+    setShowDetailsMobile(false);
+  }, [selectedId]);
 
   const { data, isLoading } = useConversations(filters);
   const { data: selectedConversation } = useConversation(selectedId);
@@ -85,6 +91,7 @@ function InboxPageContent() {
         <ChatWindow
           conversation={selected}
           onBack={selectedId ? () => setSelectedId(null) : undefined}
+          onShowDetails={selected ? () => setShowDetailsMobile(true) : undefined}
           onStartCall={
             connection?.callingEnabled && selected && !selected.group
               ? () => {
@@ -98,10 +105,17 @@ function InboxPageContent() {
       </div>
 
       {outboundCall.error && (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-background px-4 py-3 text-sm shadow-lg">
+        <div className="pointer-events-none fixed bottom-4 left-4 right-4 z-50 rounded-lg border bg-background px-4 py-3 text-sm shadow-lg sm:left-auto sm:right-4 sm:max-w-sm">
           {outboundCall.error}
         </div>
       )}
+
+      <CustomerDetailsSheet
+        open={showDetailsMobile}
+        conversation={selected}
+        onClose={() => setShowDetailsMobile(false)}
+        onDeleted={() => setSelectedId(null)}
+      />
 
       <div className="hidden w-80 shrink-0 border-l bg-background xl:block">
         <CustomerDetails

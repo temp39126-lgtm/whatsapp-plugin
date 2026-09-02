@@ -104,7 +104,7 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <aside className="flex h-full w-16 flex-col items-center border-r bg-whatsapp-dark py-4 lg:w-56 lg:items-stretch lg:px-3">
+      <aside className="flex h-full w-16 shrink-0 flex-col items-center border-r bg-whatsapp-dark py-4 lg:w-56 lg:items-stretch lg:px-3">
         <div className="mb-6 flex items-center justify-center lg:justify-start lg:px-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
             <MessageSquare className="h-5 w-5 text-white" />

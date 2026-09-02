@@ -42,7 +42,7 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="mb-2 text-2xl font-semibold">Tags</h1>
       <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
         Tags label conversations (for example Complaint, VIP, Refund). Create, assign, and delete
@@ -50,7 +50,7 @@ export default function TagsPage() {
       </p>
 
       <form
-        className="mb-6 flex gap-2 max-w-md"
+        className="mb-6 flex max-w-md gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (newTag.trim()) createTag.mutate(newTag.trim());
@@ -60,8 +60,9 @@ export default function TagsPage() {
           placeholder="New tag name..."
           value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
+          className="min-w-0 flex-1"
         />
-        <Button type="submit" variant="whatsapp" disabled={createTag.isPending}>
+        <Button type="submit" variant="whatsapp" disabled={createTag.isPending} className="shrink-0">
           Add Tag
         </Button>
       </form>
