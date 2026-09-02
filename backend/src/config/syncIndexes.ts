@@ -19,6 +19,7 @@ import '../models/ConversationAssignment';
 import '../models/MessageMedia';
 import '../models/MessageReaction';
 import '../models/CallEvent';
+import '../models/AuthOtpChallenge';
 
 export async function syncAllIndexes(): Promise<void> {
   const modelNames = mongoose.modelNames();

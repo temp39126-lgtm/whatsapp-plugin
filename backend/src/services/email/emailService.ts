@@ -130,6 +130,49 @@ export async function sendUnassignedAlertEmail(params: {
   });
 }
 
+export async function isTenantEmailConfigured(tenantId: string): Promise<boolean> {
+  const settings = await getTenantSettingsDocument(tenantId);
+  const notifications = settings?.notifications ?? DEFAULT_TENANT_NOTIFICATIONS;
+  return Boolean(
+    notifications.enabled &&
+      notifications.smtpHost &&
+      notifications.smtpUser &&
+      notifications.encryptedSmtpPassword
+  );
+}
+
+export async function sendOtpEmail(params: {
+  tenantId: string;
+  to: string;
+  name?: string;
+  code: string;
+  purposeLabel: string;
+  expiresMinutes: number;
+}): Promise<boolean> {
+  const settings = await getTenantSettingsDocument(params.tenantId);
+  const greeting = params.name ? `Hi ${params.name},` : 'Hi,';
+
+  return sendTenantEmail(settings, {
+    to: params.to,
+    subject: `Your WhatsApp CRM verification code: ${params.code}`,
+    text: [
+      greeting,
+      '',
+      `Use this code to ${params.purposeLabel}: ${params.code}`,
+      '',
+      `This code expires in ${params.expiresMinutes} minutes.`,
+      'If you did not request this, you can ignore this email.',
+    ].join('\n'),
+    html: `
+      <p>${greeting}</p>
+      <p>Use this code to <strong>${params.purposeLabel}</strong>:</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:4px;">${params.code}</p>
+      <p>This code expires in ${params.expiresMinutes} minutes.</p>
+      <p>If you did not request this, you can ignore this email.</p>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(params: {
   tenantId: string;
   to: string;

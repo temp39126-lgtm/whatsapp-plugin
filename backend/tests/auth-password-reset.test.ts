@@ -12,6 +12,7 @@ import { AppError } from '../src/types';
 
 vi.mock('../src/services/email/emailService', () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(false),
+  isTenantEmailConfigured: vi.fn().mockResolvedValue(false),
 }));
 
 describe('Password reset service', () => {
@@ -58,16 +59,22 @@ describe('Password reset service', () => {
   });
 
   it('resets password with valid token', async () => {
-    const { resetUrl } = await requestPasswordReset('user@example.com');
-    const token = new URL(resetUrl!).searchParams.get('token');
+    const result = await requestPasswordReset('user@example.com');
+    if (!('resetUrl' in result) || !result.resetUrl) {
+      throw new Error('Expected reset URL');
+    }
+    const token = new URL(result.resetUrl).searchParams.get('token');
     expect(token).toBeTruthy();
 
     const result = await resetPasswordWithToken(token!, 'newpassword123');
     expect(result.message).toContain('Password updated');
 
     await expect(loginWithPassword('user@example.com', 'user123')).rejects.toBeInstanceOf(AppError);
-    const login = await loginWithPassword('user@example.com', 'newpassword123');
-    expect(login.user.email).toBe('user@example.com');
+    const loginResult = await loginWithPassword('user@example.com', 'newpassword123');
+    if ('requiresOtp' in loginResult) {
+      throw new Error('Expected direct login without OTP in this test');
+    }
+    expect(loginResult.user.email).toBe('user@example.com');
   });
 
   it('rejects invalid reset token', async () => {

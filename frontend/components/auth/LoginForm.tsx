@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { AuthField } from '@/components/auth/AuthField';
+import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector, type AuthRoleChoice } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 import { DEMO_CREDENTIALS } from '@/lib/demo-credentials';
+import { isOtpChallengeResponse } from '@/lib/auth-otp';
+import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function LoginForm() {
   const { login, completeLogin } = useAuth();
@@ -16,12 +19,14 @@ export function LoginForm() {
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
   function handleRoleChange(role: AuthRoleChoice) {
     setSelectedRole(role);
     setEmail(DEMO_CREDENTIALS[role].email);
     setPassword(DEMO_CREDENTIALS[role].password);
     setError('');
+    setOtpChallenge(null);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -31,6 +36,11 @@ export function LoginForm() {
 
     try {
       const result = await login(email, password, { keepSignedIn });
+      if (isOtpChallengeResponse(result)) {
+        setOtpChallenge(result);
+        return;
+      }
+
       if (result.user.role !== selectedRole) {
         setError(
           `These credentials belong to a ${result.user.role === 'ADMIN' ? 'Admin' : 'User'} account. Switch workspace or use different credentials.`
@@ -43,6 +53,33 @@ export function LoginForm() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (otpChallenge) {
+    return (
+      <AuthOtpStep
+        challengeId={otpChallenge.challengeId}
+        maskedEmail={otpChallenge.maskedEmail}
+        message={otpChallenge.message}
+        devOtpCode={otpChallenge.devOtpCode}
+        purpose="login"
+        onBack={() => setOtpChallenge(null)}
+        onVerified={(result) => {
+          if (!result.token || !result.user) {
+            setError('Verification succeeded but login could not be completed.');
+            return;
+          }
+          const authUser = result.user as Parameters<typeof completeLogin>[1];
+          if (authUser.role !== selectedRole) {
+            setError(
+              `These credentials belong to a ${authUser.role === 'ADMIN' ? 'Admin' : 'User'} account. Switch workspace or use different credentials.`
+            );
+            return;
+          }
+          completeLogin(result.token, authUser);
+        }}
+      />
+    );
   }
 
   return (

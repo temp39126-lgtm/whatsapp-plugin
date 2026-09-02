@@ -3,17 +3,21 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { AuthField } from '@/components/auth/AuthField';
+import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
+import { isOtpChallengeResponse } from '@/lib/auth-otp';
+import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function SignupForm() {
-  const { signup } = useAuth();
+  const { signup, completeLogin } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -21,12 +25,36 @@ export function SignupForm() {
     setSubmitting(true);
 
     try {
-      await signup(name, email, password);
+      const result = await signup(name, email, password);
+      if (isOtpChallengeResponse(result)) {
+        setOtpChallenge(result);
+        return;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (otpChallenge) {
+    return (
+      <AuthOtpStep
+        challengeId={otpChallenge.challengeId}
+        maskedEmail={otpChallenge.maskedEmail}
+        message={otpChallenge.message}
+        devOtpCode={otpChallenge.devOtpCode}
+        purpose="signup"
+        onBack={() => setOtpChallenge(null)}
+        onVerified={(result) => {
+          if (!result.token || !result.user) {
+            setError('Verification succeeded but sign up could not be completed.');
+            return;
+          }
+          completeLogin(result.token, result.user as Parameters<typeof completeLogin>[1]);
+        }}
+      />
+    );
   }
 
   return (
@@ -70,7 +98,8 @@ export function SignupForm() {
         />
 
         <p className="text-xs text-muted-foreground">
-          Admin accounts are managed separately. Sign up creates a User workspace.
+          Admin accounts are managed separately. Sign up creates a User workspace. When SMTP is
+          configured, we email a verification code before activating your account.
         </p>
 
         {error && (
