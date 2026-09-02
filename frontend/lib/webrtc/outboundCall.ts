@@ -1,3 +1,5 @@
+import { getMicrophoneStream, mapMicrophoneError } from '@/lib/webrtc/microphone';
+
 export type WebRtcSession = {
   sdp_type: 'offer' | 'answer';
   sdp: string;
@@ -45,7 +47,13 @@ export async function createOutboundCallSession(): Promise<OutboundCallSession> 
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
   });
 
-  const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  let localStream: MediaStream;
+  try {
+    localStream = await getMicrophoneStream();
+  } catch (error) {
+    throw new Error(mapMicrophoneError(error));
+  }
+
   localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
 
   let remoteAudio: HTMLAudioElement | null = null;

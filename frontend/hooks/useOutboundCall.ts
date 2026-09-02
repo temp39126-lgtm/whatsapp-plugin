@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { connectSocket } from '@/lib/socket';
 import { createOutboundCallSession, type OutboundCallSession } from '@/lib/webrtc/outboundCall';
+import { mapMicrophoneError } from '@/lib/webrtc/microphone';
 import { waitForCallSdpAnswer } from '@/lib/webrtc/waitForCallSdpAnswer';
 import type { CallDTO } from '@/types';
 
@@ -26,10 +27,10 @@ export function useOutboundCall() {
 
       try {
         connectSocket();
-        const answerPromise = waitForCallSdpAnswer(conversationId);
         const session = await createOutboundCallSession();
         sessionRef.current = session;
         const offer = await session.createOffer();
+        const answerPromise = waitForCallSdpAnswer(conversationId);
 
         const call = await api.post<CallDTO>('/calls/start', {
           conversationId,
@@ -50,8 +51,7 @@ export function useOutboundCall() {
         return call;
       } catch (err) {
         cleanup();
-        const message =
-          err instanceof Error ? err.message : 'Unable to start call with WebRTC.';
+        const message = mapMicrophoneError(err);
         setError(message);
         throw err;
       } finally {
