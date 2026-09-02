@@ -52,7 +52,11 @@ if lsof -i :3000 >/dev/null 2>&1; then
 fi
 cd frontend
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
-NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run start > /tmp/next-prod.log 2>&1 &
+# Standalone output requires static/public copied beside server.js or CSS/JS 404 (blank page).
+cp -r .next/static .next/standalone/frontend/.next/static
+cp -r public .next/standalone/frontend/public
+pkill -f "standalone/frontend/server.js" 2>/dev/null || true
+(cd .next/standalone/frontend && PORT=3000 HOSTNAME=127.0.0.1 node server.js > /tmp/next-prod.log 2>&1 &)
 for _ in $(seq 1 30); do
   if curl -sf http://127.0.0.1:3000 >/dev/null 2>&1; then
     break
