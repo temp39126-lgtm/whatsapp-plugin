@@ -20,4 +20,13 @@ export const resetPasswordSchema = z.object({
   password: z.string().min(6).max(128),
 });
 
+export const verifyOtpSchema = z.object({
+  challengeId: z.string().uuid(),
+  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code'),
+});
+
+export const resendOtpSchema = z.object({
+  challengeId: z.string().uuid(),
+});
+
 export const createTeamUserSchema = signupSchema;

@@ -7,6 +7,7 @@ import { AUTH_ROUTES, getDashboardPath } from '@/lib/auth-routes';
 import { getAuthToken, initHostAuthListener, requestHostAuth, setAuthToken } from '@/lib/auth';
 import { resetSocket } from '@/lib/socket';
 import type { AuthUser } from '@/types';
+import type { AuthOtpChallengeResponse, AuthSuccessResponse } from '@/lib/auth-otp';
 
 interface LoginOptions {
   keepSignedIn?: boolean;
@@ -20,10 +21,14 @@ interface AuthContextType {
     email: string,
     password: string,
     options?: LoginOptions
-  ) => Promise<{ token: string; user: AuthUser }>;
+  ) => Promise<AuthSuccessResponse | AuthOtpChallengeResponse>;
   completeLogin: (token: string, user: AuthUser) => void;
   refreshUser: (user: AuthUser) => void;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (
+    name: string,
+    email: string,
+    password: string
+  ) => Promise<AuthSuccessResponse | AuthOtpChallengeResponse>;
   logout: () => void;
 }
 
@@ -34,7 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ token: '', user: null as unknown as AuthUser }),
   completeLogin: () => undefined,
   refreshUser: () => undefined,
-  signup: async () => undefined,
+  signup: async () => ({ token: '', user: null as unknown as AuthUser }),
   logout: () => undefined,
 });
 
@@ -73,23 +78,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const login = useCallback(async (email: string, password: string, _options?: LoginOptions) => {
-    return authApi.post<{ token: string; user: AuthUser }>('/login', {
+    return authApi.post<AuthSuccessResponse | AuthOtpChallengeResponse>('/login', {
       email,
       password,
     });
   }, []);
 
-  const signup = useCallback(
-    async (name: string, email: string, password: string) => {
-      const result = await authApi.post<{ token: string; user: AuthUser }>('/signup', {
-        name,
-        email,
-        password,
-      });
-      completeLogin(result.token, result.user);
-    },
-    [completeLogin]
-  );
+  const signup = useCallback(async (name: string, email: string, password: string) => {
+    return authApi.post<AuthSuccessResponse | AuthOtpChallengeResponse>('/signup', {
+      name,
+      email,
+      password,
+    });
+  }, []);
 
   const refreshUser = useCallback((authUser: AuthUser) => {
     setUser(authUser);

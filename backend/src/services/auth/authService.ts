@@ -6,7 +6,12 @@ import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { AuthUser, AppError } from '../../types';
 import { ADMIN_PERMISSIONS } from '../../constants/permissions';
-import { sendPasswordResetEmail } from '../email/emailService';
+import { isTenantEmailConfigured, sendPasswordResetEmail } from '../email/emailService';
+import {
+  buildOtpChallengeResponse,
+  createOtpChallenge,
+  sendOtpChallengeEmail,
+} from './otpService';
 
 export function userToAuthUser(user: {
   _id: { toString(): string };
@@ -50,11 +55,43 @@ export function signAuthToken(user: AuthUser): string {
   );
 }
 
+export function buildAuthResponse(user: AuthUser) {
+  return {
+    token: signAuthToken(user),
+    user,
+  };
+}
+
+async function startEmailOtpChallenge(params: {
+  email: string;
+  tenantId: string;
+  purpose: 'login' | 'signup' | 'password_reset';
+  payload?: { userId?: string; name?: string; passwordHash?: string };
+  name?: string;
+}) {
+  const { challengeId, code } = await createOtpChallenge(params);
+  const emailSent = await sendOtpChallengeEmail({
+    tenantId: params.tenantId,
+    email: params.email,
+    purpose: params.purpose,
+    code,
+    name: params.name,
+  });
+
+  return {
+    ...buildOtpChallengeResponse(challengeId, params.email),
+    ...(!emailSent ? { devOtpCode: code } : {}),
+  };
+}
+
 export async function registerUser(
   name: string,
   email: string,
   password: string
-): Promise<{ token: string; user: AuthUser }> {
+): Promise<
+  | { token: string; user: AuthUser }
+  | ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string }
+> {
   const normalizedEmail = email.toLowerCase().trim();
   const tenantId = env.DEFAULT_TENANT_ID;
 
@@ -64,6 +101,20 @@ export async function registerUser(
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+
+  if (await isTenantEmailConfigured(tenantId)) {
+    return startEmailOtpChallenge({
+      email: normalizedEmail,
+      tenantId,
+      purpose: 'signup',
+      payload: {
+        name: name.trim(),
+        passwordHash,
+      },
+      name: name.trim(),
+    });
+  }
+
   const user = await User.create({
     email: normalizedEmail,
     passwordHash,
@@ -73,17 +124,43 @@ export async function registerUser(
     isActive: true,
   });
 
-  const authUser = userToAuthUser(user);
-  return {
-    token: signAuthToken(authUser),
-    user: authUser,
-  };
+  return buildAuthResponse(userToAuthUser(user));
+}
+
+export async function completeSignupAfterOtp(challenge: {
+  email: string;
+  tenantId: string;
+  payload: { name?: string; passwordHash?: string };
+}) {
+  const normalizedEmail = challenge.email.toLowerCase().trim();
+  const existing = await User.findOne({ email: normalizedEmail, tenantId: challenge.tenantId });
+  if (existing) {
+    throw new AppError(409, 'An account with this email already exists');
+  }
+
+  if (!challenge.payload.name || !challenge.payload.passwordHash) {
+    throw new AppError(400, 'Sign up session is invalid. Please start again.');
+  }
+
+  const user = await User.create({
+    email: normalizedEmail,
+    passwordHash: challenge.payload.passwordHash,
+    name: challenge.payload.name,
+    role: 'USER',
+    tenantId: challenge.tenantId,
+    isActive: true,
+  });
+
+  return buildAuthResponse(userToAuthUser(user));
 }
 
 export async function loginWithPassword(
   email: string,
   password: string
-): Promise<{ token: string; user: AuthUser }> {
+): Promise<
+  | { token: string; user: AuthUser }
+  | ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string }
+> {
   const user = await User.findOne({
     email: email.toLowerCase().trim(),
     isActive: true,
@@ -98,15 +175,38 @@ export async function loginWithPassword(
     throw new AppError(401, 'Invalid email or password');
   }
 
-  const authUser = userToAuthUser(user);
-  return {
-    token: signAuthToken(authUser),
-    user: authUser,
-  };
+  if (await isTenantEmailConfigured(user.tenantId)) {
+    return startEmailOtpChallenge({
+      email: user.email,
+      tenantId: user.tenantId,
+      purpose: 'login',
+      payload: { userId: user._id.toString() },
+      name: user.name,
+    });
+  }
+
+  return buildAuthResponse(userToAuthUser(user));
+}
+
+export async function completeLoginAfterOtp(challenge: {
+  email: string;
+  payload: { userId?: string };
+}) {
+  const user = await User.findOne({
+    _id: challenge.payload.userId,
+    email: challenge.email.toLowerCase().trim(),
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new AppError(401, 'Invalid verification session. Please sign in again.');
+  }
+
+  return buildAuthResponse(userToAuthUser(user));
 }
 
 const PASSWORD_RESET_MESSAGE =
-  'If an account exists for that email, a password reset link has been sent.';
+  'If an account exists for that email, a verification code has been sent.';
 
 function hashPasswordResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -119,7 +219,10 @@ function buildPasswordResetUrl(token: string): string {
 
 export async function requestPasswordReset(
   email: string
-): Promise<{ message: string; resetUrl?: string }> {
+): Promise<
+  | { message: string; resetUrl?: string }
+  | (ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string })
+> {
   const normalizedEmail = email.toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail, isActive: true }).select(
     '+passwordResetToken +passwordResetExpires'
@@ -127,6 +230,16 @@ export async function requestPasswordReset(
 
   if (!user) {
     return { message: PASSWORD_RESET_MESSAGE };
+  }
+
+  if (await isTenantEmailConfigured(user.tenantId)) {
+    return startEmailOtpChallenge({
+      email: user.email,
+      tenantId: user.tenantId,
+      purpose: 'password_reset',
+      payload: { userId: user._id.toString() },
+      name: user.name,
+    });
   }
 
   const rawToken = crypto.randomBytes(32).toString('hex');
@@ -149,8 +262,35 @@ export async function requestPasswordReset(
   }
 
   return {
-    message: PASSWORD_RESET_MESSAGE,
+    message: 'If an account exists for that email, a password reset link has been sent.',
     ...(!emailSent ? { resetUrl } : {}),
+  };
+}
+
+export async function issuePasswordResetTokenAfterOtp(challenge: {
+  email: string;
+  payload: { userId?: string };
+}) {
+  const user = await User.findOne({
+    _id: challenge.payload.userId,
+    email: challenge.email.toLowerCase().trim(),
+    isActive: true,
+  }).select('+passwordResetToken +passwordResetExpires');
+
+  if (!user) {
+    throw new AppError(400, 'Invalid verification session. Please request a new reset.');
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetToken = hashPasswordResetToken(rawToken);
+  user.passwordResetExpires = new Date(
+    Date.now() + env.PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000
+  );
+  await user.save();
+
+  return {
+    resetToken: rawToken,
+    message: 'Verification successful. You can now choose a new password.',
   };
 }
 
