@@ -1,0 +1,15 @@
+# Build outputs
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+
+# Signing secrets — never commit
+android/release.keystore
+android/keystore.properties
+.env
+
+# IDE
+.idea/
+*.iml
