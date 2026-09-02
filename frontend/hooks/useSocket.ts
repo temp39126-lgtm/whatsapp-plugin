@@ -41,6 +41,7 @@ export function useSocket() {
       onSocketEvent('conversation.assigned', invalidateConversations),
       onSocketEvent('call.incoming', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
       onSocketEvent('call.ended', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
+      onSocketEvent('call.sdp-answer', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
     ];
 
     return () => {

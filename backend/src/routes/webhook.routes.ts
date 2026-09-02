@@ -7,7 +7,7 @@ import {
   processIncomingMessage,
   processStatusUpdate,
 } from '../services/whatsapp/whatsappService';
-import { processIncomingCallWebhook } from '../services/calls/callService';
+import { processCallWebhook } from '../services/calls/callService';
 import { webhookRateLimiter } from '../middleware/rateLimiter';
 import { logger } from '../config/logger';
 
@@ -90,10 +90,14 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
 
     if (value.calls) {
       for (const call of value.calls) {
-        await processIncomingCallWebhook(account.tenantId, {
+        await processCallWebhook(account.tenantId, {
           callId: call.id,
           from: call.from,
+          to: call.to,
           phoneNumberId,
+          event: call.event,
+          direction: call.direction,
+          session: call.session,
         });
       }
     }

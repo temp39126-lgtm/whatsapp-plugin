@@ -192,9 +192,80 @@ export async function endCall(user: AuthUser, call: ICall) {
   return call;
 }
 
+export async function processCallWebhook(
+  tenantId: string,
+  data: {
+    callId: string;
+    from?: string;
+    to?: string;
+    phoneNumberId: string;
+    event?: string;
+    direction?: string;
+    session?: { sdp_type: string; sdp: string };
+  }
+) {
+  if (
+    data.event === 'connect' &&
+    data.direction === 'BUSINESS_INITIATED' &&
+    data.session?.sdp_type === 'answer'
+  ) {
+    const call = await Call.findOne({ tenantId, metaCallId: data.callId });
+    if (!call) return;
+
+    call.status = 'CONNECTED';
+    await call.save();
+    await createCallEvent(call, 'call.connected', { source: 'meta_webhook' });
+    await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.sdp-answer', {
+      metaCallId: data.callId,
+      callId: call._id.toString(),
+      conversationId: call.conversationId.toString(),
+      session: {
+        sdp_type: 'answer',
+        sdp: data.session.sdp,
+      },
+    });
+    return;
+  }
+
+  if (data.event === 'terminate') {
+    const call = await Call.findOne({ tenantId, metaCallId: data.callId });
+    if (!call || call.status === 'ENDED') return;
+    call.status = 'ENDED';
+    call.endedAt = new Date();
+    if (call.startedAt) {
+      call.duration = Math.floor((call.endedAt.getTime() - call.startedAt.getTime()) / 1000);
+    }
+    await call.save();
+    await createCallEvent(call, 'call.ended', { source: 'meta_webhook' });
+    await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.ended', {
+      callId: call._id.toString(),
+      status: 'ENDED',
+      duration: call.duration,
+    });
+    return;
+  }
+
+  if (data.event === 'connect' && data.direction === 'USER_INITIATED' && data.from) {
+    await processIncomingCallWebhook(tenantId, {
+      callId: data.callId,
+      from: data.from,
+      phoneNumberId: data.phoneNumberId,
+      session:
+        data.session?.sdp_type === 'offer'
+          ? { sdp_type: 'offer', sdp: data.session.sdp }
+          : undefined,
+    });
+  }
+}
+
 export async function processIncomingCallWebhook(
   tenantId: string,
-  data: { callId: string; from: string; phoneNumberId: string }
+  data: {
+    callId: string;
+    from: string;
+    phoneNumberId: string;
+    session?: { sdp_type: 'offer'; sdp: string };
+  }
 ) {
   const account = await WhatsAppAccount.findOne({ tenantId, phoneNumberId: data.phoneNumberId });
   if (!account) return;
@@ -223,5 +294,6 @@ export async function processIncomingCallWebhook(
   await createCallEvent(call, 'call.incoming');
   await emitToAuthorizedUsers(tenantId, conversation._id.toString(), 'call.incoming', {
     call: call.toObject(),
+    ...(data.session ? { session: data.session } : {}),
   });
 }

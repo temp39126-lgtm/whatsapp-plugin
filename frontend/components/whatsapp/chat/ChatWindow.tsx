@@ -23,9 +23,10 @@ import { useState, useEffect, useRef } from 'react';
 interface ChatWindowProps {
   conversation: ConversationDTO | null;
   onStartCall?: () => void;
+  callDisabled?: boolean;
 }
 
-export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
+export function ChatWindow({ conversation, onStartCall, callDisabled = false }: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
   const [showMembers, setShowMembers] = useState(false);
@@ -173,7 +174,13 @@ export function ChatWindow({ conversation, onStartCall }: ChatWindowProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={onStartCall} disabled={!onStartCall}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onStartCall}
+            disabled={!onStartCall || callDisabled}
+            title={onStartCall ? 'Start voice call' : 'Voice calling unavailable'}
+          >
             <Phone className="h-5 w-5" />
           </Button>
           <WhatsAppOverflowMenu />

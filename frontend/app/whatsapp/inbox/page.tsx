@@ -11,7 +11,8 @@ import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverfl
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
-import { useStartCall } from '@/hooks/useCalls';
+import { useOutboundCall } from '@/hooks/useOutboundCall';
+import { ActiveCallBar } from '@/components/whatsapp/calls/ActiveCallBar';
 import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
 
 function InboxLoading() {
@@ -41,8 +42,7 @@ function InboxPageContent() {
     queryKey: ['settings-connection'],
     queryFn: () => api.get<WhatsAppConnectionStatus>('/settings/connection'),
   });
-  const startCall = useStartCall();
-  const [callMessage, setCallMessage] = useState('');
+  const outboundCall = useOutboundCall();
   const conversations = data?.data ?? [];
   const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
@@ -62,37 +62,32 @@ function InboxPageContent() {
         />
       </div>
 
-      <ChatWindow
-        conversation={selected}
-        onStartCall={
-          connection?.callingEnabled && selected && !selected.group
-            ? () => {
-                setCallMessage('');
-                startCall.mutate(selected._id, {
-                  onSuccess: (call) => {
-                    if (call.status === 'FAILED') {
-                      setCallMessage(
-                        call.failureReason ??
-                          'Call could not be started. Ensure Meta Business Calling is approved.'
-                      );
-                    } else {
-                      setCallMessage('Call started.');
-                    }
-                  },
-                  onError: (error) => {
-                    setCallMessage(
-                      error instanceof Error ? error.message : 'Unable to start call'
-                    );
-                  },
-                });
-              }
-            : undefined
-        }
-      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {outboundCall.activeCall && selected && (
+          <ActiveCallBar
+            call={outboundCall.activeCall}
+            contactName={selected.contact?.name}
+            onEnd={() => outboundCall.endCall(outboundCall.activeCall!._id)}
+          />
+        )}
 
-      {callMessage && (
+        <ChatWindow
+          conversation={selected}
+          onStartCall={
+            connection?.callingEnabled && selected && !selected.group
+              ? () => {
+                  outboundCall.setError('');
+                  outboundCall.startCall(selected._id).catch(() => undefined);
+                }
+              : undefined
+          }
+          callDisabled={outboundCall.isStarting || Boolean(outboundCall.activeCall)}
+        />
+      </div>
+
+      {outboundCall.error && (
         <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-background px-4 py-3 text-sm shadow-lg">
-          {callMessage}
+          {outboundCall.error}
         </div>
       )}
 
