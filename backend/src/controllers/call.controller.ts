@@ -23,7 +23,11 @@ export async function getCall(req: AuthenticatedRequest, res: Response, next: Ne
 
 export async function startCall(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const call = await callService.startCall(req.user!, req.body.conversationId);
+    const { conversationId, session } = req.body as {
+      conversationId: string;
+      session?: { sdp_type: 'offer'; sdp: string };
+    };
+    const call = await callService.startCall(req.user!, conversationId, session);
     res.status(201).json(call);
   } catch (error) {
     next(error);

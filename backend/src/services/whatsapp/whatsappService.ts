@@ -4,6 +4,8 @@ import { Conversation, IConversation } from '../../models/Conversation';
 import { Message, IMessage } from '../../models/Message';
 import { MessageMedia } from '../../models/MessageMedia';
 import { encrypt } from '../../utils/encryption';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 import {
   sendTextMessage,
   sendMediaMessage,
@@ -18,7 +20,6 @@ import {
   storeMediaFile,
 } from '../media/mediaService';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
-import { logger } from '../../config/logger';
 import { decrypt } from '../../utils/encryption';
 
 interface IncomingTextMessage {
@@ -441,7 +442,7 @@ export async function saveWhatsAppAccount(
     throw new Error('App secret is required for new WhatsApp account configuration');
   }
 
-  return WhatsAppAccount.findOneAndUpdate(
+  const account = await WhatsAppAccount.findOneAndUpdate(
     { tenantId },
     {
       tenantId,
@@ -458,6 +459,17 @@ export async function saveWhatsAppAccount(
     },
     { upsert: true, new: true }
   );
+
+  if (env.CALLING_ENABLED) {
+    try {
+      const { enableCallingOnPhoneNumber } = await import('./metaApi');
+      await enableCallingOnPhoneNumber(account.phoneNumberId, account);
+    } catch (error) {
+      logger.warn({ err: error }, 'Unable to enable Meta voice calling on phone number');
+    }
+  }
+
+  return account;
 }
 
 export { getPresignedUrl };

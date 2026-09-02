@@ -118,6 +118,14 @@ async function metaPost(
   body: unknown,
   account?: IWhatsAppAccount
 ): Promise<{ messages: Array<{ id: string }> }> {
+  return metaJsonPost(path, body, account) as Promise<{ messages: Array<{ id: string }> }>;
+}
+
+async function metaJsonPost<T = Record<string, unknown>>(
+  path: string,
+  body: unknown,
+  account?: IWhatsAppAccount
+): Promise<T> {
   const token = getAccessToken(account);
   const response = await fetch(`${getBaseUrl(account)}${path}`, {
     method: 'POST',
@@ -133,13 +141,96 @@ async function metaPost(
     throw new Error(`Meta API error: ${error}`);
   }
 
-  return response.json() as Promise<{ messages: Array<{ id: string }> }>;
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function enableCallingOnPhoneNumber(
+  phoneNumberId: string,
+  account?: IWhatsAppAccount
+): Promise<void> {
+  await metaJsonPost(
+    `/${phoneNumberId}/settings`,
+    {
+      calling: {
+        status: 'ENABLED',
+      },
+    },
+    account
+  );
 }
 
 export async function initiateCall(
-  _phoneNumberId: string,
-  _to: string,
-  _account?: IWhatsAppAccount
+  phoneNumberId: string,
+  to: string,
+  account?: IWhatsAppAccount,
+  session?: { sdp_type: 'offer'; sdp: string }
 ): Promise<{ call_id: string }> {
-  throw new Error('CALLING_NOT_ENABLED');
+  if (!session?.sdp) {
+    throw new Error('CALL_SDP_REQUIRED');
+  }
+
+  return metaJsonPost<{ call_id: string }>(
+    `/${phoneNumberId}/calls`,
+    {
+      messaging_product: 'whatsapp',
+      to,
+      action: 'connect',
+      session,
+    },
+    account
+  );
+}
+
+export async function acceptMetaCall(
+  phoneNumberId: string,
+  callId: string,
+  account?: IWhatsAppAccount,
+  session?: { sdp_type: 'answer'; sdp: string }
+): Promise<void> {
+  await metaJsonPost(
+    `/${phoneNumberId}/calls`,
+    {
+      messaging_product: 'whatsapp',
+      call_id: callId,
+      action: 'accept',
+      ...(session ? { session } : {}),
+    },
+    account
+  );
+}
+
+export async function rejectMetaCall(
+  phoneNumberId: string,
+  callId: string,
+  account?: IWhatsAppAccount
+): Promise<void> {
+  await metaJsonPost(
+    `/${phoneNumberId}/calls`,
+    {
+      messaging_product: 'whatsapp',
+      call_id: callId,
+      action: 'reject',
+    },
+    account
+  );
+}
+
+export async function terminateMetaCall(
+  phoneNumberId: string,
+  callId: string,
+  account?: IWhatsAppAccount
+): Promise<void> {
+  await metaJsonPost(
+    `/${phoneNumberId}/calls`,
+    {
+      messaging_product: 'whatsapp',
+      call_id: callId,
+      action: 'terminate',
+    },
+    account
+  );
 }

@@ -153,6 +153,13 @@ export function AdminMetaCloudPanel() {
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
           Enter all credentials from your Meta Developer App and WhatsApp Business Account.
+          {settings?.callingEnabled && (
+            <>
+              {' '}
+              Voice calling is enabled on this server — save configuration to turn on calling for
+              your phone number in Meta.
+            </>
+          )}
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">

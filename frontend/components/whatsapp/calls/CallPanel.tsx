@@ -4,10 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Phone, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { CallDTO, PaginatedResponse } from '@/types';
+import type { CallDTO, PaginatedResponse, WhatsAppConnectionStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export function CallPanel() {
+  const { data: connection } = useQuery({
+    queryKey: ['settings-connection'],
+    queryFn: () => api.get<WhatsAppConnectionStatus>('/settings/connection'),
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['calls'],
     queryFn: () => api.get<PaginatedResponse<CallDTO>>('/calls'),
@@ -26,6 +31,18 @@ export function CallPanel() {
   return (
     <div className="p-6">
       <h1 className="mb-6 text-2xl font-semibold">Call History</h1>
+
+      {connection?.callingEnabled ? (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Voice calling is enabled. Use the phone icon in a 1:1 inbox conversation to start a call.
+          Incoming calls appear here when Meta sends webhook events to your callback URL.
+        </p>
+      ) : (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Voice calling is disabled on this server. Set <code>CALLING_ENABLED=true</code> in the
+          backend environment to enable it.
+        </p>
+      )}
 
       {calls.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">

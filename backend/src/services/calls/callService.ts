@@ -52,7 +52,11 @@ async function createCallEvent(call: ICall, eventType: string, metadata?: Record
   });
 }
 
-export async function startCall(user: AuthUser, conversationId: string) {
+export async function startCall(
+  user: AuthUser,
+  conversationId: string,
+  session?: { sdp_type: 'offer'; sdp: string }
+) {
   if (!env.CALLING_ENABLED) {
     throw new AppError(503, 'WhatsApp calling is not enabled for this account');
   }
@@ -84,14 +88,17 @@ export async function startCall(user: AuthUser, conversationId: string) {
 
   try {
     const { initiateCall } = await import('../whatsapp/metaApi');
-    const result = await initiateCall(account.phoneNumberId, contact.whatsappId, account);
+    const result = await initiateCall(account.phoneNumberId, contact.whatsappId, account, session);
     call.metaCallId = result.call_id;
     call.status = 'RINGING';
     await call.save();
     await createCallEvent(call, 'call.ringing');
-  } catch {
+  } catch (error) {
     call.status = 'FAILED';
-    call.failureReason = 'Meta calling API not available';
+    call.failureReason =
+      error instanceof Error && error.message === 'CALL_SDP_REQUIRED'
+        ? 'Outbound calls require WebRTC SDP from the client. Incoming calls are still supported.'
+        : 'Meta calling API not available';
     await call.save();
     await createCallEvent(call, 'call.failed', { reason: call.failureReason });
   }
@@ -103,8 +110,25 @@ export async function startCall(user: AuthUser, conversationId: string) {
   return call;
 }
 
-export async function acceptCall(user: AuthUser, call: ICall) {
+export async function acceptCall(
+  user: AuthUser,
+  call: ICall,
+  session?: { sdp_type: 'answer'; sdp: string }
+) {
   if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
+
+  if (call.metaCallId) {
+    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
+    if (account) {
+      try {
+        const { acceptMetaCall } = await import('../whatsapp/metaApi');
+        await acceptMetaCall(account.phoneNumberId, call.metaCallId, account, session);
+      } catch {
+        // Continue updating local state even if Meta accept fails in demo environments.
+      }
+    }
+  }
+
   call.status = 'CONNECTED';
   await call.save();
   await createCallEvent(call, 'call.connected');
@@ -115,6 +139,18 @@ export async function acceptCall(user: AuthUser, call: ICall) {
 }
 
 export async function rejectCall(user: AuthUser, call: ICall) {
+  if (call.metaCallId) {
+    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
+    if (account) {
+      try {
+        const { rejectMetaCall } = await import('../whatsapp/metaApi');
+        await rejectMetaCall(account.phoneNumberId, call.metaCallId, account);
+      } catch {
+        // Continue updating local state even if Meta reject fails in demo environments.
+      }
+    }
+  }
+
   call.status = 'REJECTED';
   call.endedAt = new Date();
   await call.save();
@@ -127,6 +163,20 @@ export async function rejectCall(user: AuthUser, call: ICall) {
 }
 
 export async function endCall(user: AuthUser, call: ICall) {
+  if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
+
+  if (call.metaCallId) {
+    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
+    if (account) {
+      try {
+        const { terminateMetaCall } = await import('../whatsapp/metaApi');
+        await terminateMetaCall(account.phoneNumberId, call.metaCallId, account);
+      } catch {
+        // Continue updating local state even if Meta terminate fails in demo environments.
+      }
+    }
+  }
+
   call.status = 'ENDED';
   call.endedAt = new Date();
   if (call.startedAt) {

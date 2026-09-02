@@ -54,4 +54,10 @@ export const updatePreferencesSchema = z.object({
 
 export const startCallSchema = z.object({
   conversationId: z.string().min(1),
+  session: z
+    .object({
+      sdp_type: z.literal('offer'),
+      sdp: z.string().min(1),
+    })
+    .optional(),
 });
