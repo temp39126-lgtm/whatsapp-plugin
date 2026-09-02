@@ -47,5 +47,6 @@ const messageSchema = new Schema<IMessage>(
 
 messageSchema.index({ conversationId: 1, createdAt: -1 });
 messageSchema.index({ tenantId: 1, metaMessageId: 1 }, { unique: true, sparse: true });
+messageSchema.index({ tenantId: 1, direction: 1, createdAt: -1 });
 
 export const Message = model<IMessage>('Message', messageSchema);

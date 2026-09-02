@@ -10,6 +10,7 @@ import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 import { storeAvatar } from '../avatars/avatarService';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
+import { escapeRegExp } from '../../utils/regex';
 
 function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
   const trimmed = phone.trim();
@@ -74,9 +75,10 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
   }
 
   if (search) {
+    const safeSearch = escapeRegExp(search);
     query.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { phone: { $regex: search, $options: 'i' } },
+      { name: { $regex: safeSearch, $options: 'i' } },
+      { phone: { $regex: safeSearch, $options: 'i' } },
     ];
   }
 

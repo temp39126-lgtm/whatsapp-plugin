@@ -206,6 +206,12 @@ No separate database or S3 account needed — everything runs on your VPS.
 
 ---
 
+## Security
+
+Rate limiting, NoSQL injection prevention, database indexes, caching, and reverse-proxy hardening are documented in [SECURITY.md](./SECURITY.md).
+
+---
+
 ## Optional: use MongoDB Atlas + AWS S3 instead
 
 For larger production loads, edit `deploy/docker-compose.prod.yml` and `deploy/.env` to use external MongoDB Atlas and S3 instead of the built-in containers. See `deploy/.env.production.example` for variable names.

@@ -6,10 +6,26 @@ import { InternalNote } from '../../models/InternalNote';
 import { User } from '../../models/User';
 import { ActivityLog } from '../../models/ActivityLog';
 import { enrichAgentStats, listTeamUsers as listTeamUsersFromService, mergeTeamUsersWithAgentAnalytics, mergeTeamUsersWithWorkload } from '../users/teamUserService';
+import { cache } from '../../utils/cache';
+import { env } from '../../config/env';
 
 export { listTeamUsersFromService as listTeamUsers };
 
+function analyticsCacheKey(tenantId: string, metric: string, extra = ''): string {
+  return `analytics:${tenantId}:${metric}${extra ? `:${extra}` : ''}`;
+}
+
 export async function getConversationAnalytics(user: AuthUser) {
+  const cacheKey = analyticsCacheKey(user.tenantId, 'conversations');
+  const cached = cache.get<Awaited<ReturnType<typeof buildConversationAnalytics>>>(cacheKey);
+  if (cached) return cached;
+
+  const result = await buildConversationAnalytics(user);
+  cache.set(cacheKey, result, env.CACHE_TTL_MS);
+  return result;
+}
+
+async function buildConversationAnalytics(user: AuthUser) {
   const tenantId = user.tenantId;
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
   const [total, open, pending, resolved, closed, unread, newToday, assigned] = await Promise.all([
@@ -30,6 +46,16 @@ export async function getConversationAnalytics(user: AuthUser) {
 }
 
 export async function getMessageAnalytics(user: AuthUser, days = 30) {
+  const cacheKey = analyticsCacheKey(user.tenantId, 'messages', String(days));
+  const cached = cache.get<Awaited<ReturnType<typeof buildMessageAnalytics>>>(cacheKey);
+  if (cached) return cached;
+
+  const result = await buildMessageAnalytics(user, days);
+  cache.set(cacheKey, result, env.CACHE_TTL_MS);
+  return result;
+}
+
+async function buildMessageAnalytics(user: AuthUser, days = 30) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
@@ -42,6 +68,16 @@ export async function getMessageAnalytics(user: AuthUser, days = 30) {
 }
 
 export async function getAgentAnalytics(user: AuthUser) {
+  const cacheKey = analyticsCacheKey(user.tenantId, 'agents');
+  const cached = cache.get<Awaited<ReturnType<typeof buildAgentAnalytics>>>(cacheKey);
+  if (cached) return cached;
+
+  const result = await buildAgentAnalytics(user);
+  cache.set(cacheKey, result, env.CACHE_TTL_MS);
+  return result;
+}
+
+async function buildAgentAnalytics(user: AuthUser) {
   const pipeline = [
     { $match: { tenantId: user.tenantId, assignedUserId: { $exists: true, $ne: null } } },
     {
@@ -59,6 +95,16 @@ export async function getAgentAnalytics(user: AuthUser) {
 }
 
 export async function getCallAnalytics(user: AuthUser) {
+  const cacheKey = analyticsCacheKey(user.tenantId, 'calls');
+  const cached = cache.get<Awaited<ReturnType<typeof buildCallAnalytics>>>(cacheKey);
+  if (cached) return cached;
+
+  const result = await buildCallAnalytics(user);
+  cache.set(cacheKey, result, env.CACHE_TTL_MS);
+  return result;
+}
+
+async function buildCallAnalytics(user: AuthUser) {
   const tenantId = user.tenantId;
   const [
     total,

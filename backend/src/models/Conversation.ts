@@ -46,6 +46,7 @@ const conversationSchema = new Schema<IConversation>(
 conversationSchema.index({ tenantId: 1, assignedUserId: 1 });
 conversationSchema.index({ tenantId: 1, status: 1 });
 conversationSchema.index({ tenantId: 1, lastMessageAt: -1 });
+conversationSchema.index({ tenantId: 1, unreadCount: 1 });
 conversationSchema.index({ tenantId: 1, groupId: 1 }, { unique: true, sparse: true });
 
 conversationSchema.pre('validate', function validateConversationTarget(next) {

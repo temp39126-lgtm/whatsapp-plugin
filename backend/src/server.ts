@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
+import mongoSanitize from 'express-mongo-sanitize';
 import { createServer } from 'http';
 import pinoHttp from 'pino-http';
 import { corsOptions } from './config/cors';
@@ -8,8 +10,8 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { connectDatabase } from './config/database';
 import { initSocketServer } from './services/realtime/socketService';
-import { authenticate, errorHandler } from './middleware/authenticate';
-import { apiRateLimiter } from './middleware/rateLimiter';
+import { errorHandler } from './middleware/authenticate';
+import { globalApiRateLimiter } from './middleware/rateLimiter';
 
 import authRoutes from './routes/auth.routes';
 import conversationRoutes from './routes/conversation.routes';
@@ -26,20 +28,31 @@ import webhookRoutes from './routes/webhook.routes';
 const app = express();
 const httpServer = createServer(app);
 
-app.use(helmet());
+if (env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+app.use(compression());
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: `${env.MAX_UPLOAD_SIZE_MB}mb` }));
+app.use(mongoSanitize({ replaceWith: '_' }));
 app.use(pinoHttp({ logger }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api', globalApiRateLimiter);
 
+app.use('/api/auth', authRoutes);
 app.use('/api/whatsapp/webhook', webhookRoutes);
 
-app.use('/api/whatsapp', apiRateLimiter);
 app.use('/api/whatsapp/conversations', conversationRoutes);
 app.use('/api/whatsapp', messageRoutes);
 app.use('/api/whatsapp/calls', callRoutes);

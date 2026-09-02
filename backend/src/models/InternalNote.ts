@@ -19,4 +19,6 @@ const internalNoteSchema = new Schema<IInternalNote>(
   { timestamps: true }
 );
 
+internalNoteSchema.index({ tenantId: 1, conversationId: 1, createdAt: -1 });
+
 export const InternalNote = model<IInternalNote>('InternalNote', internalNoteSchema);

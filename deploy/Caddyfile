@@ -1,17 +1,42 @@
 {$DOMAIN} {
-	encode gzip
+	encode gzip zstd
+
+	# Security headers (backend also sets Helmet; Caddy adds edge protection)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+		-Server
+	}
 
 	# API + WebSocket (Socket.io)
 	handle /api/* {
-		reverse_proxy backend:5000
+		reverse_proxy backend:5000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 10
+			}
+		}
 	}
 
 	handle /socket.io/* {
-		reverse_proxy backend:5000
+		reverse_proxy backend:5000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 10
+			}
+		}
 	}
 
 	# Next.js frontend
 	handle {
-		reverse_proxy frontend:3000
+		reverse_proxy frontend:3000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 10
+			}
+		}
 	}
 }

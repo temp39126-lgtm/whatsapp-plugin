@@ -10,6 +10,7 @@ import { enrichConversations } from './conversationEnrichment';
 import { syncGroupInboxConversations } from '../groups/groupInboxService';
 import { Group } from '../../models/Group';
 import { sendAssignmentNotificationEmail } from '../email/emailService';
+import { escapeRegExp } from '../../utils/regex';
 
 interface ConversationFilters {
   status?: string;
@@ -123,16 +124,17 @@ export async function listConversations(
   if (filters.groups) query.groupId = { $exists: true, $ne: null };
 
   if (filters.search) {
+    const safeSearch = escapeRegExp(filters.search);
     const matchingContacts = await Contact.find({
       tenantId: user.tenantId,
       $or: [
-        { name: { $regex: filters.search, $options: 'i' } },
-        { phone: { $regex: filters.search, $options: 'i' } },
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
       ],
     }).select('_id');
     const matchingGroups = await Group.find({
       tenantId: user.tenantId,
-      name: { $regex: filters.search, $options: 'i' },
+      name: { $regex: safeSearch, $options: 'i' },
     }).select('_id');
     query.$or = [
       { contactId: { $in: matchingContacts.map((contact) => contact._id) } },
