@@ -130,10 +130,14 @@ export function TenantEmailSettingsSection({ compact = false }: TenantEmailSetti
         <div className="space-y-5">
           <Field label="SMTP Host" required>
             <Input
-              placeholder="smtp.example.com"
+              placeholder="smtp.zoho.in or smtp.gmail.com"
               value={form.smtpHost}
               onChange={(event) => setForm({ ...form, smtpHost: event.target.value })}
             />
+            <p className="text-xs text-muted-foreground">
+              Zoho India accounts use <code className="text-xs">smtp.zoho.in</code>, not{' '}
+              <code className="text-xs">smtp.zoho.com</code>.
+            </p>
           </Field>
 
           <Field label="SMTP Port" required>
