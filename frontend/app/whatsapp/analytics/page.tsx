@@ -29,6 +29,8 @@ export default function AnalyticsPage() {
         outgoing: number;
         answered: number;
         missed: number;
+        rejected: number;
+        failed: number;
       }>('/analytics/calls'),
   });
 
@@ -70,6 +72,8 @@ export default function AnalyticsPage() {
           <StatCard label="Outgoing" value={calls?.outgoing ?? 0} />
           <StatCard label="Answered" value={calls?.answered ?? 0} />
           <StatCard label="Missed" value={calls?.missed ?? 0} />
+          <StatCard label="Failed" value={calls?.failed ?? 0} />
+          <StatCard label="Rejected" value={calls?.rejected ?? 0} />
         </div>
       </section>
 
