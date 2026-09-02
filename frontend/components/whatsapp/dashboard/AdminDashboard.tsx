@@ -158,37 +158,37 @@ export function AdminDashboard() {
             <div>
               <h2 className="text-lg font-semibold">Users</h2>
               <p className="text-xs text-muted-foreground">
-                Agents only — click to view profile and assigned conversations
+                Team users — click to view profile and assigned conversations
               </p>
             </div>
             <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
-              Add agent
+              Add user
             </Link>
           </div>
           <div className="rounded-xl border bg-card shadow-sm">
             {(teamWorkload ?? []).length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">No agents yet</p>
+              <p className="p-6 text-sm text-muted-foreground">No users yet</p>
             ) : (
               <div className="divide-y">
-                {(teamWorkload ?? []).map((agent) => (
+                {(teamWorkload ?? []).map((teamUser) => (
                   <Link
-                    key={agent._id}
-                    href={`/whatsapp/team/${agent._id}`}
+                    key={teamUser._id}
+                    href={`/whatsapp/team/${teamUser._id}`}
                     className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <ProfileAvatar
-                        name={agent.name}
-                        imageUrl={agent.profileImage}
+                        name={teamUser.name}
+                        imageUrl={teamUser.profileImage}
                         size="sm"
                       />
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{agent.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
+                        <p className="truncate font-medium">{teamUser.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{teamUser.email}</p>
                       </div>
                     </div>
                     <div className="shrink-0 text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{agent.total}</span> assigned
+                      <span className="font-medium text-foreground">{teamUser.total}</span> assigned
                     </div>
                   </Link>
                 ))}
@@ -263,7 +263,7 @@ export function AdminDashboard() {
               </h2>
             </div>
             <p className="mt-1 text-sm text-orange-700">
-              Assign agents from the inbox to improve response times.
+              Assign users from the inbox to improve response times.
             </p>
             <Link
               href={buildInboxHref({ unassigned: true })}

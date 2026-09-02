@@ -85,7 +85,7 @@ export function TeamUserDetail({
               ) : (
                 <>
                   <User className="h-3 w-3" />
-                  Agent
+                  User
                 </>
               )}
             </span>
@@ -117,7 +117,7 @@ export function TeamUserDetail({
           </div>
           <div className="rounded-xl border bg-card p-4">
             <p className="text-sm text-muted-foreground">Role</p>
-            <p className="mt-2 text-xl font-semibold">{user.role === 'ADMIN' ? 'Admin' : 'Agent'}</p>
+            <p className="mt-2 text-xl font-semibold">{user.role === 'ADMIN' ? 'Admin' : 'User'}</p>
           </div>
         </div>
       </section>

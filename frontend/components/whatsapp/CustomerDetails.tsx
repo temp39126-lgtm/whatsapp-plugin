@@ -364,12 +364,12 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Assigned Agent
+            Assigned User
           </h4>
           {isAdmin ? (
             <>
               <p className="mb-2 text-[11px] text-muted-foreground">
-                Choose an agent to own this chat, or select Unassigned to handle it as admin only.
+                Choose a user to own this chat, or select Unassigned to handle it as admin only.
               </p>
               <select
                 value={conversation.assignedUserId ?? ''}
@@ -384,7 +384,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                       onSuccess: () =>
                         setActionMessage(
                           value
-                            ? `Assigned to ${teamUsers.find((user) => user._id === value)?.name ?? 'agent'}`
+                            ? `Assigned to ${teamUsers.find((user) => user._id === value)?.name ?? 'user'}`
                             : 'Conversation unassigned — only admins can see it now'
                         ),
                       onError: (error) =>
@@ -443,7 +443,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
               <div key={note._id} className="rounded bg-yellow-50 p-2 text-sm">
                 <p>{note.content}</p>
                 <p className="mt-1 text-[10px] text-muted-foreground">
-                  {note.author?.name ?? 'Agent'} · {format(new Date(note.createdAt), 'MMM d, HH:mm')}
+                  {note.author?.name ?? 'User'} · {format(new Date(note.createdAt), 'MMM d, HH:mm')}
                 </p>
               </div>
             ))}

@@ -51,7 +51,7 @@ export async function enrichConversations<T extends Record<string, unknown>>(
       assignedUser: assignedUserId
         ? {
             _id: assignedUserId,
-            name: userMap.get(assignedUserId)?.name ?? 'Unknown Agent',
+            name: userMap.get(assignedUserId)?.name ?? 'Unknown User',
             email: userMap.get(assignedUserId)?.email ?? '',
           }
         : undefined,

@@ -109,7 +109,7 @@ const DEMO_CONVERSATIONS: DemoConversation[] = [
       { direction: 'INCOMING', text: 'I want to speak with a manager.', minutesAgo: 50 },
       { direction: 'INCOMING', text: 'Please respond ASAP.', minutesAgo: 45 },
     ],
-    note: 'Escalated complaint — admin should assign to an agent.',
+    note: 'Escalated complaint — admin should assign to a user.',
   },
   {
     contact: { name: 'James Brown', phone: '+15551110099', whatsappId: '15551110099' },

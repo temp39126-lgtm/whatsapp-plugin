@@ -25,7 +25,7 @@ export default function TeamPage() {
       setName('');
       setEmail('');
       setPassword('');
-      setMessage(`Created agent account for ${user.name}. Assign chats from the inbox.`);
+      setMessage(`Created user account for ${user.name}. Assign chats from the inbox.`);
     },
     onError: (error) =>
       setMessage(error instanceof Error ? error.message : 'Failed to create user'),
@@ -49,7 +49,7 @@ export default function TeamPage() {
         </Link>
         <h1 className="text-2xl font-semibold">Team Management</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create new agent accounts here. View agents and assigned conversation counts on the{' '}
+          Create new user accounts here. View users and assigned conversation counts on the{' '}
           <Link href="/whatsapp/admin" className="text-whatsapp-dark hover:underline">
             admin dashboard
           </Link>
@@ -60,10 +60,10 @@ export default function TeamPage() {
       <section className="max-w-3xl rounded-xl border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <UserPlus className="h-5 w-5 text-whatsapp" />
-          <h2 className="text-lg font-semibold">Create agent account</h2>
+          <h2 className="text-lg font-semibold">Create user account</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          New agents can also sign up at <code className="text-xs">/auth/signup</code>. Use this
+          New users can also sign up at <code className="text-xs">/auth/signup</code>. Use this
           form when you want to create their account directly.
         </p>
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

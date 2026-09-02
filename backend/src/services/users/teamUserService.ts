@@ -92,7 +92,7 @@ export async function enrichAgentStats<T extends AgentStatRow>(
     const user = userMap.get(row._id);
     return {
       ...row,
-      name: user?.name ?? 'Unknown agent',
+      name: user?.name ?? 'Unknown user',
       email: user?.email ?? '',
       role: (user?.role ?? 'USER') as 'ADMIN' | 'USER',
       profileImage: teamUserAvatarUrl(row._id, user?.profileImage),
