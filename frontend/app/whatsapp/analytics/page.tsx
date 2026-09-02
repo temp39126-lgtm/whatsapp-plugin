@@ -6,9 +6,9 @@ import type { AnalyticsConversations } from '@/types';
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold">{value}</p>
+    <div className="min-w-0 rounded-lg border p-3 sm:p-4">
+      <p className="truncate text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+      <p className="mt-1 text-2xl font-semibold sm:text-3xl">{value}</p>
     </div>
   );
 }
@@ -42,12 +42,12 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="overflow-y-auto p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Analytics</h1>
+    <div className="h-full min-w-0 overflow-y-auto p-4 sm:p-6">
+      <h1 className="mb-4 text-xl font-semibold sm:mb-6 sm:text-2xl">Analytics</h1>
 
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-medium">Conversations</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-6 sm:mb-8">
+        <h2 className="mb-3 text-base font-medium sm:mb-4 sm:text-lg">Conversations</h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           <StatCard label="Total" value={conversations?.total ?? 0} />
           <StatCard label="Open" value={conversations?.open ?? 0} />
           <StatCard label="Pending" value={conversations?.pending ?? 0} />
@@ -58,9 +58,9 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-medium">Calls</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-6 sm:mb-8">
+        <h2 className="mb-3 text-base font-medium sm:mb-4 sm:text-lg">Calls</h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           <StatCard label="Total" value={calls?.total ?? 0} />
           <StatCard label="Incoming" value={calls?.incoming ?? 0} />
           <StatCard label="Outgoing" value={calls?.outgoing ?? 0} />
