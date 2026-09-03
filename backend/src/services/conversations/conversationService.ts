@@ -10,6 +10,10 @@ import { enrichConversations } from './conversationEnrichment';
 import { syncGroupInboxConversations } from '../groups/groupInboxService';
 import { Group } from '../../models/Group';
 import { sendAssignmentNotificationEmail } from '../email/emailService';
+import {
+  buildInboxHref,
+  createUserNotification,
+} from '../notifications/notificationService';
 import { escapeRegExp } from '../../utils/regex';
 
 interface ConversationFilters {
@@ -233,15 +237,27 @@ export async function assignConversation(
     previousAssignee,
   });
 
-  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.assigned', {
-    conversationId: conversation._id.toString(),
-    assignedUserId,
-  });
-
   const contact = conversation.contactId
     ? await Contact.findById(conversation.contactId).lean()
     : null;
   const conversationLabel = contact?.name ?? 'Customer conversation';
+
+  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.assigned', {
+    conversationId: conversation._id.toString(),
+    assignedUserId,
+    conversationLabel,
+    assignedByName: user.name ?? 'Admin',
+  });
+
+  void createUserNotification({
+    tenantId: user.tenantId,
+    userId: assignedUserId,
+    type: 'assignment',
+    title: 'Conversation assigned to you',
+    body: `${user.name ?? 'Admin'} assigned you: ${conversationLabel}`,
+    href: buildInboxHref(conversation._id.toString()),
+    conversationId: conversation._id.toString(),
+  }).catch(() => undefined);
 
   void sendAssignmentNotificationEmail({
     tenantId: user.tenantId,

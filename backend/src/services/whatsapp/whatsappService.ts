@@ -20,6 +20,11 @@ import {
   storeMediaFile,
 } from '../media/mediaService';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
+import {
+  buildInboxHref,
+  createUserNotification,
+  notifyTenantAdmins,
+} from '../notifications/notificationService';
 import { decrypt } from '../../utils/encryption';
 
 interface IncomingTextMessage {
@@ -93,6 +98,15 @@ export async function findOrCreateConversation(
     await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.created', {
       conversation: conversation.toObject(),
     });
+
+    void notifyTenantAdmins({
+      tenantId: account.tenantId,
+      type: 'unassigned',
+      title: 'New unassigned conversation',
+      body: `${contact.name ?? contact.phone ?? 'A customer'} started a new chat`,
+      href: buildInboxHref(conversation._id.toString()),
+      conversationId: conversation._id.toString(),
+    }).catch(() => undefined);
 
     const { sendUnassignedAlertEmail } = await import('../email/emailService');
     void sendUnassignedAlertEmail({
@@ -228,6 +242,31 @@ export async function processIncomingMessage(
     lastMessage: preview,
     unreadCount: conversation.unreadCount + 1,
   });
+
+  const senderLabel = contact.name ?? contact.phone ?? 'Customer';
+  const conversationId = conversation._id.toString();
+  const href = buildInboxHref(conversationId);
+
+  if (conversation.assignedUserId) {
+    void createUserNotification({
+      tenantId: account.tenantId,
+      userId: conversation.assignedUserId,
+      type: 'message',
+      title: `New message from ${senderLabel}`,
+      body: preview,
+      href,
+      conversationId,
+    }).catch(() => undefined);
+  } else {
+    void notifyTenantAdmins({
+      tenantId: account.tenantId,
+      type: 'message',
+      title: `New message from ${senderLabel}`,
+      body: preview,
+      href,
+      conversationId,
+    }).catch(() => undefined);
+  }
 }
 
 export async function processStatusUpdate(
