@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Send, Paperclip, Smile, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,26 @@ export function MessageComposer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showEmoji) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        emojiPickerRef.current?.contains(target) ||
+        emojiButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setShowEmoji(false);
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmoji]);
 
   const handleSend = () => {
     if (selectedFile && onSendMedia) {
@@ -43,6 +63,7 @@ export function MessageComposer({
     if (!text.trim() || disabled) return;
     onSend(text.trim(), replyTo?._id);
     setText('');
+    setShowEmoji(false);
     onCancelReply?.();
   };
 
@@ -127,19 +148,37 @@ export function MessageComposer({
             className="pr-10"
           />
           <button
+            ref={emojiButtonRef}
             type="button"
             onClick={() => setShowEmoji(!showEmoji)}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label={showEmoji ? 'Close emoji picker' : 'Open emoji picker'}
+            aria-expanded={showEmoji}
           >
             <Smile className="h-5 w-5" />
           </button>
           {showEmoji && (
-            <div className="absolute bottom-12 left-0 right-0 z-10 flex justify-center sm:left-auto sm:right-0 sm:justify-end">
-              <div className="max-w-[min(100vw-1.5rem,350px)] overflow-hidden rounded-lg shadow-lg [&_.EmojiPickerReact]:!w-full">
+            <div
+              ref={emojiPickerRef}
+              className="absolute bottom-12 left-0 right-0 z-10 flex justify-center sm:left-auto sm:right-0 sm:justify-end"
+            >
+              <div className="max-w-[min(100vw-1.5rem,350px)] overflow-hidden rounded-lg border bg-background shadow-lg [&_.EmojiPickerReact]:!w-full">
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-sm font-medium text-muted-foreground">Emoji</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmoji(false)}
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Close emoji picker"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
                 <EmojiPicker
                   width={Math.min(350, typeof window !== 'undefined' ? window.innerWidth - 24 : 350)}
                   onEmojiClick={(emoji) => {
                     setText((prev) => prev + emoji.emoji);
+                    setShowEmoji(false);
                     inputRef.current?.focus();
                   }}
                 />
