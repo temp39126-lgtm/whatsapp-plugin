@@ -66,7 +66,7 @@ describe('In-app notifications', () => {
     expect(await getUnreadNotificationCount(authUser)).toBe(1);
   });
 
-  it('backfills assignment notifications for assigned conversations', async () => {
+  it('does not backfill notifications for self-assigned conversations', async () => {
     const contact = await Contact.create({
       tenantId: 'tenant-001',
       whatsappAccountId: new mongoose.Types.ObjectId(),
@@ -74,6 +74,7 @@ describe('In-app notifications', () => {
       phone: '+15551234567',
       whatsappId: '15551234567',
       tags: [],
+      assignedUserId: authUser.userId,
     });
 
     await Conversation.create({
@@ -88,9 +89,52 @@ describe('In-app notifications', () => {
     });
 
     const notifications = await listNotifications(authUser);
+    expect(notifications).toHaveLength(0);
+  });
+
+  it('backfills assignment notifications when assigned by another user', async () => {
+    const admin = await User.create({
+      email: 'admin@example.com',
+      passwordHash: await bcrypt.hash('secret', 10),
+      name: 'Admin User',
+      role: 'ADMIN',
+      tenantId: 'tenant-001',
+      isActive: true,
+    });
+
+    const contact = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: new mongoose.Types.ObjectId(),
+      name: 'Jane Customer',
+      phone: '+15559876543',
+      whatsappId: '15559876543',
+      tags: [],
+    });
+
+    const conversation = await Conversation.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: new mongoose.Types.ObjectId(),
+      contactId: contact._id,
+      assignedUserId: authUser.userId,
+      status: 'OPEN',
+      priority: 'NORMAL',
+      unreadCount: 0,
+      permittedUsers: [],
+    });
+
+    await import('../src/models/ConversationAssignment').then(({ ConversationAssignment }) =>
+      ConversationAssignment.create({
+        tenantId: 'tenant-001',
+        conversationId: conversation._id,
+        assignedUserId: authUser.userId,
+        assignedBy: admin._id.toString(),
+      })
+    );
+
+    const notifications = await listNotifications(authUser);
     expect(notifications).toHaveLength(1);
     expect(notifications[0].type).toBe('assignment');
-    expect(notifications[0].body).toContain('Jane Customer');
+    expect(notifications[0].body).toContain('Admin User assigned you: Jane Customer');
     expect(await getUnreadNotificationCount(authUser)).toBe(1);
   });
 

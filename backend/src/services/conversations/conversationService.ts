@@ -249,22 +249,24 @@ export async function assignConversation(
     assignedByName: user.name ?? 'Admin',
   });
 
-  void createUserNotification({
-    tenantId: user.tenantId,
-    userId: assignedUserId,
-    type: 'assignment',
-    title: 'Conversation assigned to you',
-    body: `${user.name ?? 'Admin'} assigned you: ${conversationLabel}`,
-    href: buildInboxHref(conversation._id.toString()),
-    conversationId: conversation._id.toString(),
-  }).catch(() => undefined);
+  if (assignedUserId !== user.userId) {
+    void createUserNotification({
+      tenantId: user.tenantId,
+      userId: assignedUserId,
+      type: 'assignment',
+      title: 'Conversation assigned to you',
+      body: `${user.name ?? 'Admin'} assigned you: ${conversationLabel}`,
+      href: buildInboxHref(conversation._id.toString()),
+      conversationId: conversation._id.toString(),
+    }).catch(() => undefined);
 
-  void sendAssignmentNotificationEmail({
-    tenantId: user.tenantId,
-    assigneeUserId: assignedUserId,
-    conversationLabel,
-    assignedByName: user.name ?? 'Admin',
-  }).catch(() => undefined);
+    void sendAssignmentNotificationEmail({
+      tenantId: user.tenantId,
+      assigneeUserId: assignedUserId,
+      conversationLabel,
+      assignedByName: user.name ?? 'Admin',
+    }).catch(() => undefined);
+  }
 
   return getConversation(user, conversation._id.toString());
 }

@@ -1,4 +1,5 @@
 import { Notification, NotificationType } from '../../models/Notification';
+import { ConversationAssignment } from '../../models/ConversationAssignment';
 import { Conversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
 import { User } from '../../models/User';
@@ -101,18 +102,17 @@ export async function notifyTenantAdmins(params: {
 }
 
 export async function syncMissingAssignmentNotifications(user: AuthUser): Promise<void> {
-  const assignedConversations = await Conversation.find({
+  const assignments = await ConversationAssignment.find({
     tenantId: user.tenantId,
     assignedUserId: user.userId,
+    $expr: { $ne: ['$assignedBy', '$assignedUserId'] },
   })
-    .select('_id contactId')
+    .sort({ assignedAt: -1 })
     .lean();
 
-  if (assignedConversations.length === 0) return;
+  if (assignments.length === 0) return;
 
-  const conversationIds = assignedConversations.map((conversation) =>
-    conversation._id.toString()
-  );
+  const conversationIds = assignments.map((assignment) => assignment.conversationId.toString());
 
   const existing = await Notification.find({
     tenantId: user.tenantId,
@@ -124,13 +124,27 @@ export async function syncMissingAssignmentNotifications(user: AuthUser): Promis
     .lean();
 
   const existingIds = new Set(existing.map((item) => item.conversationId).filter(Boolean));
-  const missing = assignedConversations.filter(
-    (conversation) => !existingIds.has(conversation._id.toString())
+  const missing = assignments.filter(
+    (assignment) => !existingIds.has(assignment.conversationId.toString())
   );
 
   if (missing.length === 0) return;
 
-  const contactIds = missing
+  const assignerIds = [...new Set(missing.map((assignment) => assignment.assignedBy))];
+  const assigners = await User.find({ _id: { $in: assignerIds } })
+    .select('_id name')
+    .lean();
+  const assignerNames = new Map(
+    assigners.map((assigner) => [assigner._id.toString(), assigner.name])
+  );
+
+  const conversationContactIds = await Conversation.find({
+    _id: { $in: missing.map((assignment) => assignment.conversationId) },
+  })
+    .select('_id contactId')
+    .lean();
+
+  const contactIds = conversationContactIds
     .map((conversation) => conversation.contactId)
     .filter(Boolean);
   const contacts = contactIds.length
@@ -141,20 +155,26 @@ export async function syncMissingAssignmentNotifications(user: AuthUser): Promis
   const contactNames = new Map(
     contacts.map((contact) => [contact._id.toString(), contact.name])
   );
+  const conversationContacts = new Map(
+    conversationContactIds.map((conversation) => [
+      conversation._id.toString(),
+      conversation.contactId?.toString(),
+    ])
+  );
 
   await Promise.all(
-    missing.map((conversation) => {
-      const conversationId = conversation._id.toString();
-      const contactName = conversation.contactId
-        ? contactNames.get(conversation.contactId.toString())
-        : undefined;
+    missing.map((assignment) => {
+      const conversationId = assignment.conversationId.toString();
+      const contactId = conversationContacts.get(conversationId);
+      const contactName = contactId ? contactNames.get(contactId) : undefined;
+      const assignerName = assignerNames.get(assignment.assignedBy) ?? 'Admin';
 
       return createUserNotification({
         tenantId: user.tenantId,
         userId: user.userId,
         type: 'assignment',
         title: 'Conversation assigned to you',
-        body: `You were assigned: ${contactName ?? 'Customer conversation'}`,
+        body: `${assignerName} assigned you: ${contactName ?? 'Customer conversation'}`,
         href: buildInboxHref(conversationId),
         conversationId,
       });
@@ -163,6 +183,13 @@ export async function syncMissingAssignmentNotifications(user: AuthUser): Promis
 }
 
 export async function listNotifications(user: AuthUser, limit = 30): Promise<NotificationDTO[]> {
+  await Notification.deleteMany({
+    tenantId: user.tenantId,
+    userId: user.userId,
+    type: 'assignment',
+    body: { $regex: /^You were assigned:/ },
+  });
+
   await syncMissingAssignmentNotifications(user);
 
   const notifications = await Notification.find({
