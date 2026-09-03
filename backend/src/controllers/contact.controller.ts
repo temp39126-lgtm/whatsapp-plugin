@@ -25,6 +25,19 @@ export async function listContacts(req: AuthenticatedRequest, res: Response, nex
   }
 }
 
+export async function openContactConversation(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await contactService.openContactConversation(req.user!, getParam(req.params.id));
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getContact(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const result = await contactService.getContact(req.user!, getParam(req.params.id));

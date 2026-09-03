@@ -1,24 +1,33 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Trash2, UserPlus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MessageCircle, Trash2, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
-import { useCreateContact, useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
+import {
+  useCreateContact,
+  useDeleteContact,
+  useOpenContactConversation,
+  useUploadContactAvatar,
+} from '@/hooks/useContacts';
 import type { ContactDTO, PaginatedResponse } from '@/types';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
 import { useState } from 'react';
 
 export default function ContactsPage() {
+  const router = useRouter();
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const [openingContactId, setOpeningContactId] = useState<string | null>(null);
   const deleteContact = useDeleteContact();
   const createContact = useCreateContact();
+  const openContactConversation = useOpenContactConversation();
   const uploadContactAvatar = useUploadContactAvatar();
 
   const { data, isLoading } = useQuery({
@@ -28,6 +37,19 @@ export default function ContactsPage() {
   });
 
   const contacts = data?.data ?? [];
+
+  function handleMessage(contact: ContactDTO) {
+    setOpeningContactId(contact._id);
+    openContactConversation.mutate(contact._id, {
+      onSuccess: ({ conversationId }) => {
+        router.push(`/whatsapp/inbox?conversation=${conversationId}`);
+      },
+      onError: (error) => {
+        setMessage(error instanceof Error ? error.message : 'Failed to open conversation');
+      },
+      onSettled: () => setOpeningContactId(null),
+    });
+  }
 
   function handleDelete(contact: ContactDTO) {
     const confirmed = window.confirm(
@@ -134,17 +156,29 @@ export default function ContactsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{contact.name}</p>
                     <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      disabled={deleteContact.isPending}
-                      onClick={() => handleDelete(contact)}
-                    >
-                      <Trash2 className="mr-1 h-4 w-4" />
-                      Delete
-                    </Button>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="whatsapp"
+                        size="sm"
+                        disabled={openingContactId === contact._id}
+                        onClick={() => handleMessage(contact)}
+                      >
+                        <MessageCircle className="mr-1 h-4 w-4" />
+                        {openingContactId === contact._id ? 'Opening...' : 'Message'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        disabled={deleteContact.isPending}
+                        onClick={() => handleDelete(contact)}
+                      >
+                        <Trash2 className="mr-1 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

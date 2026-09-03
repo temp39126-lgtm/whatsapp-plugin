@@ -1,6 +1,6 @@
 import { AuthUser } from '../../types';
 import { Contact, IContact } from '../../models/Contact';
-import { Conversation } from '../../models/Conversation';
+import { Conversation, IConversation } from '../../models/Conversation';
 import { Call } from '../../models/Call';
 import { Group } from '../../models/Group';
 import { Message } from '../../models/Message';
@@ -39,6 +39,8 @@ export async function createContact(
     throw new AppError(409, 'A contact with this phone number already exists');
   }
 
+  const assignToCreator = user.role === 'USER';
+
   const contact = await Contact.create({
     tenantId: user.tenantId,
     whatsappAccountId: account._id,
@@ -46,6 +48,7 @@ export async function createContact(
     phone,
     whatsappId,
     tags: [],
+    ...(assignToCreator ? { assignedUserId: user.userId } : {}),
   });
 
   await Conversation.create({
@@ -57,6 +60,7 @@ export async function createContact(
     unreadCount: 0,
     lastMessage: '',
     lastMessageAt: new Date(),
+    ...(assignToCreator ? { assignedUserId: user.userId } : {}),
   });
 
   await logActivity(user, 'contact.created', 'contact', contact._id.toString(), {
@@ -86,6 +90,67 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
   const contacts = await Contact.find(query).sort({ updatedAt: -1 }).skip(skip).limit(lim).lean();
   const total = await Contact.countDocuments(query);
   return paginatedResponse(contacts, total, page, lim);
+}
+
+function canUserAccessContact(user: AuthUser, contact: IContact): boolean {
+  if (user.role === 'ADMIN') return true;
+  return !contact.assignedUserId || contact.assignedUserId === user.userId;
+}
+
+async function claimUnassignedConversation(user: AuthUser, conversation: IConversation) {
+  if (conversation.assignedUserId) return conversation;
+
+  conversation.assignedUserId = user.userId;
+  await conversation.save();
+
+  await logActivity(user, 'conversation.assigned', 'conversation', conversation._id.toString(), {
+    assignedUserId: user.userId,
+    selfAssigned: true,
+  });
+
+  return conversation;
+}
+
+export async function openContactConversation(user: AuthUser, contactId: string) {
+  const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
+  if (!contact) throw new AppError(404, 'Contact not found');
+
+  if (!canUserAccessContact(user, contact)) {
+    throw new AppError(403, 'Access denied to this contact');
+  }
+
+  let conversation = await Conversation.findOne({
+    tenantId: user.tenantId,
+    contactId: contact._id,
+  });
+
+  if (!conversation) {
+    conversation = await Conversation.create({
+      tenantId: user.tenantId,
+      whatsappAccountId: contact.whatsappAccountId,
+      contactId: contact._id,
+      status: 'OPEN',
+      priority: 'NORMAL',
+      unreadCount: 0,
+      lastMessage: '',
+      lastMessageAt: new Date(),
+      ...(user.role === 'USER' ? { assignedUserId: user.userId } : {}),
+    });
+  } else if (user.role === 'USER') {
+    if (
+      conversation.assignedUserId &&
+      conversation.assignedUserId !== user.userId &&
+      !conversation.permittedUsers.includes(user.userId)
+    ) {
+      throw new AppError(403, 'This conversation is assigned to another user');
+    }
+
+    if (!conversation.assignedUserId) {
+      conversation = await claimUnassignedConversation(user, conversation);
+    }
+  }
+
+  return { conversationId: conversation._id.toString() };
 }
 
 export async function getContact(user: AuthUser, contactId: string) {
