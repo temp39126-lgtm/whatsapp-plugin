@@ -306,28 +306,31 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Tags
           </h4>
           <p className="mb-2 text-[10px] text-muted-foreground">
-            Click a tag to assign it to this chat. Use × to delete a tag from the workspace.
-            {isAdmin && (
+            {isAdmin ? (
               <>
-                {' '}
+                Click a tag to assign it to this chat. Use × to delete a tag from the workspace.{' '}
                 <Link href="/whatsapp/tags" className="text-whatsapp underline">
                   Manage all tags
                 </Link>
               </>
+            ) : (
+              'Click a tag to assign it to this chat.'
             )}
           </p>
-          <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
-            <Input
-              value={newTagName}
-              onChange={(event) => setNewTagName(event.target.value)}
-              placeholder="New tag name..."
-              className="h-8 min-w-0 flex-1 text-sm"
-              maxLength={50}
-            />
-            <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
-              {createTag.isPending ? 'Adding...' : 'Create'}
-            </Button>
-          </form>
+          {isAdmin && (
+            <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
+              <Input
+                value={newTagName}
+                onChange={(event) => setNewTagName(event.target.value)}
+                placeholder="New tag name..."
+                className="h-8 min-w-0 flex-1 text-sm"
+                maxLength={50}
+              />
+              <Button type="submit" size="sm" variant="whatsapp" disabled={createTag.isPending}>
+                {createTag.isPending ? 'Adding...' : 'Create'}
+              </Button>
+            </form>
+          )}
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => {
               const selected = selectedTagIds.includes(tag._id);
@@ -347,15 +350,17 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                   >
                     {tag.name}
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete tag ${tag.name}`}
-                    disabled={deleteTag.isPending}
-                    onClick={() => handleDeleteTag(tag._id, tag.name)}
-                    className="border-l border-white/20 px-1.5 py-0.5 text-[10px] hover:bg-black/10 disabled:opacity-50"
-                  >
-                    ×
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      aria-label={`Delete tag ${tag.name}`}
+                      disabled={deleteTag.isPending}
+                      onClick={() => handleDeleteTag(tag._id, tag.name)}
+                      className="border-l border-white/20 px-1.5 py-0.5 text-[10px] hover:bg-black/10 disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  )}
                 </span>
               );
             })}
