@@ -213,3 +213,37 @@ export async function sendPasswordResetEmail(params: {
     html,
   });
 }
+
+export async function sendDailyDigestEmail(params: {
+  tenantId: string;
+  to: string;
+  name: string;
+  unreadCount: number;
+}): Promise<boolean> {
+  const settings = await getTenantSettingsDocument(params.tenantId);
+  const notifications = settings?.notifications ?? DEFAULT_TENANT_NOTIFICATIONS;
+  if (!notifications.enabled) return false;
+
+  const inboxUrl = process.env.FRONTEND_URL
+    ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/whatsapp/inbox?unread=true`
+    : '/whatsapp/inbox?unread=true';
+  const subject = `Daily summary: ${params.unreadCount} unread conversation${params.unreadCount === 1 ? '' : 's'}`;
+  const text = [
+    `Hi ${params.name},`,
+    '',
+    `You have ${params.unreadCount} unread conversation${params.unreadCount === 1 ? '' : 's'} in WhatsApp CRM.`,
+    `Open your inbox: ${inboxUrl}`,
+  ].join('\n');
+  const html = `
+    <p>Hi ${params.name},</p>
+    <p>You have <strong>${params.unreadCount}</strong> unread conversation${params.unreadCount === 1 ? '' : 's'} in WhatsApp CRM.</p>
+    <p><a href="${inboxUrl}">Open your inbox</a></p>
+  `;
+
+  return sendTenantEmail(settings, {
+    to: params.to,
+    subject,
+    text,
+    html,
+  });
+}

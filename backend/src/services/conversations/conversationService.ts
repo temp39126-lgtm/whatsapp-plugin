@@ -233,15 +233,17 @@ export async function assignConversation(
     previousAssignee,
   });
 
-  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.assigned', {
-    conversationId: conversation._id.toString(),
-    assignedUserId,
-  });
-
   const contact = conversation.contactId
     ? await Contact.findById(conversation.contactId).lean()
     : null;
   const conversationLabel = contact?.name ?? 'Customer conversation';
+
+  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.assigned', {
+    conversationId: conversation._id.toString(),
+    assignedUserId,
+    conversationLabel,
+    assignedByName: user.name ?? 'Admin',
+  });
 
   void sendAssignmentNotificationEmail({
     tenantId: user.tenantId,

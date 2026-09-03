@@ -3,9 +3,11 @@
 import { Sidebar } from '@/components/whatsapp/shared/Sidebar';
 import { AuthGate } from '@/components/auth/AuthGate';
 import { useSocket } from '@/hooks/useSocket';
+import { useNotificationAlerts } from '@/hooks/useNotificationAlerts';
 
 export default function WhatsAppLayout({ children }: { children: React.ReactNode }) {
   useSocket();
+  useNotificationAlerts();
 
   return (
     <AuthGate>

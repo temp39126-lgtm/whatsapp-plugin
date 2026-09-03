@@ -10,6 +10,7 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { connectDatabase } from './config/database';
 import { initSocketServer } from './services/realtime/socketService';
+import { scheduleDailyDigestEmails } from './services/email/digestService';
 import { errorHandler } from './middleware/authenticate';
 import { globalApiRateLimiter } from './middleware/rateLimiter';
 
@@ -68,6 +69,7 @@ app.use(errorHandler);
 async function start() {
   await connectDatabase();
   initSocketServer(httpServer);
+  scheduleDailyDigestEmails();
 
   httpServer.listen(env.PORT, () => {
     logger.info(`WhatsApp CRM Backend running on port ${env.PORT}`);

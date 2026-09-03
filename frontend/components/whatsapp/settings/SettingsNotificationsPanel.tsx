@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { SettingsToggle } from './SettingsToggle';
 import { TenantEmailSettingsSection } from './TenantEmailSettingsSection';
 import { useUpdatePreferences } from '@/hooks/useProfile';
+import { ensureDesktopNotificationPermission } from '@/lib/notifications';
 
 interface SettingsNotificationsPanelProps {
   profile: UserProfile;
@@ -31,6 +32,22 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
     );
   }
 
+  async function handleDesktopNotificationsChange(checked: boolean) {
+    if (checked) {
+      const permission = await ensureDesktopNotificationPermission();
+      if (permission === 'denied') {
+        setMessage('Browser blocked desktop notifications. Enable them in your browser settings.');
+        return;
+      }
+      if (permission === 'unsupported') {
+        setMessage('Desktop notifications are not supported in this browser.');
+        return;
+      }
+    }
+
+    updateNotification('desktopNotifications', checked);
+  }
+
   return (
     <div className="overflow-y-auto">
       <div className="divide-y px-4">
@@ -53,7 +70,7 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
           description="Show browser notifications while the app is open"
           checked={notifications.desktopNotifications}
           disabled={isSaving}
-          onChange={(checked) => updateNotification('desktopNotifications', checked)}
+          onChange={handleDesktopNotificationsChange}
         />
         <SettingsToggle
           label="Email on assignment"

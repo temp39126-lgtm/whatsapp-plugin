@@ -16,6 +16,7 @@ import { useConversation, useConversations } from '@/hooks/useConversations';
 import { useOutboundCall } from '@/hooks/useOutboundCall';
 import { ActiveCallBar } from '@/components/whatsapp/calls/ActiveCallBar';
 import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
+import { setActiveConversationId } from '@/lib/notifications';
 
 function InboxLoading() {
   return (
@@ -41,6 +42,11 @@ function InboxPageContent() {
 
   useEffect(() => {
     setShowDetailsMobile(false);
+  }, [selectedId]);
+
+  useEffect(() => {
+    setActiveConversationId(selectedId);
+    return () => setActiveConversationId(null);
   }, [selectedId]);
 
   const { data, isLoading } = useConversations(filters);
