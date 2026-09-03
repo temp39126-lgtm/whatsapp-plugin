@@ -26,6 +26,10 @@ import {
   notifyTenantAdmins,
 } from '../notifications/notificationService';
 import { decrypt } from '../../utils/encryption';
+import { normalizeWhatsAppId, formatPhoneDisplay } from '../../utils/phone';
+import { isDuplicateKeyError } from '../../utils/mongo';
+import { shouldApplyMessageStatus } from '../../utils/messageStatus';
+import { getOrCreateContactConversation } from '../contacts/contactConversationService';
 
 interface IncomingTextMessage {
   from: string;
@@ -57,63 +61,62 @@ export async function findOrCreateContact(
   whatsappId: string,
   name?: string
 ): Promise<IContact> {
-  let contact = await Contact.findOne({
-    tenantId: account.tenantId,
-    whatsappId,
-  });
-
-  if (!contact) {
-    contact = await Contact.create({
-      tenantId: account.tenantId,
-      whatsappAccountId: account._id,
-      name: name ?? whatsappId,
-      phone: whatsappId,
-      whatsappId,
-    });
+  const normalizedId = normalizeWhatsAppId(whatsappId);
+  if (!normalizedId) {
+    throw new Error('Invalid WhatsApp ID');
   }
 
-  return contact;
+  const displayPhone = formatPhoneDisplay(normalizedId);
+  const contactName = name?.trim() || displayPhone;
+
+  try {
+    const contact = await Contact.findOneAndUpdate(
+      { tenantId: account.tenantId, whatsappId: normalizedId },
+      {
+        $setOnInsert: {
+          tenantId: account.tenantId,
+          whatsappAccountId: account._id,
+          whatsappId: normalizedId,
+          phone: displayPhone,
+          name: contactName,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    if (name?.trim() && contact.name !== name.trim()) {
+      contact.name = name.trim();
+      await contact.save();
+    }
+
+    return contact;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
+    }
+
+    const existing = await Contact.findOne({
+      tenantId: account.tenantId,
+      whatsappId: normalizedId,
+    });
+    if (!existing) {
+      throw error;
+    }
+    return existing;
+  }
 }
 
 export async function findOrCreateConversation(
   account: IWhatsAppAccount,
   contact: IContact
 ): Promise<IConversation> {
-  let conversation = await Conversation.findOne({
+  const { conversation } = await getOrCreateContactConversation({
     tenantId: account.tenantId,
+    whatsappAccountId: account._id,
     contactId: contact._id,
-    status: { $in: ['OPEN', 'PENDING'] },
+    notifyNew: true,
+    contactLabel: contact.name ?? contact.phone ?? 'A customer',
   });
-
-  if (!conversation) {
-    conversation = await Conversation.create({
-      tenantId: account.tenantId,
-      whatsappAccountId: account._id,
-      contactId: contact._id,
-      status: 'OPEN',
-      priority: 'NORMAL',
-      unreadCount: 0,
-    });
-
-    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.created', {
-      conversation: conversation.toObject(),
-    });
-
-    void notifyTenantAdmins({
-      tenantId: account.tenantId,
-      type: 'unassigned',
-      title: 'New unassigned conversation',
-      body: `${contact.name ?? contact.phone ?? 'A customer'} started a new chat`,
-      href: buildInboxHref(conversation._id.toString()),
-      conversationId: conversation._id.toString(),
-    }).catch(() => undefined);
-
-    const { sendUnassignedAlertEmail } = await import('../email/emailService');
-    void sendUnassignedAlertEmail({
-      tenantId: account.tenantId,
-      conversationLabel: contact.name ?? contact.phone ?? 'New customer',
-    }).catch(() => undefined);
-  }
 
   return conversation;
 }
@@ -204,16 +207,32 @@ export async function processIncomingMessage(
       type = 'INTERACTIVE';
   }
 
-  const message = await Message.create({
+  const existingMessage = await Message.findOne({
     tenantId: account.tenantId,
-    conversationId: conversation._id,
-    contactId: contact._id,
     metaMessageId: incoming.id,
-    direction: 'INCOMING',
-    type,
-    content,
-    status: 'DELIVERED',
   });
+  if (existingMessage) {
+    return;
+  }
+
+  let message: IMessage;
+  try {
+    message = await Message.create({
+      tenantId: account.tenantId,
+      conversationId: conversation._id,
+      contactId: contact._id,
+      metaMessageId: incoming.id,
+      direction: 'INCOMING',
+      type,
+      content,
+      status: 'DELIVERED',
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return;
+    }
+    throw error;
+  }
 
   if (mediaId) {
     await processMediaMessage(account, message, mediaId, type, mimeType ?? 'application/octet-stream', fileName);
@@ -224,11 +243,15 @@ export async function processIncomingMessage(
       ? (content as { text: string }).text
       : `[${type}]`;
 
-  await Conversation.findByIdAndUpdate(conversation._id, {
-    lastMessage: preview,
-    lastMessageAt: new Date(),
-    $inc: { unreadCount: 1 },
-  });
+  const updatedConversation = await Conversation.findByIdAndUpdate(
+    conversation._id,
+    {
+      lastMessage: preview,
+      lastMessageAt: new Date(),
+      $inc: { unreadCount: 1 },
+    },
+    { new: true }
+  );
 
   await markMessageAsRead(account.phoneNumberId, incoming.id, account).catch(() => {});
 
@@ -240,7 +263,7 @@ export async function processIncomingMessage(
   await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.updated', {
     conversationId: conversation._id.toString(),
     lastMessage: preview,
-    unreadCount: conversation.unreadCount + 1,
+    unreadCount: updatedConversation?.unreadCount ?? conversation.unreadCount + 1,
   });
 
   const senderLabel = contact.name ?? contact.phone ?? 'Customer';
@@ -284,8 +307,13 @@ export async function processStatusUpdate(
   const mappedStatus = statusMap[status];
   if (!mappedStatus) return;
 
+  const existing = await Message.findOne({ tenantId: account.tenantId, metaMessageId });
+  if (!existing || !shouldApplyMessageStatus(existing.status, mappedStatus)) {
+    return;
+  }
+
   const message = await Message.findOneAndUpdate(
-    { tenantId: account.tenantId, metaMessageId },
+    { _id: existing._id },
     { status: mappedStatus },
     { new: true }
   );

@@ -28,7 +28,7 @@ const contactSchema = new Schema<IContact>(
 );
 
 contactSchema.index({ tenantId: 1, phone: 1 });
-contactSchema.index({ tenantId: 1, whatsappId: 1 });
+contactSchema.index({ tenantId: 1, whatsappId: 1 }, { unique: true });
 contactSchema.index({ tenantId: 1, name: 1 });
 contactSchema.index({ tenantId: 1, updatedAt: -1 });
 

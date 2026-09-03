@@ -11,17 +11,21 @@ import { logActivity } from '../rbac/activityLog';
 import { storeAvatar } from '../avatars/avatarService';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { escapeRegExp } from '../../utils/regex';
+import { normalizeWhatsAppId, formatPhoneDisplay } from '../../utils/phone';
+import {
+  atomicClaimConversation,
+  getOrCreateContactConversation,
+} from './contactConversationService';
+import { emitToTenant } from '../realtime/socketService';
 
 function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
-  const trimmed = phone.trim();
-  const digits = trimmed.replace(/\D/g, '');
+  const digits = normalizeWhatsAppId(phone);
 
   if (digits.length < 8 || digits.length > 15) {
     throw new AppError(400, 'Enter a valid phone number with country code');
   }
 
-  const formatted = trimmed.startsWith('+') ? `+${digits}` : `+${digits}`;
-  return { phone: formatted, whatsappId: digits };
+  return { phone: formatPhoneDisplay(digits), whatsappId: digits };
 }
 
 export async function createContact(
@@ -51,16 +55,13 @@ export async function createContact(
     ...(assignToCreator ? { assignedUserId: user.userId } : {}),
   });
 
-  await Conversation.create({
+  await getOrCreateContactConversation({
     tenantId: user.tenantId,
     whatsappAccountId: account._id,
     contactId: contact._id,
-    status: 'OPEN',
-    priority: 'NORMAL',
-    unreadCount: 0,
-    lastMessage: '',
-    lastMessageAt: new Date(),
-    ...(assignToCreator ? { assignedUserId: user.userId } : {}),
+    assignedUserId: assignToCreator ? user.userId : undefined,
+    notifyNew: user.role === 'ADMIN',
+    contactLabel: contact.name,
   });
 
   await logActivity(user, 'contact.created', 'contact', contact._id.toString(), {
@@ -114,17 +115,21 @@ function assertUserCanAccessContact(user: AuthUser, contact: IContact): void {
 
 async function claimUnassignedConversation(
   user: AuthUser,
-  conversation: IConversation & { save(): Promise<unknown> }
+  conversation: IConversation & { _id: { toString(): string } }
 ): Promise<void> {
   if (conversation.assignedUserId) return;
 
-  conversation.assignedUserId = user.userId;
-  await conversation.save();
-
-  await logActivity(user, 'conversation.assigned', 'conversation', conversation._id.toString(), {
-    assignedUserId: user.userId,
-    selfAssigned: true,
-  });
+  const claimed = await atomicClaimConversation(user, conversation._id.toString());
+  if (!claimed) {
+    const latest = await Conversation.findById(conversation._id);
+    if (
+      latest?.assignedUserId &&
+      latest.assignedUserId !== user.userId &&
+      !latest.permittedUsers.includes(user.userId)
+    ) {
+      throw new AppError(409, 'This conversation was just assigned to another user');
+    }
+  }
 }
 
 export async function openContactConversation(user: AuthUser, contactId: string) {
@@ -138,20 +143,19 @@ export async function openContactConversation(user: AuthUser, contactId: string)
   let conversation = await Conversation.findOne({
     tenantId: user.tenantId,
     contactId: contact._id,
-  });
+    groupId: { $exists: false },
+  }).sort({ lastMessageAt: -1 });
 
   if (!conversation) {
-    conversation = await Conversation.create({
+    const created = await getOrCreateContactConversation({
       tenantId: user.tenantId,
       whatsappAccountId: contact.whatsappAccountId,
       contactId: contact._id,
-      status: 'OPEN',
-      priority: 'NORMAL',
-      unreadCount: 0,
-      lastMessage: '',
-      lastMessageAt: new Date(),
-      ...(user.role === 'USER' ? { assignedUserId: user.userId } : {}),
+      assignedUserId: user.role === 'USER' ? user.userId : undefined,
+      notifyNew: false,
+      contactLabel: contact.name,
     });
+    conversation = created.conversation;
   } else if (user.role === 'USER') {
     if (
       conversation.assignedUserId &&
@@ -203,6 +207,17 @@ export async function assignContact(user: AuthUser, contactId: string, assignedU
     { new: true }
   );
   if (!contact) throw new AppError(404, 'Contact not found');
+
+  await Conversation.updateMany(
+    {
+      tenantId: user.tenantId,
+      contactId: contact._id,
+      groupId: { $exists: false },
+      status: { $in: ['OPEN', 'PENDING'] },
+    },
+    { $set: { assignedUserId } }
+  );
+
   return contact;
 }
 
@@ -230,6 +245,11 @@ export async function deleteContact(user: AuthUser, contactId: string) {
   ]);
 
   await logActivity(user, 'contact.deleted', 'contact', contactId, { name: contact.name });
+
+  emitToTenant(user.tenantId, 'contact.deleted', {
+    contactId,
+    conversationIds: conversationIds.map((id) => id.toString()),
+  });
 
   return { deleted: true };
 }

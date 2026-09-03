@@ -11,6 +11,7 @@ export interface IUser extends Document {
   isActive: boolean;
   profileImage?: string;
   about?: string;
+  tokenVersion: number;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   preferences?: {
@@ -39,6 +40,7 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ['ADMIN', 'USER'], required: true },
     tenantId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },
+    tokenVersion: { type: Number, default: 0 },
     profileImage: { type: String },
     about: { type: String, default: '', maxlength: 139 },
     passwordResetToken: { type: String, select: false },

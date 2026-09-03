@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { User } from '../../models/User';
 import { AuthUser, AppError } from '../../types';
 import { storeAvatar } from '../avatars/avatarService';
-import { userToAuthUser, signAuthToken } from '../auth/authService';
+import { userToAuthUser, signAuthToken, incrementUserTokenVersion } from '../auth/authService';
 import {
   DEFAULT_USER_PREFERENCES,
   type UserPreferences,
@@ -93,7 +93,7 @@ export async function changeUserPassword(
   user: AuthUser,
   currentPassword: string,
   newPassword: string
-): Promise<UserProfile> {
+): Promise<{ profile: UserProfile; token: string }> {
   const record = await User.findOne({
     _id: user.userId,
     tenantId: user.tenantId,
@@ -115,8 +115,13 @@ export async function changeUserPassword(
 
   record.passwordHash = await bcrypt.hash(newPassword, 10);
   await record.save();
+  const tokenVersion = await incrementUserTokenVersion(user.userId);
 
-  return userToProfile(record);
+  const authUser = userToAuthUser(record);
+  return {
+    profile: userToProfile(record),
+    token: signAuthToken(authUser, tokenVersion),
+  };
 }
 
 export async function changeUserEmail(
@@ -151,11 +156,12 @@ export async function changeUserEmail(
 
   record.email = normalizedEmail;
   await record.save();
+  const tokenVersion = await incrementUserTokenVersion(user.userId);
 
   const authUser = userToAuthUser(record);
   return {
     profile: userToProfile(record),
-    token: signAuthToken(authUser),
+    token: signAuthToken(authUser, tokenVersion),
   };
 }
 

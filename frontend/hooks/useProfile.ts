@@ -55,12 +55,17 @@ export function useUploadProfileAvatar(onSuccess?: (user: UserProfile) => void) 
   });
 }
 
-export function useChangePassword(onSuccess?: () => void) {
+export function useChangePassword(
+  onSuccess?: (result: { profile: UserProfile; token: string; message: string }) => void
+) {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (payload: { currentPassword: string; newPassword: string }) =>
-      api.put<{ profile: UserProfile; message: string }>('/profile/password', payload),
-    onSuccess: () => {
-      onSuccess?.();
+      api.put<{ profile: UserProfile; token: string; message: string }>('/profile/password', payload),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['user-profile'], result.profile);
+      onSuccess?.(result);
     },
   });
 }

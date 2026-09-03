@@ -77,7 +77,7 @@ export async function changePassword(req: AuthenticatedRequest, res: Response, n
       newPassword: string;
     };
     const profile = await changeUserPassword(req.user!, currentPassword, newPassword);
-    res.json({ profile, message: 'Password updated successfully' });
+    res.json({ profile: profile.profile, token: profile.token, message: 'Password updated successfully' });
   } catch (error) {
     next(error);
   }

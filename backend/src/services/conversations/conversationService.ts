@@ -247,6 +247,17 @@ export async function assignConversation(
     conversation.set('assignedUserId', undefined, { strict: false });
     await conversation.save();
 
+    if (conversation.contactId && previousAssignee) {
+      await Contact.updateOne(
+        {
+          _id: conversation.contactId,
+          tenantId: user.tenantId,
+          assignedUserId: previousAssignee,
+        },
+        { $unset: { assignedUserId: 1 } }
+      );
+    }
+
     await logActivity(user, 'conversation.unassigned', 'conversation', conversation._id.toString(), {
       previousAssignee,
     });
@@ -261,6 +272,13 @@ export async function assignConversation(
 
   conversation.assignedUserId = assignedUserId;
   await conversation.save();
+
+  if (conversation.contactId) {
+    await Contact.updateOne(
+      { _id: conversation.contactId, tenantId: user.tenantId },
+      { $set: { assignedUserId } }
+    );
+  }
 
   await ConversationAssignment.create({
     tenantId: user.tenantId,

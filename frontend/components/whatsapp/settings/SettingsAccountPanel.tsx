@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { useAuth } from '@/components/AuthProvider';
 import { setAuthToken } from '@/lib/auth';
+import { resetSocket } from '@/lib/socket';
 import {
   profileToAuthUser,
   useChangeEmail,
@@ -49,16 +50,20 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     setMessage('Profile photo updated');
   });
 
-  const changePassword = useChangePassword(() => {
+  const changePassword = useChangePassword((result) => {
+    setAuthToken(result.token);
+    refreshUser(profileToAuthUser(result.profile));
+    resetSocket();
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setMessage('Password updated');
+    setMessage(result.message);
   });
 
   const changeEmail = useChangeEmail((result) => {
     setAuthToken(result.token);
     refreshUser(profileToAuthUser(result.profile));
+    resetSocket();
     setEmailPassword('');
     setMessage(result.message);
   });

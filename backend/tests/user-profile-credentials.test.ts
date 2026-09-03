@@ -45,8 +45,9 @@ describe('User profile credentials', () => {
   });
 
   it('changes password when current password is correct', async () => {
-    const profile = await changeUserPassword(authUser, 'secret123', 'newpassword456');
-    expect(profile.email).toBe('agent@example.com');
+    const result = await changeUserPassword(authUser, 'secret123', 'newpassword456');
+    expect(result.profile.email).toBe('agent@example.com');
+    expect(result.token).toBeTruthy();
 
     const stored = await User.findById(authUser.userId).select('+passwordHash');
     const matches = await bcrypt.compare('newpassword456', stored!.passwordHash);

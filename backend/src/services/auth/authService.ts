@@ -32,7 +32,7 @@ export function userToAuthUser(user: {
   };
 }
 
-export function signAuthToken(user: AuthUser): string {
+export function signAuthToken(user: AuthUser, tokenVersion = 0): string {
   const options: jwt.SignOptions = {
     algorithm: env.JWT_ALGORITHM,
     expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
@@ -49,17 +49,27 @@ export function signAuthToken(user: AuthUser): string {
       permissions: user.permissions,
       email: user.email,
       name: user.name,
+      tv: tokenVersion,
     },
     env.JWT_SECRET,
     options
   );
 }
 
-export function buildAuthResponse(user: AuthUser) {
+export function buildAuthResponse(user: AuthUser, tokenVersion = 0) {
   return {
-    token: signAuthToken(user),
+    token: signAuthToken(user, tokenVersion),
     user,
   };
+}
+
+export async function incrementUserTokenVersion(userId: string): Promise<number> {
+  const updated = await User.findByIdAndUpdate(
+    userId,
+    { $inc: { tokenVersion: 1 } },
+    { new: true }
+  ).select('tokenVersion');
+  return updated?.tokenVersion ?? 1;
 }
 
 function canExposeAuthSecretsInApi(): boolean {
@@ -136,7 +146,7 @@ export async function registerUser(
     isActive: true,
   });
 
-  return buildAuthResponse(userToAuthUser(user));
+  return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
 }
 
 export async function completeSignupAfterOtp(challenge: {
@@ -163,7 +173,7 @@ export async function completeSignupAfterOtp(challenge: {
     isActive: true,
   });
 
-  return buildAuthResponse(userToAuthUser(user));
+  return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
 }
 
 export async function loginWithPassword(
@@ -197,7 +207,7 @@ export async function loginWithPassword(
     });
   }
 
-  return buildAuthResponse(userToAuthUser(user));
+  return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
 }
 
 export async function completeLoginAfterOtp(challenge: {
@@ -214,7 +224,7 @@ export async function completeLoginAfterOtp(challenge: {
     throw new AppError(401, 'Invalid verification session. Please sign in again.');
   }
 
-  return buildAuthResponse(userToAuthUser(user));
+  return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
 }
 
 const PASSWORD_RESET_MESSAGE =
@@ -317,6 +327,7 @@ export async function resetPasswordWithToken(
   user.passwordHash = await bcrypt.hash(password, 10);
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
 
   return { message: 'Password updated. You can sign in with your new password.' };

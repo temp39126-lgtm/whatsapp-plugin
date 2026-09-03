@@ -9,6 +9,9 @@ import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { env } from '../../config/env';
 import { AppError } from '../../types';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
+import { normalizeWhatsAppId } from '../../utils/phone';
+import { isDuplicateKeyError } from '../../utils/mongo';
+import { getOrCreateContactConversation } from '../contacts/contactConversationService';
 
 export async function listCalls(user: AuthUser, page = 1, limit = 20) {
   const { skip, limit: lim } = getPagination({ page, limit });
@@ -68,6 +71,15 @@ export async function startCall(
     Contact.findById(conversation.contactId),
   ]);
   if (!account || !contact) throw new AppError(404, 'Account or contact not found');
+
+  const activeCall = await Call.findOne({
+    tenantId: user.tenantId,
+    conversationId: conversation._id,
+    status: { $in: ['INITIATING', 'RINGING', 'CONNECTED'] },
+  });
+  if (activeCall) {
+    throw new AppError(409, 'A call is already in progress for this conversation');
+  }
 
   const call = await Call.create({
     tenantId: user.tenantId,
@@ -266,26 +278,39 @@ export async function processIncomingCallWebhook(
   const account = await WhatsAppAccount.findOne({ tenantId, phoneNumberId: data.phoneNumberId });
   if (!account) return;
 
-  const contact = await Contact.findOne({ tenantId, whatsappId: data.from });
+  const normalizedFrom = normalizeWhatsAppId(data.from);
+  const contact = await Contact.findOne({ tenantId, whatsappId: normalizedFrom });
   if (!contact) return;
 
-  const conversation = await Conversation.findOne({
-    tenantId,
-    contactId: contact._id,
-    status: { $in: ['OPEN', 'PENDING'] },
-  });
-  if (!conversation) return;
+  const existingCall = await Call.findOne({ tenantId, metaCallId: data.callId });
+  if (existingCall) return;
 
-  const call = await Call.create({
+  const { conversation } = await getOrCreateContactConversation({
     tenantId,
     whatsappAccountId: account._id,
-    conversationId: conversation._id,
     contactId: contact._id,
-    direction: 'INCOMING',
-    status: 'RINGING',
-    metaCallId: data.callId,
-    startedAt: new Date(),
+    notifyNew: false,
+    contactLabel: contact.name,
   });
+
+  let call;
+  try {
+    call = await Call.create({
+      tenantId,
+      whatsappAccountId: account._id,
+      conversationId: conversation._id,
+      contactId: contact._id,
+      direction: 'INCOMING',
+      status: 'RINGING',
+      metaCallId: data.callId,
+      startedAt: new Date(),
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return;
+    }
+    throw error;
+  }
 
   await createCallEvent(call, 'call.incoming');
   await emitToAuthorizedUsers(tenantId, conversation._id.toString(), 'call.incoming', {

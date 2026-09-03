@@ -51,6 +51,16 @@ conversationSchema.index(
   { tenantId: 1, groupId: 1 },
   { unique: true, partialFilterExpression: { groupId: { $type: 'objectId' } } }
 );
+conversationSchema.index(
+  { tenantId: 1, contactId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      contactId: { $type: 'objectId' },
+      groupId: { $exists: false },
+    },
+  }
+);
 
 conversationSchema.pre('validate', function validateConversationTarget(next) {
   if (!this.contactId && !this.groupId) {

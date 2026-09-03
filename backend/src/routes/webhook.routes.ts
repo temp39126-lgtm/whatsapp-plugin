@@ -103,8 +103,19 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
     }
 
     if (value.messages) {
+      const contactNameById = new Map<string, string>();
+      for (const entry of value.contacts ?? []) {
+        if (entry.wa_id && entry.profile?.name) {
+          contactNameById.set(entry.wa_id, entry.profile.name);
+          contactNameById.set(entry.wa_id.replace(/\D/g, ''), entry.profile.name);
+        }
+      }
+
       for (const message of value.messages) {
-        const contactName = value.contacts?.[0]?.profile?.name;
+        const contactName =
+          contactNameById.get(message.from) ??
+          contactNameById.get(String(message.from).replace(/\D/g, '')) ??
+          value.contacts?.[0]?.profile?.name;
         await processIncomingMessage(account, message, contactName);
       }
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { connectSocket, disconnectSocket, onSocketEvent } from '@/lib/socket';
+import { connectSocket, disconnectSocket, onSocketEvent, resetSocket } from '@/lib/socket';
 
 export function useSocket() {
   const queryClient = useQueryClient();
@@ -39,6 +39,11 @@ export function useSocket() {
       onSocketEvent('conversation.updated', invalidateConversations),
       onSocketEvent('conversation.created', invalidateConversations),
       onSocketEvent('conversation.assigned', invalidateConversations),
+      onSocketEvent('conversation.unassigned', invalidateConversations),
+      onSocketEvent('contact.deleted', () => {
+        invalidateConversations();
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      }),
       onSocketEvent('call.incoming', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
       onSocketEvent('call.ended', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
       onSocketEvent('call.sdp-answer', () => queryClient.invalidateQueries({ queryKey: ['calls'] })),
