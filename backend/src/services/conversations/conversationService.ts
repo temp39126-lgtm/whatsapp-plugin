@@ -28,6 +28,7 @@ interface ConversationFilters {
   search?: string;
   mine?: boolean;
   groups?: boolean;
+  assignedByAdmin?: boolean;
 }
 
 type PopulatedGroupMember = {
@@ -126,6 +127,41 @@ export async function listConversations(
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
   if (filters.unread) query.unreadCount = { $gt: 0 };
   if (filters.groups) query.groupId = { $exists: true, $ne: null };
+
+  if (filters.assignedByAdmin) {
+    const adminAssignments = await ConversationAssignment.find({
+      tenantId: user.tenantId,
+      assignedUserId: user.userId,
+      $expr: { $ne: ['$assignedBy', '$assignedUserId'] },
+    })
+      .select('conversationId')
+      .lean();
+    const adminAssignedIds = adminAssignments.map((assignment) => assignment.conversationId);
+
+    const ownContacts = await Contact.find({
+      tenantId: user.tenantId,
+      assignedUserId: user.userId,
+    })
+      .select('_id')
+      .lean();
+    const ownContactIds = ownContacts.map((contact) => contact._id);
+
+    const assignedByAdminClause = {
+      $or: [
+        { _id: { $in: adminAssignedIds } },
+        {
+          assignedUserId: user.userId,
+          $or: [
+            { contactId: { $exists: false } },
+            { contactId: null },
+            { contactId: { $nin: ownContactIds } },
+          ],
+        },
+      ],
+    };
+
+    query.$and = [...((query.$and as unknown[]) ?? []), assignedByAdminClause];
+  }
 
   if (filters.search) {
     const safeSearch = escapeRegExp(filters.search);

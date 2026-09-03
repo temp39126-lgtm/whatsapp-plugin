@@ -15,6 +15,7 @@ interface ConversationFilters {
   search?: string;
   mine?: boolean;
   groups?: boolean;
+  assignedByAdmin?: boolean;
   page?: number;
   limit?: number;
 }

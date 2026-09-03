@@ -31,6 +31,7 @@ export const conversationQuerySchema = z.object({
   search: z.string().optional(),
   mine: z.coerce.boolean().optional(),
   groups: z.coerce.boolean().optional(),
+  assignedByAdmin: z.coerce.boolean().optional(),
   page: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
 });

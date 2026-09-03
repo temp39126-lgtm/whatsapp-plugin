@@ -19,9 +19,10 @@ import { getInitials } from '@/lib/utils';
 export function UserDashboard() {
   const { user } = useAuth();
 
-  const { data: myConversations, isLoading } = useConversations({ mine: true });
-  const { data: openData } = useConversations({ mine: true, status: 'OPEN' });
-  const { data: unreadData } = useConversations({ mine: true, unread: true });
+  const dashboardFilters = { mine: true, assignedByAdmin: true } as const;
+  const { data: myConversations, isLoading } = useConversations(dashboardFilters);
+  const { data: openData } = useConversations({ ...dashboardFilters, status: 'OPEN' });
+  const { data: unreadData } = useConversations({ ...dashboardFilters, unread: true });
 
   const conversations = myConversations?.data ?? [];
   const openCount = openData?.data?.length ?? 0;
