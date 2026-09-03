@@ -55,6 +55,34 @@ export function useUploadProfileAvatar(onSuccess?: (user: UserProfile) => void) 
   });
 }
 
+export function useChangePassword(onSuccess?: () => void) {
+  return useMutation({
+    mutationFn: (payload: { currentPassword: string; newPassword: string }) =>
+      api.put<{ profile: UserProfile; message: string }>('/profile/password', payload),
+    onSuccess: () => {
+      onSuccess?.();
+    },
+  });
+}
+
+export function useChangeEmail(
+  onSuccess?: (result: { profile: UserProfile; token: string; message: string }) => void
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { email: string; currentPassword: string }) =>
+      api.put<{ profile: UserProfile; token: string; message: string }>(
+        '/profile/email',
+        payload
+      ),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['user-profile'], result.profile);
+      onSuccess?.(result);
+    },
+  });
+}
+
 export function profileToAuthUser(profile: UserProfile): AuthUser {
   return {
     userId: profile.userId,

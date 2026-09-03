@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Mail, Shield } from 'lucide-react';
+import { KeyRound, Mail, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { useAuth } from '@/components/AuthProvider';
+import { setAuthToken } from '@/lib/auth';
 import {
   profileToAuthUser,
+  useChangeEmail,
+  useChangePassword,
   useUpdateProfile,
   useUploadProfileAvatar,
 } from '@/hooks/useProfile';
@@ -21,13 +24,19 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
   const { refreshUser } = useAuth();
   const [name, setName] = useState(profile.name ?? '');
   const [about, setAbout] = useState(profile.about ?? '');
+  const [email, setEmail] = useState(profile.email ?? '');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     setName(profile.name ?? '');
     setAbout(profile.about ?? '');
-  }, [profile.name, profile.about]);
+    setEmail(profile.email ?? '');
+  }, [profile.name, profile.about, profile.email]);
 
   const updateProfile = useUpdateProfile((updated) => {
     refreshUser(profileToAuthUser(updated));
@@ -38,6 +47,20 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     refreshUser(profileToAuthUser(updated));
     setAvatarVersion((current) => current + 1);
     setMessage('Profile photo updated');
+  });
+
+  const changePassword = useChangePassword(() => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setMessage('Password updated');
+  });
+
+  const changeEmail = useChangeEmail((result) => {
+    setAuthToken(result.token);
+    refreshUser(profileToAuthUser(result.profile));
+    setEmailPassword('');
+    setMessage(result.message);
   });
 
   function handleSave(event: React.FormEvent) {
@@ -51,10 +74,43 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     );
   }
 
+  function handleEmailChange(event: React.FormEvent) {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return;
+
+    changeEmail.mutate(
+      { email: trimmedEmail, currentPassword: emailPassword },
+      {
+        onError: (error) =>
+          setMessage(error instanceof Error ? error.message : 'Failed to update email'),
+      }
+    );
+  }
+
+  function handlePasswordChange(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setMessage('New passwords do not match');
+      return;
+    }
+
+    changePassword.mutate(
+      { currentPassword, newPassword },
+      {
+        onError: (error) =>
+          setMessage(error instanceof Error ? error.message : 'Failed to update password'),
+      }
+    );
+  }
+
   const avatarUrl = profile.profileImage
     ? `${profile.profileImage}?v=${avatarVersion}`
     : undefined;
   const isSaving = updateProfile.isPending || uploadAvatar.isPending;
+  const isChangingEmail = changeEmail.isPending;
+  const isChangingPassword = changePassword.isPending;
 
   return (
     <div className="space-y-6 p-4">
@@ -100,19 +156,117 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
             />
           </div>
           <Button type="submit" variant="whatsapp" disabled={isSaving}>
-            {updateProfile.isPending ? 'Saving...' : 'Save'}
+            {updateProfile.isPending ? 'Saving...' : 'Save profile'}
           </Button>
         </form>
       </div>
 
-      <div className="rounded-xl border bg-card divide-y">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Email</p>
-            <p className="truncate text-sm font-medium">{profile.email ?? '—'}</p>
-          </div>
+      <form onSubmit={handleEmailChange} className="max-w-lg space-y-3 rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Email address</h3>
         </div>
+        <div>
+          <label htmlFor="profile-email" className="text-sm font-medium">
+            Email
+          </label>
+          <Input
+            id="profile-email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="mt-1"
+            disabled={isChangingEmail}
+            autoComplete="email"
+          />
+        </div>
+        <div>
+          <label htmlFor="email-password" className="text-sm font-medium">
+            Current password
+          </label>
+          <Input
+            id="email-password"
+            type="password"
+            value={emailPassword}
+            onChange={(event) => setEmailPassword(event.target.value)}
+            className="mt-1"
+            disabled={isChangingEmail}
+            autoComplete="current-password"
+            placeholder="Confirm with your password"
+          />
+        </div>
+        <Button type="submit" variant="outline" disabled={isChangingEmail || !emailPassword.trim()}>
+          {isChangingEmail ? 'Updating...' : 'Update email'}
+        </Button>
+      </form>
+
+      <form
+        onSubmit={handlePasswordChange}
+        className="max-w-lg space-y-3 rounded-xl border bg-card p-4"
+      >
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Password</h3>
+        </div>
+        <div>
+          <label htmlFor="current-password" className="text-sm font-medium">
+            Current password
+          </label>
+          <Input
+            id="current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            className="mt-1"
+            disabled={isChangingPassword}
+            autoComplete="current-password"
+          />
+        </div>
+        <div>
+          <label htmlFor="new-password" className="text-sm font-medium">
+            New password
+          </label>
+          <Input
+            id="new-password"
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            className="mt-1"
+            disabled={isChangingPassword}
+            autoComplete="new-password"
+            minLength={6}
+          />
+        </div>
+        <div>
+          <label htmlFor="confirm-password" className="text-sm font-medium">
+            Confirm new password
+          </label>
+          <Input
+            id="confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className="mt-1"
+            disabled={isChangingPassword}
+            autoComplete="new-password"
+            minLength={6}
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={
+            isChangingPassword ||
+            !currentPassword ||
+            !newPassword ||
+            newPassword !== confirmPassword
+          }
+        >
+          {isChangingPassword ? 'Updating...' : 'Change password'}
+        </Button>
+      </form>
+
+      <div className="rounded-xl border bg-card">
         <div className="flex items-center gap-3 px-4 py-3">
           <Shield className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
@@ -121,10 +275,6 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
           </div>
         </div>
       </div>
-
-      <p className="text-sm text-muted-foreground">
-        Password changes are managed by your workspace admin.
-      </p>
 
       {message && <p className="text-sm text-whatsapp-dark">{message}</p>}
     </div>

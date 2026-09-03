@@ -29,4 +29,14 @@ export const resendOtpSchema = z.object({
   challengeId: z.string().uuid(),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(6).max(128),
+});
+
+export const changeEmailSchema = z.object({
+  email: z.string().email(),
+  currentPassword: z.string().min(1, 'Password is required to change email'),
+});
+
 export const createTeamUserSchema = signupSchema;

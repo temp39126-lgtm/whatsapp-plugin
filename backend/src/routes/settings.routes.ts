@@ -10,7 +10,7 @@ import {
   updateTenantNotificationSettingsSchema,
   testNotificationEmailSchema,
 } from '../validators/settings.validator';
-import { createTeamUserSchema } from '../validators/auth.validator';
+import { createTeamUserSchema, changePasswordSchema, changeEmailSchema } from '../validators/auth.validator';
 import { avatarUploadMiddleware } from '../middleware/upload';
 import * as controller from '../controllers/settings.controller';
 import * as profileController from '../controllers/profile.controller';
@@ -34,6 +34,12 @@ router.post(
   avatarUploadMiddleware.single('avatar'),
   profileController.uploadProfileAvatar
 );
+router.put(
+  '/profile/password',
+  validateBody(changePasswordSchema),
+  profileController.changePassword
+);
+router.put('/profile/email', validateBody(changeEmailSchema), profileController.changeEmail);
 router.get('/settings/connection', controller.getConnectionStatus);
 router.get('/settings/account', requireRole('ADMIN'), requirePermission('manage_settings'), controller.getAccountSettings);
 router.put(
