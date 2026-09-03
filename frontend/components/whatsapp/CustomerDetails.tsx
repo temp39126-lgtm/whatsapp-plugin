@@ -18,6 +18,7 @@ import {
   useUpdateConversationPriority,
   useUpdateConversationStatus,
   useUpdateConversationTags,
+  useUpdatePermittedUsers,
 } from '@/hooks/useConversations';
 import { useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
 import { useDeleteGroup, useUploadGroupAvatar } from '@/hooks/useGroups';
@@ -43,6 +44,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const updateStatus = useUpdateConversationStatus();
   const updatePriority = useUpdateConversationPriority();
   const updateTags = useUpdateConversationTags();
+  const updatePermittedUsers = useUpdatePermittedUsers();
   const assignConversation = useAssignConversation();
   const deleteContact = useDeleteContact();
   const deleteGroup = useDeleteGroup();
@@ -80,13 +82,30 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const selectedTagIds = (conversation.tags ?? []).map((tag) => tag._id);
   const isDeleting = deleteContact.isPending || deleteGroup.isPending;
   const isUploading = uploadContactAvatar.isPending || uploadGroupAvatar.isPending;
+  const conversationVersion = conversation.version;
 
   function toggleTag(tagId: string) {
     const nextTagIds = selectedTagIds.includes(tagId)
       ? selectedTagIds.filter((id) => id !== tagId)
       : [...selectedTagIds, tagId];
 
-    updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds });
+    updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds, version: conversationVersion });
+  }
+
+  function togglePermittedUser(userId: string) {
+    const current = conversation!.permittedUsers ?? [];
+    const nextUserIds = current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId];
+
+    updatePermittedUsers.mutate(
+      { id: conversation!._id, userIds: nextUserIds, version: conversationVersion },
+      {
+        onSuccess: () => setActionMessage('Shared access updated'),
+        onError: (error) =>
+          setActionMessage(error instanceof Error ? error.message : 'Failed to update shared access'),
+      }
+    );
   }
 
   function handleDeleteTag(tagId: string, tagName: string) {
@@ -109,7 +128,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
     createTag.mutate(name, {
       onSuccess: (tag) => {
         setNewTagName('');
-        updateTags.mutate({ id: conversation!._id, tagIds: [...selectedTagIds, tag._id] });
+        updateTags.mutate({ id: conversation!._id, tagIds: [...selectedTagIds, tag._id], version: conversationVersion });
         setActionMessage(`Tag "${tag.name}" created and applied`);
       },
       onError: (error) => {
@@ -261,7 +280,9 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             {statuses.map((status) => (
               <button
                 key={status}
-                onClick={() => updateStatus.mutate({ id: conversation._id, status })}
+                onClick={() =>
+                  updateStatus.mutate({ id: conversation._id, status, version: conversationVersion })
+                }
                 disabled={updateStatus.isPending}
                 className={cn(
                   'rounded-full px-2 py-0.5 text-xs transition-colors',
@@ -284,7 +305,13 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             {priorities.map((priority) => (
               <button
                 key={priority}
-                onClick={() => updatePriority.mutate({ id: conversation._id, priority })}
+                onClick={() =>
+                  updatePriority.mutate({
+                    id: conversation._id,
+                    priority,
+                    version: conversationVersion,
+                  })
+                }
                 disabled={updatePriority.isPending}
                 className={cn(
                   'rounded-full px-2 py-0.5 text-xs transition-colors',
@@ -384,6 +411,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                     {
                       id: conversation._id,
                       assignedUserId: value ? value : null,
+                      version: conversationVersion,
                     },
                     {
                       onSuccess: () =>
@@ -414,6 +442,43 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             <p className="text-sm">{conversation.assignedUser?.name ?? 'Unassigned'}</p>
           )}
         </section>
+
+        {isAdmin && !isGroup && (
+          <section>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Shared access
+            </h4>
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Allow additional users to view and reply in this chat without changing the assignee.
+            </p>
+            <div className="space-y-1">
+              {teamUsers
+                .filter((user) => user._id !== conversation.assignedUserId)
+                .map((user) => {
+                  const selected = (conversation.permittedUsers ?? []).includes(user._id);
+                  return (
+                    <label
+                      key={user._id}
+                      className="flex cursor-pointer items-center gap-2 rounded border px-2 py-1.5 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={updatePermittedUsers.isPending}
+                        onChange={() => togglePermittedUser(user._id)}
+                      />
+                      <span>
+                        {user.name}{' '}
+                        <span className="text-xs text-muted-foreground">
+                          ({user.role === 'ADMIN' ? 'Admin' : 'User'})
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+            </div>
+          </section>
+        )}
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

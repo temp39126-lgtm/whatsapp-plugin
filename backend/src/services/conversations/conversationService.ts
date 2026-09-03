@@ -1,6 +1,7 @@
-import { AuthUser } from '../../types';
+import { AuthUser, AppError } from '../../types';
 import { Conversation, IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
+import { User } from '../../models/User';
 import { ConversationAssignment } from '../../models/ConversationAssignment';
 import { buildConversationFilter } from '../rbac/conversationAccess';
 import { logActivity } from '../rbac/activityLog';
@@ -15,6 +16,7 @@ import {
   createUserNotification,
 } from '../notifications/notificationService';
 import { sendContactAssignmentNotice } from './assignmentContactNotice';
+import { saveConversationWithVersion } from './conversationLock';
 import { escapeRegExp } from '../../utils/regex';
 
 interface ConversationFilters {
@@ -239,13 +241,19 @@ export async function getConversation(user: AuthUser, conversationId: string) {
 export async function assignConversation(
   user: AuthUser,
   conversation: IConversation,
-  assignedUserId: string | null
+  assignedUserId: string | null,
+  expectedVersion?: number
 ) {
   const previousAssignee = conversation.assignedUserId;
 
+  if (assignedUserId !== null && previousAssignee === assignedUserId) {
+    return getConversation(user, conversation._id.toString());
+  }
+
   if (assignedUserId === null) {
-    conversation.set('assignedUserId', undefined, { strict: false });
-    await conversation.save();
+    await saveConversationWithVersion(conversation, expectedVersion, () => {
+      conversation.set('assignedUserId', undefined, { strict: false });
+    });
 
     if (conversation.contactId && previousAssignee) {
       await Contact.updateOne(
@@ -270,8 +278,9 @@ export async function assignConversation(
     return getConversation(user, conversation._id.toString());
   }
 
-  conversation.assignedUserId = assignedUserId;
-  await conversation.save();
+  await saveConversationWithVersion(conversation, expectedVersion, () => {
+    conversation.assignedUserId = assignedUserId;
+  });
 
   if (conversation.contactId) {
     await Contact.updateOne(
@@ -304,7 +313,7 @@ export async function assignConversation(
     assignedByName: user.name ?? 'Admin',
   });
 
-  if (assignedUserId !== user.userId) {
+  if (assignedUserId !== user.userId && previousAssignee !== assignedUserId) {
     void createUserNotification({
       tenantId: user.tenantId,
       userId: assignedUserId,
@@ -335,10 +344,12 @@ export async function assignConversation(
 export async function updateConversationStatus(
   user: AuthUser,
   conversation: IConversation,
-  status: string
+  status: string,
+  expectedVersion?: number
 ) {
-  conversation.status = status as IConversation['status'];
-  await conversation.save();
+  await saveConversationWithVersion(conversation, expectedVersion, () => {
+    conversation.status = status as IConversation['status'];
+  });
 
   await logActivity(user, 'conversation.status_changed', 'conversation', conversation._id.toString(), {
     status,
@@ -355,10 +366,12 @@ export async function updateConversationStatus(
 export async function updateConversationPriority(
   user: AuthUser,
   conversation: IConversation,
-  priority: string
+  priority: string,
+  expectedVersion?: number
 ) {
-  conversation.priority = priority as IConversation['priority'];
-  await conversation.save();
+  await saveConversationWithVersion(conversation, expectedVersion, () => {
+    conversation.priority = priority as IConversation['priority'];
+  });
 
   await logActivity(user, 'conversation.priority_changed', 'conversation', conversation._id.toString(), {
     priority,
@@ -375,10 +388,19 @@ export async function updateConversationPriority(
 export async function updateConversationTags(
   user: AuthUser,
   conversation: IConversation,
-  tagIds: string[]
+  tagIds: string[],
+  expectedVersion?: number
 ) {
-  conversation.tags = tagIds as unknown as IConversation['tags'];
-  await conversation.save();
+  await saveConversationWithVersion(conversation, expectedVersion, () => {
+    conversation.tags = tagIds as unknown as IConversation['tags'];
+  });
+
+  if (conversation.contactId) {
+    await Contact.updateOne(
+      { _id: conversation.contactId, tenantId: user.tenantId },
+      { $set: { tags: tagIds } }
+    );
+  }
 
   await logActivity(user, 'conversation.tags_updated', 'conversation', conversation._id.toString(), {
     tagIds,
@@ -392,13 +414,53 @@ export async function updateConversationTags(
   return getConversation(user, conversation._id.toString());
 }
 
+export async function updatePermittedUsers(
+  user: AuthUser,
+  conversation: IConversation,
+  userIds: string[],
+  expectedVersion?: number
+) {
+  if (user.role !== 'ADMIN') {
+    throw new AppError(403, 'Only admins can manage shared access');
+  }
+
+  const uniqueUserIds = [...new Set(userIds)];
+  if (uniqueUserIds.length > 0) {
+    const validCount = await User.countDocuments({
+      _id: { $in: uniqueUserIds },
+      tenantId: user.tenantId,
+      isActive: true,
+    });
+    if (validCount !== uniqueUserIds.length) {
+      throw new AppError(400, 'One or more selected users are invalid');
+    }
+  }
+
+  await saveConversationWithVersion(conversation, expectedVersion, () => {
+    conversation.permittedUsers = uniqueUserIds;
+  });
+
+  await logActivity(user, 'conversation.permitted_users_updated', 'conversation', conversation._id.toString(), {
+    userIds: uniqueUserIds,
+  });
+
+  await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.updated', {
+    conversationId: conversation._id.toString(),
+    permittedUsers: uniqueUserIds,
+  });
+
+  return getConversation(user, conversation._id.toString());
+}
+
 export async function markConversationRead(
   user: AuthUser,
   conversation: IConversation,
   lastReadMessageId?: string
 ) {
-  conversation.unreadCount = 0;
-  await conversation.save();
+  await Conversation.findOneAndUpdate(
+    { _id: conversation._id, tenantId: user.tenantId },
+    { $set: { unreadCount: 0 } }
+  );
 
   const { ConversationRead } = await import('../../models/ConversationRead');
   await ConversationRead.findOneAndUpdate(

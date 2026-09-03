@@ -60,6 +60,27 @@ export async function createUserNotification(params: {
     return null;
   }
 
+  if (params.type === 'message' && params.conversationId) {
+    const recent = await Notification.findOne({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      type: 'message',
+      conversationId: params.conversationId,
+      read: false,
+      createdAt: { $gte: new Date(Date.now() - 60_000) },
+    });
+
+    if (recent) {
+      recent.title = params.title;
+      recent.body = params.body;
+      recent.href = params.href;
+      await recent.save();
+      const dto = toDTO(recent);
+      emitToUser(params.userId, 'notification.updated', dto);
+      return dto;
+    }
+  }
+
   const notification = await Notification.create({
     tenantId: params.tenantId,
     userId: params.userId,

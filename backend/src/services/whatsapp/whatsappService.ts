@@ -3,6 +3,7 @@ import { Contact, IContact } from '../../models/Contact';
 import { Conversation, IConversation } from '../../models/Conversation';
 import { Message, IMessage } from '../../models/Message';
 import { MessageMedia } from '../../models/MessageMedia';
+import { MessageReaction } from '../../models/MessageReaction';
 import { encrypt } from '../../utils/encryption';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
@@ -121,6 +122,47 @@ export async function findOrCreateConversation(
   return conversation;
 }
 
+async function processIncomingReaction(
+  account: IWhatsAppAccount,
+  incoming: IncomingTextMessage
+): Promise<void> {
+  const emoji = incoming.reaction?.emoji;
+  const targetMetaId = incoming.reaction?.message_id;
+  if (!emoji || !targetMetaId) {
+    return;
+  }
+
+  const message = await Message.findOne({
+    tenantId: account.tenantId,
+    metaMessageId: targetMetaId,
+  });
+  if (!message) {
+    return;
+  }
+
+  const contact = await findOrCreateContact(account, incoming.from);
+  const reactedBy = `contact:${contact._id.toString()}`;
+
+  if (!emoji.trim()) {
+    await MessageReaction.deleteOne({
+      tenantId: account.tenantId,
+      messageId: message._id,
+      reactedBy,
+    });
+  } else {
+    await MessageReaction.findOneAndUpdate(
+      { tenantId: account.tenantId, messageId: message._id, reactedBy },
+      { emoji, reactedAt: new Date() },
+      { upsert: true, new: true }
+    );
+  }
+
+  await emitToAuthorizedUsers(account.tenantId, message.conversationId.toString(), 'message.updated', {
+    messageId: message._id.toString(),
+    conversationId: message.conversationId.toString(),
+  });
+}
+
 async function processMediaMessage(
   account: IWhatsAppAccount,
   message: IMessage,
@@ -159,6 +201,11 @@ export async function processIncomingMessage(
   incoming: IncomingTextMessage,
   contactName?: string
 ): Promise<void> {
+  if (incoming.type === 'reaction') {
+    await processIncomingReaction(account, incoming);
+    return;
+  }
+
   const contact = await findOrCreateContact(account, incoming.from, contactName);
   const conversation = await findOrCreateConversation(account, contact);
 

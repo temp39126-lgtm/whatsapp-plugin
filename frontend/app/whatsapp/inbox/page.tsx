@@ -14,6 +14,7 @@ import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
 import { useOutboundCall } from '@/hooks/useOutboundCall';
+import { onSocketEvent } from '@/lib/socket';
 import { ActiveCallBar } from '@/components/whatsapp/calls/ActiveCallBar';
 import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
 import { setActiveConversationId } from '@/lib/notifications';
@@ -47,6 +48,16 @@ function InboxPageContent() {
   useEffect(() => {
     setActiveConversationId(selectedId);
     return () => setActiveConversationId(null);
+  }, [selectedId]);
+
+  useEffect(() => {
+    const unsubscribe = onSocketEvent('contact.deleted', (payload) => {
+      const data = payload as { conversationIds?: string[] };
+      if (selectedId && data.conversationIds?.includes(selectedId)) {
+        setSelectedId(null);
+      }
+    });
+    return unsubscribe;
   }, [selectedId]);
 
   const { data, isLoading } = useConversations(filters);

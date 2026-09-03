@@ -2,18 +2,27 @@ import { z } from 'zod';
 
 export const assignConversationSchema = z.object({
   assignedUserId: z.union([z.string().min(1), z.null()]),
+  version: z.number().int().nonnegative().optional(),
 });
 
 export const updateStatusSchema = z.object({
   status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']),
+  version: z.number().int().nonnegative().optional(),
 });
 
 export const updatePrioritySchema = z.object({
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']),
+  version: z.number().int().nonnegative().optional(),
 });
 
 export const updateTagsSchema = z.object({
   tagIds: z.array(z.string()),
+  version: z.number().int().nonnegative().optional(),
+});
+
+export const updatePermittedUsersSchema = z.object({
+  userIds: z.array(z.string().min(1)),
+  version: z.number().int().nonnegative().optional(),
 });
 
 export const createNoteSchema = z.object({

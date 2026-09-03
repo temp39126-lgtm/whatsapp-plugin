@@ -47,6 +47,7 @@ export async function enrichConversations<T extends Record<string, unknown>>(
 
     return {
       ...conversation,
+      version: typeof conversation.__v === 'number' ? conversation.__v : undefined,
       tags,
       assignedUser: assignedUserId
         ? {

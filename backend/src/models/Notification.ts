@@ -30,5 +30,13 @@ const notificationSchema = new Schema<INotification>(
 );
 
 notificationSchema.index({ tenantId: 1, userId: 1, read: 1, createdAt: -1 });
+notificationSchema.index({
+  tenantId: 1,
+  userId: 1,
+  type: 1,
+  conversationId: 1,
+  read: 1,
+  createdAt: -1,
+});
 
 export const Notification = model<INotification>('Notification', notificationSchema);

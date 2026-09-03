@@ -86,8 +86,15 @@ function invalidateConversationQueries(
 export function useAssignConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, assignedUserId }: { id: string; assignedUserId: string | null }) =>
-      api.post(`/conversations/${id}/assign`, { assignedUserId }),
+    mutationFn: ({
+      id,
+      assignedUserId,
+      version,
+    }: {
+      id: string;
+      assignedUserId: string | null;
+      version?: number;
+    }) => api.post(`/conversations/${id}/assign`, { assignedUserId, version }),
     onSuccess: (_data, variables) => {
       invalidateConversationQueries(queryClient, variables.id);
     },
@@ -97,8 +104,8 @@ export function useAssignConversation() {
 export function useUpdateConversationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.put(`/conversations/${id}/status`, { status }),
+    mutationFn: ({ id, status, version }: { id: string; status: string; version?: number }) =>
+      api.put(`/conversations/${id}/status`, { status, version }),
     onSuccess: (_data, variables) => {
       invalidateConversationQueries(queryClient, variables.id);
     },
@@ -108,8 +115,8 @@ export function useUpdateConversationStatus() {
 export function useUpdateConversationPriority() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, priority }: { id: string; priority: string }) =>
-      api.put(`/conversations/${id}/priority`, { priority }),
+    mutationFn: ({ id, priority, version }: { id: string; priority: string; version?: number }) =>
+      api.put(`/conversations/${id}/priority`, { priority, version }),
     onSuccess: (_data, variables) => {
       invalidateConversationQueries(queryClient, variables.id);
     },
@@ -119,8 +126,19 @@ export function useUpdateConversationPriority() {
 export function useUpdateConversationTags() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, tagIds }: { id: string; tagIds: string[] }) =>
-      api.put(`/conversations/${id}/tags`, { tagIds }),
+    mutationFn: ({ id, tagIds, version }: { id: string; tagIds: string[]; version?: number }) =>
+      api.put(`/conversations/${id}/tags`, { tagIds, version }),
+    onSuccess: (_data, variables) => {
+      invalidateConversationQueries(queryClient, variables.id);
+    },
+  });
+}
+
+export function useUpdatePermittedUsers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, userIds, version }: { id: string; userIds: string[]; version?: number }) =>
+      api.put(`/conversations/${id}/permitted-users`, { userIds, version }),
     onSuccess: (_data, variables) => {
       invalidateConversationQueries(queryClient, variables.id);
     },

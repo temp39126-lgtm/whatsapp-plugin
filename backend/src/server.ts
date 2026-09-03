@@ -9,6 +9,7 @@ import { corsOptions } from './config/cors';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { connectDatabase } from './config/database';
+import { migrateProductionData } from './utils/migrateProductionData';
 import { initSocketServer } from './services/realtime/socketService';
 import { scheduleDailyDigestEmails } from './services/email/digestService';
 import { errorHandler } from './middleware/authenticate';
@@ -70,6 +71,9 @@ app.use(errorHandler);
 
 async function start() {
   await connectDatabase();
+  if (env.NODE_ENV !== 'test') {
+    await migrateProductionData();
+  }
   initSocketServer(httpServer);
   scheduleDailyDigestEmails();
 

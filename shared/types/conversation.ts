@@ -15,6 +15,7 @@ export interface ConversationDTO {
   permittedUsers: string[];
   status: ConversationStatus;
   priority: ConversationPriority;
+  version?: number;
   tags: Array<{ _id: string; name: string }>;
   unreadCount: number;
   lastMessage?: string;

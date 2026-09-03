@@ -35,7 +35,8 @@ export async function assignConversation(req: AuthenticatedRequest, res: Respons
     const result = await conversationService.assignConversation(
       req.user!,
       req.conversation!,
-      req.body.assignedUserId
+      req.body.assignedUserId,
+      req.body.version
     );
     res.json(result);
   } catch (error) {
@@ -48,7 +49,8 @@ export async function updateStatus(req: AuthenticatedRequest, res: Response, nex
     const result = await conversationService.updateConversationStatus(
       req.user!,
       req.conversation!,
-      req.body.status
+      req.body.status,
+      req.body.version
     );
     res.json(result);
   } catch (error) {
@@ -61,7 +63,8 @@ export async function updatePriority(req: AuthenticatedRequest, res: Response, n
     const result = await conversationService.updateConversationPriority(
       req.user!,
       req.conversation!,
-      req.body.priority
+      req.body.priority,
+      req.body.version
     );
     res.json(result);
   } catch (error) {
@@ -74,7 +77,26 @@ export async function updateTags(req: AuthenticatedRequest, res: Response, next:
     const result = await conversationService.updateConversationTags(
       req.user!,
       req.conversation!,
-      req.body.tagIds
+      req.body.tagIds,
+      req.body.version
+    );
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePermittedUsers(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await conversationService.updatePermittedUsers(
+      req.user!,
+      req.conversation!,
+      req.body.userIds,
+      req.body.version
     );
     res.json(result);
   } catch (error) {

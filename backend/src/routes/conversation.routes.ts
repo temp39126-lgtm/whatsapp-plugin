@@ -10,6 +10,7 @@ import {
   updateStatusSchema,
   updatePrioritySchema,
   updateTagsSchema,
+  updatePermittedUsersSchema,
   createNoteSchema,
   conversationQuerySchema,
 } from '../validators/conversation.validator';
@@ -47,6 +48,14 @@ router.put(
   conversationAccess(),
   validateBody(updateTagsSchema),
   controller.updateTags
+);
+router.put(
+  '/:id/permitted-users',
+  requireRole('ADMIN'),
+  requirePermission('assign_conversations'),
+  conversationAccess(),
+  validateBody(updatePermittedUsersSchema),
+  controller.updatePermittedUsers
 );
 router.post(
   '/:id/notes',
