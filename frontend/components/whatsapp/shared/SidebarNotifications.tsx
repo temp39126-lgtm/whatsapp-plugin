@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
@@ -15,10 +16,17 @@ interface SidebarNotificationsProps {
   collapsed: boolean;
 }
 
+interface PanelPosition {
+  top: number;
+  left: number;
+}
+
 export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { data } = useQuery({
@@ -60,6 +68,30 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }, [queryClient]);
 
+  const updatePanelPosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const panelWidth = 320;
+    const gap = 8;
+    const viewportPadding = 12;
+
+    let left = collapsed ? rect.right + gap : rect.left;
+    let top = collapsed ? rect.top : rect.bottom + gap;
+
+    if (left + panelWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, rect.left - panelWidth - gap);
+    }
+
+    const estimatedHeight = 360;
+    if (top + estimatedHeight > window.innerHeight - viewportPadding) {
+      top = Math.max(viewportPadding, window.innerHeight - estimatedHeight - viewportPadding);
+    }
+
+    setPanelPosition({ top, left });
+  }, [collapsed]);
+
   useEffect(() => {
     const unsubscribers = [
       onSocketEvent('notification.created', invalidateNotifications),
@@ -72,15 +104,32 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
   useEffect(() => {
     if (!open) return;
 
+    updatePanelPosition();
+
     function handleClickOutside(event: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setOpen(false);
+      const target = event.target as Node;
+      if (
+        panelRef.current?.contains(target) ||
+        buttonRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
+    }
+
+    function handleReposition() {
+      updatePanelPosition();
     }
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [open, updatePanelPosition]);
 
   function handleNotificationClick(notification: AppNotification) {
     if (!notification.read) {
@@ -92,14 +141,95 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
 
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
+  const panel =
+    open && panelPosition
+      ? createPortal(
+          <div
+            ref={panelRef}
+            style={{ top: panelPosition.top, left: panelPosition.left }}
+            className="fixed z-[200] w-80 overflow-hidden rounded-xl border border-border bg-white text-foreground shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <p className="font-semibold">Notifications</p>
+                <p className="text-xs text-muted-foreground">
+                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+                </p>
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => markAllRead.mutate()}
+                  disabled={markAllRead.isPending}
+                  className="text-xs font-medium text-whatsapp-dark hover:underline disabled:opacity-50"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto bg-white">
+              {notifications.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No notifications yet
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {notifications.map((notification) => (
+                    <li key={notification._id}>
+                      <button
+                        type="button"
+                        onClick={() => handleNotificationClick(notification)}
+                        className={cn(
+                          'flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/60',
+                          !notification.read && 'bg-whatsapp-light/20'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium leading-snug">{notification.title}</p>
+                          {!notification.read && (
+                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-whatsapp" />
+                          )}
+                        </div>
+                        <p className="line-clamp-2 text-xs text-muted-foreground">
+                          {notification.body}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(notification.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="border-t bg-white px-4 py-2">
+              <Link
+                href="/whatsapp/inbox"
+                onClick={() => setOpen(false)}
+                className="text-xs font-medium text-whatsapp-dark hover:underline"
+              >
+                Open inbox
+              </Link>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
-    <div ref={panelRef} className="relative mb-2">
+    <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+        aria-expanded={open}
         className={cn(
-          'relative flex w-full items-center justify-center rounded-lg px-3 py-2.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:justify-start',
+          'relative mb-2 flex w-full items-center justify-center rounded-lg px-3 py-2.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:justify-start',
           open && 'bg-white/20 text-white'
         )}
       >
@@ -116,82 +246,7 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
           </span>
         )}
       </button>
-
-      {open && (
-        <div
-          className={cn(
-            'absolute z-50 w-80 overflow-hidden rounded-xl border bg-card text-foreground shadow-xl',
-            collapsed ? 'left-full top-0 ml-2' : 'left-0 top-full mt-2 lg:left-full lg:top-0 lg:ml-2 lg:mt-0'
-          )}
-        >
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div>
-              <p className="font-semibold">Notifications</p>
-              <p className="text-xs text-muted-foreground">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-              </p>
-            </div>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => markAllRead.mutate()}
-                disabled={markAllRead.isPending}
-                className="text-xs font-medium text-whatsapp-dark hover:underline disabled:opacity-50"
-              >
-                Mark all read
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No notifications yet
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {notifications.map((notification) => (
-                  <li key={notification._id}>
-                    <button
-                      type="button"
-                      onClick={() => handleNotificationClick(notification)}
-                      className={cn(
-                        'flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/60',
-                        !notification.read && 'bg-whatsapp-light/20'
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium leading-snug">{notification.title}</p>
-                        {!notification.read && (
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-whatsapp" />
-                        )}
-                      </div>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {notification.body}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="border-t px-4 py-2">
-            <Link
-              href="/whatsapp/inbox"
-              onClick={() => setOpen(false)}
-              className="text-xs font-medium text-whatsapp-dark hover:underline"
-            >
-              Open inbox
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+      {panel}
+    </>
   );
 }

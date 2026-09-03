@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import bcrypt from 'bcryptjs';
 import { User } from '../src/models/User';
+import { Conversation } from '../src/models/Conversation';
+import { Contact } from '../src/models/Contact';
 import {
   createUserNotification,
   getUnreadNotificationCount,
@@ -61,6 +63,34 @@ describe('In-app notifications', () => {
     const notifications = await listNotifications(authUser);
     expect(notifications).toHaveLength(1);
     expect(notifications[0].title).toBe('Conversation assigned to you');
+    expect(await getUnreadNotificationCount(authUser)).toBe(1);
+  });
+
+  it('backfills assignment notifications for assigned conversations', async () => {
+    const contact = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: new mongoose.Types.ObjectId(),
+      name: 'Jane Customer',
+      phone: '+15551234567',
+      whatsappId: '15551234567',
+      tags: [],
+    });
+
+    await Conversation.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: new mongoose.Types.ObjectId(),
+      contactId: contact._id,
+      assignedUserId: authUser.userId,
+      status: 'OPEN',
+      priority: 'NORMAL',
+      unreadCount: 0,
+      permittedUsers: [],
+    });
+
+    const notifications = await listNotifications(authUser);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].type).toBe('assignment');
+    expect(notifications[0].body).toContain('Jane Customer');
     expect(await getUnreadNotificationCount(authUser)).toBe(1);
   });
 

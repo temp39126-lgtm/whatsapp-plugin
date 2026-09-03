@@ -1,4 +1,6 @@
 import { Notification, NotificationType } from '../../models/Notification';
+import { Conversation } from '../../models/Conversation';
+import { Contact } from '../../models/Contact';
 import { User } from '../../models/User';
 import { AuthUser } from '../../types';
 import { emitToUser } from '../realtime/socketService';
@@ -98,7 +100,71 @@ export async function notifyTenantAdmins(params: {
   );
 }
 
+export async function syncMissingAssignmentNotifications(user: AuthUser): Promise<void> {
+  const assignedConversations = await Conversation.find({
+    tenantId: user.tenantId,
+    assignedUserId: user.userId,
+  })
+    .select('_id contactId')
+    .lean();
+
+  if (assignedConversations.length === 0) return;
+
+  const conversationIds = assignedConversations.map((conversation) =>
+    conversation._id.toString()
+  );
+
+  const existing = await Notification.find({
+    tenantId: user.tenantId,
+    userId: user.userId,
+    type: 'assignment',
+    conversationId: { $in: conversationIds },
+  })
+    .select('conversationId')
+    .lean();
+
+  const existingIds = new Set(existing.map((item) => item.conversationId).filter(Boolean));
+  const missing = assignedConversations.filter(
+    (conversation) => !existingIds.has(conversation._id.toString())
+  );
+
+  if (missing.length === 0) return;
+
+  const contactIds = missing
+    .map((conversation) => conversation.contactId)
+    .filter(Boolean);
+  const contacts = contactIds.length
+    ? await Contact.find({ _id: { $in: contactIds } })
+        .select('_id name')
+        .lean()
+    : [];
+  const contactNames = new Map(
+    contacts.map((contact) => [contact._id.toString(), contact.name])
+  );
+
+  await Promise.all(
+    missing.map((conversation) => {
+      const conversationId = conversation._id.toString();
+      const contactName = conversation.contactId
+        ? contactNames.get(conversation.contactId.toString())
+        : undefined;
+
+      return createUserNotification({
+        tenantId: user.tenantId,
+        userId: user.userId,
+        type: 'assignment',
+        title: 'Conversation assigned to you',
+        body: `You were assigned: ${contactName ?? 'Customer conversation'}`,
+        href: buildInboxHref(conversationId),
+        conversationId,
+      });
+    })
+  );
+}
+
 export async function listNotifications(user: AuthUser, limit = 30): Promise<NotificationDTO[]> {
+  await syncMissingAssignmentNotifications(user);
+
   const notifications = await Notification.find({
     tenantId: user.tenantId,
     userId: user.userId,
