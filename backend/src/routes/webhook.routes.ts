@@ -4,6 +4,7 @@ import { decrypt, verifyWebhookSignature } from '../utils/encryption';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import {
   findAccountByPhoneNumberId,
+  isDemoWhatsAppAccount,
   processIncomingMessage,
   processStatusUpdate,
 } from '../services/whatsapp/whatsappService';
@@ -39,8 +40,28 @@ router.get('/', async (req: Request, res: Response) => {
   res.status(403).send('Forbidden');
 });
 
+async function resolveWebhookAppSecret(phoneNumberId?: string): Promise<{
+  appSecret: string | null;
+  isDemoAccount: boolean;
+}> {
+  let appSecret = env.META_APP_SECRET || null;
+  let isDemoAccount = false;
+
+  if (phoneNumberId) {
+    const account = await findAccountByPhoneNumberId(phoneNumberId);
+    if (account) {
+      isDemoAccount = isDemoWhatsAppAccount(account);
+      if (account.encryptedAppSecret) {
+        appSecret = decrypt(account.encryptedAppSecret);
+      }
+    }
+  }
+
+  return { appSecret, isDemoAccount };
+}
+
 router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
-  const signature = req.headers['x-hub-signature-256'] as string;
+  const signature = req.headers['x-hub-signature-256'] as string | undefined;
   const rawBody = JSON.stringify(req.body);
 
   try {
@@ -49,15 +70,21 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
     const value = changes?.value;
     const phoneNumberId = value?.metadata?.phone_number_id;
 
-    let appSecret = env.META_APP_SECRET;
-    if (phoneNumberId) {
-      const account = await findAccountByPhoneNumberId(phoneNumberId);
-      if (account?.encryptedAppSecret) {
-        appSecret = decrypt(account.encryptedAppSecret);
-      }
-    }
+    const { appSecret, isDemoAccount } = await resolveWebhookAppSecret(phoneNumberId);
 
-    if (appSecret && signature) {
+    if (!isDemoAccount) {
+      if (!signature) {
+        logger.warn({ phoneNumberId }, 'Webhook rejected: missing signature');
+        res.status(401).send('Missing signature');
+        return;
+      }
+
+      if (!appSecret) {
+        logger.warn({ phoneNumberId }, 'Webhook rejected: app secret not configured');
+        res.status(401).send('Webhook app secret not configured');
+        return;
+      }
+
       if (!verifyWebhookSignature(rawBody, signature, appSecret)) {
         logger.warn({ phoneNumberId }, 'Invalid webhook signature');
         res.status(401).send('Invalid signature');

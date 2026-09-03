@@ -62,6 +62,10 @@ export function buildAuthResponse(user: AuthUser) {
   };
 }
 
+function canExposeAuthSecretsInApi(): boolean {
+  return env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
+}
+
 async function startEmailOtpChallenge(params: {
   email: string;
   tenantId: string;
@@ -80,7 +84,11 @@ async function startEmailOtpChallenge(params: {
 
   return {
     ...buildOtpChallengeResponse(challengeId, params.email),
-    ...(!emailSent ? { devOtpCode: code, emailDeliveryFailed: true } : { emailSent: true }),
+    ...(emailSent
+      ? { emailSent: true }
+      : canExposeAuthSecretsInApi()
+        ? { devOtpCode: code, emailDeliveryFailed: true }
+        : { emailDeliveryFailed: true }),
   };
 }
 
@@ -92,6 +100,10 @@ export async function registerUser(
   | { token: string; user: AuthUser }
   | ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string }
 > {
+  if (env.NODE_ENV === 'production') {
+    throw new AppError(403, 'Public signup is disabled. Contact your administrator.');
+  }
+
   const normalizedEmail = email.toLowerCase().trim();
   const tenantId = env.DEFAULT_TENANT_ID;
 
@@ -247,10 +259,10 @@ export async function requestPasswordReset(
   if (!emailSent) {
     logger.info({ email: user.email, resetUrl }, 'Password reset link (email delivery failed)');
     return {
-      message:
-        'We could not send the reset email. Check SMTP settings or use the link below to continue.',
-      resetUrl,
-      emailSent: false,
+      message: canExposeAuthSecretsInApi()
+        ? 'We could not send the reset email. Check SMTP settings or use the link below to continue.'
+        : 'We could not send the reset email. Check SMTP settings or try again later.',
+      ...(canExposeAuthSecretsInApi() ? { resetUrl, emailSent: false } : { emailSent: false }),
     };
   }
 
@@ -312,6 +324,13 @@ export async function resetPasswordWithToken(
 
 export async function seedDefaultUsers(tenantId: string): Promise<void> {
   const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
+
+  if (env.NODE_ENV === 'production' && (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD)) {
+    logger.warn(
+      'Skipping default user seed in production. Set ADMIN_EMAIL and ADMIN_PASSWORD to create the initial admin.'
+    );
+    return;
+  }
 
   const defaults =
     env.NODE_ENV === 'production' && env.ADMIN_EMAIL && env.ADMIN_PASSWORD

@@ -12,10 +12,10 @@ const router = Router();
 router.use(authenticate, tenantAccess);
 
 router.get('/', controller.listGroups);
-router.post('/', validateBody(createGroupSchema), controller.createGroup);
+router.post('/', requireRole('ADMIN'), validateBody(createGroupSchema), controller.createGroup);
 router.get('/:id/avatar', controller.getGroupAvatar);
 router.post('/:id/avatar', requireRole('ADMIN'), avatarUploadMiddleware.single('avatar'), controller.uploadGroupAvatar);
 router.get('/:id', controller.getGroup);
-router.delete('/:id', controller.deleteGroup);
+router.delete('/:id', requireRole('ADMIN'), controller.deleteGroup);
 
 export default router;

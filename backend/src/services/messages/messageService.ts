@@ -205,10 +205,10 @@ export async function retryMessage(
 ): Promise<EnrichedMessage> {
   if (message.status !== 'FAILED') throw new AppError(400, 'Only failed messages can be retried');
 
-  const conversation = await import('../../models/Conversation').then((m) =>
-    m.Conversation.findById(message.conversationId)
+  const conversation = await getAccessibleConversation(
+    user,
+    message.conversationId.toString()
   );
-  if (!conversation) throw new AppError(404, 'Conversation not found');
 
   return createMessage(user, conversation, {
     type: message.type,
@@ -239,6 +239,7 @@ export async function getStarredMessages(user: AuthUser, conversationId: string)
 export async function getMessageById(user: AuthUser, messageId: string): Promise<IMessage> {
   const message = await Message.findOne({ _id: messageId, tenantId: user.tenantId });
   if (!message) throw new AppError(404, 'Message not found');
+  await getAccessibleConversation(user, message.conversationId.toString());
   return message;
 }
 

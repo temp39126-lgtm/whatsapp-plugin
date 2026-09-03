@@ -73,17 +73,26 @@ export async function createContact(
 
 export async function listContacts(user: AuthUser, page = 1, limit = 20, search?: string) {
   const query: Record<string, unknown> = { tenantId: user.tenantId };
+  const andClauses: Record<string, unknown>[] = [];
 
   if (user.role !== 'ADMIN') {
-    query.$or = [{ assignedUserId: user.userId }, { assignedUserId: { $exists: false } }];
+    andClauses.push({
+      $or: [{ assignedUserId: user.userId }, { assignedUserId: { $exists: false } }],
+    });
   }
 
   if (search) {
     const safeSearch = escapeRegExp(search);
-    query.$or = [
-      { name: { $regex: safeSearch, $options: 'i' } },
-      { phone: { $regex: safeSearch, $options: 'i' } },
-    ];
+    andClauses.push({
+      $or: [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
+      ],
+    });
+  }
+
+  if (andClauses.length > 0) {
+    query.$and = andClauses;
   }
 
   const { skip, limit: lim } = getPagination({ page, limit });
@@ -95,6 +104,12 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
 function canUserAccessContact(user: AuthUser, contact: IContact): boolean {
   if (user.role === 'ADMIN') return true;
   return !contact.assignedUserId || contact.assignedUserId === user.userId;
+}
+
+function assertUserCanAccessContact(user: AuthUser, contact: IContact): void {
+  if (!canUserAccessContact(user, contact)) {
+    throw new AppError(403, 'Access denied to this contact');
+  }
 }
 
 async function claimUnassignedConversation(
@@ -157,6 +172,7 @@ export async function openContactConversation(user: AuthUser, contactId: string)
 export async function getContact(user: AuthUser, contactId: string) {
   const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
   if (!contact) throw new AppError(404, 'Contact not found');
+  assertUserCanAccessContact(user, contact);
 
   const [conversations, calls] = await Promise.all([
     Conversation.find({ tenantId: user.tenantId, contactId }).sort({ lastMessageAt: -1 }).limit(10),
@@ -167,6 +183,10 @@ export async function getContact(user: AuthUser, contactId: string) {
 }
 
 export async function updateContact(user: AuthUser, contactId: string, data: Partial<IContact>) {
+  const existing = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
+  if (!existing) throw new AppError(404, 'Contact not found');
+  assertUserCanAccessContact(user, existing);
+
   const contact = await Contact.findOneAndUpdate(
     { _id: contactId, tenantId: user.tenantId },
     { name: data.name, tags: data.tags },
@@ -189,6 +209,7 @@ export async function assignContact(user: AuthUser, contactId: string, assignedU
 export async function deleteContact(user: AuthUser, contactId: string) {
   const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
   if (!contact) throw new AppError(404, 'Contact not found');
+  assertUserCanAccessContact(user, contact);
 
   const conversations = await Conversation.find({
     tenantId: user.tenantId,

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 
 vi.mock('../src/config/env', () => ({
   env: {
+    NODE_ENV: 'test',
     ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     DEFAULT_TENANT_ID: 'tenant-001',
     JWT_SECRET: 'test-secret',

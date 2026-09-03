@@ -4,7 +4,7 @@ import { CallEvent } from '../../models/CallEvent';
 import { Conversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
-import { buildConversationFilter } from '../rbac/conversationAccess';
+import { buildConversationFilter, getAccessibleConversation } from '../rbac/conversationAccess';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { env } from '../../config/env';
 import { AppError } from '../../types';
@@ -61,11 +61,7 @@ export async function startCall(
     throw new AppError(503, 'WhatsApp calling is not enabled for this account');
   }
 
-  const conversation = await Conversation.findOne({
-    _id: conversationId,
-    tenantId: user.tenantId,
-  });
-  if (!conversation) throw new AppError(404, 'Conversation not found');
+  const conversation = await getAccessibleConversation(user, conversationId);
 
   const [account, contact] = await Promise.all([
     WhatsAppAccount.findById(conversation.whatsappAccountId),
