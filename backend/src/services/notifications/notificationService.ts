@@ -56,6 +56,10 @@ export async function createUserNotification(params: {
 
   if (!user) return null;
 
+  if (params.type === 'assignment' && user.role === 'ADMIN') {
+    return null;
+  }
+
   const notification = await Notification.create({
     tenantId: params.tenantId,
     userId: params.userId,
@@ -102,6 +106,8 @@ export async function notifyTenantAdmins(params: {
 }
 
 export async function syncMissingAssignmentNotifications(user: AuthUser): Promise<void> {
+  if (user.role === 'ADMIN') return;
+
   const assignments = await ConversationAssignment.find({
     tenantId: user.tenantId,
     assignedUserId: user.userId,
@@ -183,12 +189,20 @@ export async function syncMissingAssignmentNotifications(user: AuthUser): Promis
 }
 
 export async function listNotifications(user: AuthUser, limit = 30): Promise<NotificationDTO[]> {
-  await Notification.deleteMany({
-    tenantId: user.tenantId,
-    userId: user.userId,
-    type: 'assignment',
-    body: { $regex: /^You were assigned:/ },
-  });
+  if (user.role === 'ADMIN') {
+    await Notification.deleteMany({
+      tenantId: user.tenantId,
+      userId: user.userId,
+      type: 'assignment',
+    });
+  } else {
+    await Notification.deleteMany({
+      tenantId: user.tenantId,
+      userId: user.userId,
+      type: 'assignment',
+      body: { $regex: /^You were assigned:/ },
+    });
+  }
 
   await syncMissingAssignmentNotifications(user);
 

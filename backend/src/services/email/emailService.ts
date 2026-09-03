@@ -110,6 +110,8 @@ export async function sendAssignmentNotificationEmail(params: {
 
   if (!assignee) return;
 
+  if (assignee.role === 'ADMIN') return;
+
   const agentPref = assignee.preferences?.notifications?.emailOnAssignment;
   if (agentPref === false) return;
 

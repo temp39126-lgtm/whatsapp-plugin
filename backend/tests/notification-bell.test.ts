@@ -138,6 +138,36 @@ describe('In-app notifications', () => {
     expect(await getUnreadNotificationCount(authUser)).toBe(1);
   });
 
+  it('does not create assignment notifications for admin users', async () => {
+    const adminUser = await User.create({
+      email: 'admin@example.com',
+      passwordHash: await bcrypt.hash('secret', 10),
+      name: 'Praduman Singh',
+      role: 'ADMIN',
+      tenantId: 'tenant-001',
+      isActive: true,
+    });
+
+    const result = await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: adminUser._id.toString(),
+      type: 'assignment',
+      title: 'Conversation assigned to you',
+      body: 'Admin User assigned you: James Brown',
+      href: '/whatsapp/inbox',
+    });
+
+    expect(result).toBeNull();
+    expect(await getUnreadNotificationCount({
+      userId: adminUser._id.toString(),
+      tenantId: 'tenant-001',
+      role: 'ADMIN',
+      permissions: [],
+      email: 'admin@example.com',
+      name: 'Praduman Singh',
+    })).toBe(0);
+  });
+
   it('marks a notification as read and supports mark all read', async () => {
     const first = await createUserNotification({
       tenantId: 'tenant-001',
