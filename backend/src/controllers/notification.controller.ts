@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '../types';
+import { AuthenticatedRequest, getParam } from '../types';
 import * as notificationService from '../services/notifications/notificationService';
 
 export async function listNotifications(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -20,7 +20,7 @@ export async function markNotificationRead(
   try {
     const notification = await notificationService.markNotificationRead(
       req.user!,
-      req.params.id
+      getParam(req.params.id)
     );
     if (!notification) {
       res.status(404).json({ error: 'Notification not found' });

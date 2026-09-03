@@ -97,8 +97,11 @@ function canUserAccessContact(user: AuthUser, contact: IContact): boolean {
   return !contact.assignedUserId || contact.assignedUserId === user.userId;
 }
 
-async function claimUnassignedConversation(user: AuthUser, conversation: IConversation) {
-  if (conversation.assignedUserId) return conversation;
+async function claimUnassignedConversation(
+  user: AuthUser,
+  conversation: IConversation & { save(): Promise<unknown> }
+): Promise<void> {
+  if (conversation.assignedUserId) return;
 
   conversation.assignedUserId = user.userId;
   await conversation.save();
@@ -107,8 +110,6 @@ async function claimUnassignedConversation(user: AuthUser, conversation: IConver
     assignedUserId: user.userId,
     selfAssigned: true,
   });
-
-  return conversation;
 }
 
 export async function openContactConversation(user: AuthUser, contactId: string) {
@@ -146,7 +147,7 @@ export async function openContactConversation(user: AuthUser, contactId: string)
     }
 
     if (!conversation.assignedUserId) {
-      conversation = await claimUnassignedConversation(user, conversation);
+      await claimUnassignedConversation(user, conversation);
     }
   }
 
