@@ -27,6 +27,17 @@ export function useDeleteContact() {
   });
 }
 
+export function useOpenContactConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) =>
+      api.post<{ conversationId: string }>(`/contacts/${contactId}/open-conversation`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
 export function useUploadContactAvatar() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -15,6 +15,7 @@ router.get('/', controller.listContacts);
 router.post('/', validateBody(createContactSchema), controller.createContact);
 router.get('/:id/avatar', controller.getContactAvatar);
 router.post('/:id/avatar', requireRole('ADMIN'), avatarUploadMiddleware.single('avatar'), controller.uploadContactAvatar);
+router.post('/:id/open-conversation', controller.openContactConversation);
 router.get('/:id', controller.getContact);
 router.put('/:id', controller.updateContact);
 router.put('/:id/assign', requireRole('ADMIN'), controller.assignContact);
