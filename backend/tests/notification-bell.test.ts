@@ -1,0 +1,94 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import bcrypt from 'bcryptjs';
+import { User } from '../src/models/User';
+import {
+  createUserNotification,
+  getUnreadNotificationCount,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../src/services/notifications/notificationService';
+import type { AuthUser } from '../src/types';
+
+describe('In-app notifications', () => {
+  let mongo: MongoMemoryServer;
+  let authUser: AuthUser;
+
+  beforeAll(async () => {
+    mongo = await MongoMemoryServer.create();
+    await mongoose.connect(mongo.getUri());
+  });
+
+  afterAll(async () => {
+    await mongoose.disconnect();
+    await mongo.stop();
+  });
+
+  beforeEach(async () => {
+    await mongoose.connection.db?.dropDatabase();
+    const user = await User.create({
+      email: 'agent@example.com',
+      passwordHash: await bcrypt.hash('secret', 10),
+      name: 'Support User',
+      role: 'USER',
+      tenantId: 'tenant-001',
+      isActive: true,
+    });
+
+    authUser = {
+      userId: user._id.toString(),
+      tenantId: 'tenant-001',
+      role: 'USER',
+      permissions: [],
+      email: 'agent@example.com',
+      name: 'Support User',
+    };
+  });
+
+  it('creates and lists notifications for a user', async () => {
+    await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: authUser.userId,
+      type: 'assignment',
+      title: 'Conversation assigned to you',
+      body: 'Admin assigned you: Jane Customer',
+      href: '/whatsapp/inbox?conversation=abc',
+      conversationId: 'abc',
+    });
+
+    const notifications = await listNotifications(authUser);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].title).toBe('Conversation assigned to you');
+    expect(await getUnreadNotificationCount(authUser)).toBe(1);
+  });
+
+  it('marks a notification as read and supports mark all read', async () => {
+    const first = await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: authUser.userId,
+      type: 'message',
+      title: 'New message',
+      body: 'Hello',
+      href: '/whatsapp/inbox',
+    });
+    await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: authUser.userId,
+      type: 'message',
+      title: 'Another message',
+      body: 'Hi again',
+      href: '/whatsapp/inbox',
+    });
+
+    expect(first).toBeTruthy();
+    const updated = await markNotificationRead(authUser, first!._id);
+    expect(updated?.read).toBe(true);
+    expect(await getUnreadNotificationCount(authUser)).toBe(1);
+
+    const cleared = await markAllNotificationsRead(authUser);
+    expect(cleared).toBe(1);
+    expect(await getUnreadNotificationCount(authUser)).toBe(0);
+  });
+});

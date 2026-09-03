@@ -140,3 +140,16 @@ export interface CommunityDTO {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AppNotificationType = 'message' | 'assignment' | 'unassigned';
+
+export interface AppNotification {
+  _id: string;
+  type: AppNotificationType;
+  title: string;
+  body: string;
+  href: string;
+  conversationId?: string;
+  read: boolean;
+  createdAt: string;
+}

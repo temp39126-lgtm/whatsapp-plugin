@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { SidebarNotifications } from '@/components/whatsapp/shared/SidebarNotifications';
 
 const navItems = [
   { href: '/whatsapp/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
@@ -133,6 +134,8 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        <SidebarNotifications collapsed={showTooltips} />
 
         {user && (
           <div className="mt-auto border-t border-white/10 pt-4">

@@ -88,3 +88,7 @@ export async function emitToTenantAdmins(
 export function emitToTenant(tenantId: string, event: string, data: unknown): void {
   io?.to(`tenant:${tenantId}`).emit(event, data);
 }
+
+export function emitToUser(userId: string, event: string, data: unknown): void {
+  io?.to(`user:${userId}`).emit(event, data);
+}
