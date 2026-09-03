@@ -143,7 +143,7 @@ export async function openContactConversation(user: AuthUser, contactId: string)
   let conversation = await Conversation.findOne({
     tenantId: user.tenantId,
     contactId: contact._id,
-    groupId: { $exists: false },
+    groupId: null,
   }).sort({ lastMessageAt: -1 });
 
   if (!conversation) {
@@ -212,7 +212,7 @@ export async function assignContact(user: AuthUser, contactId: string, assignedU
     {
       tenantId: user.tenantId,
       contactId: contact._id,
-      groupId: { $exists: false },
+      groupId: null,
       status: { $in: ['OPEN', 'PENDING'] },
     },
     { $set: { assignedUserId } }

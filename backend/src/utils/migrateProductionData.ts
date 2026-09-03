@@ -6,9 +6,46 @@ import { logger } from '../config/logger';
 import { normalizeWhatsAppId } from './phone';
 import { dedupeContactConversations } from '../services/contacts/contactConversationService';
 
+export async function prepareDatabaseForIndexSync(): Promise<void> {
+  await normalizeContactConversationGroupIds();
+  await normalizeCallMetaCallIds();
+}
+
 export async function migrateProductionData(): Promise<void> {
+  await prepareDatabaseForIndexSync();
   await migrateDuplicateContacts();
   await dedupeAllContactConversations();
+}
+
+async function normalizeCallMetaCallIds(): Promise<void> {
+  const result = await Call.updateMany(
+    { $or: [{ metaCallId: null }, { metaCallId: '' }] },
+    { $unset: { metaCallId: '' } }
+  );
+
+  if (result.modifiedCount > 0) {
+    logger.info(
+      { modifiedCount: result.modifiedCount },
+      'Removed empty metaCallId values from calls'
+    );
+  }
+}
+
+async function normalizeContactConversationGroupIds(): Promise<void> {
+  const result = await Conversation.updateMany(
+    {
+      contactId: { $exists: true, $type: 'objectId' },
+      $or: [{ groupId: { $exists: false } }, { groupId: null }],
+    },
+    { $set: { groupId: null } }
+  );
+
+  if (result.modifiedCount > 0) {
+    logger.info(
+      { modifiedCount: result.modifiedCount },
+      'Normalized groupId to null on contact conversations'
+    );
+  }
 }
 
 async function migrateDuplicateContacts(): Promise<void> {
@@ -57,7 +94,7 @@ async function migrateDuplicateContacts(): Promise<void> {
 async function dedupeAllContactConversations(): Promise<void> {
   const contactIds = await Conversation.distinct('contactId', {
     contactId: { $exists: true },
-    groupId: { $exists: false },
+    groupId: null,
   });
 
   for (const contactId of contactIds) {

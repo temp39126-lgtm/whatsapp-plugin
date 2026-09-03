@@ -20,7 +20,7 @@ export async function dedupeContactConversations(
   const conversations = await Conversation.find({
     tenantId,
     contactId,
-    groupId: { $exists: false },
+    groupId: null,
   })
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .select('_id');
@@ -46,7 +46,7 @@ export async function getOrCreateContactConversation(params: {
   let conversation = await Conversation.findOne({
     tenantId: params.tenantId,
     contactId: params.contactId,
-    groupId: { $exists: false },
+    groupId: null,
     status: { $in: ACTIVE_STATUSES },
   }).sort({ lastMessageAt: -1 });
 
@@ -57,7 +57,7 @@ export async function getOrCreateContactConversation(params: {
   conversation = await Conversation.findOne({
     tenantId: params.tenantId,
     contactId: params.contactId,
-    groupId: { $exists: false },
+    groupId: null,
     status: { $in: REOPENABLE_STATUSES },
   }).sort({ lastMessageAt: -1 });
 
@@ -78,6 +78,7 @@ export async function getOrCreateContactConversation(params: {
       tenantId: params.tenantId,
       whatsappAccountId: params.whatsappAccountId,
       contactId: params.contactId,
+      groupId: null,
       status: 'OPEN',
       priority: 'NORMAL',
       unreadCount: 0,
@@ -91,7 +92,7 @@ export async function getOrCreateContactConversation(params: {
     conversation = await Conversation.findOne({
       tenantId: params.tenantId,
       contactId: params.contactId,
-      groupId: { $exists: false },
+      groupId: null,
     }).sort({ lastMessageAt: -1 });
 
     if (!conversation) {

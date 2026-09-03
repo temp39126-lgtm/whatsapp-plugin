@@ -42,7 +42,10 @@ const callSchema = new Schema<ICall>(
 callSchema.index({ tenantId: 1, createdAt: -1 });
 callSchema.index({ tenantId: 1, status: 1 });
 callSchema.index({ tenantId: 1, direction: 1 });
-callSchema.index({ tenantId: 1, metaCallId: 1 }, { unique: true, sparse: true });
+callSchema.index(
+  { tenantId: 1, metaCallId: 1 },
+  { unique: true, partialFilterExpression: { metaCallId: { $type: 'string' } } }
+);
 callSchema.index({ tenantId: 1, conversationId: 1, status: 1 });
 
 export const Call = model<ICall>('Call', callSchema);

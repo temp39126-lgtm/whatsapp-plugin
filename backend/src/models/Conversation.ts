@@ -57,7 +57,7 @@ conversationSchema.index(
     unique: true,
     partialFilterExpression: {
       contactId: { $type: 'objectId' },
-      groupId: { $exists: false },
+      groupId: { $type: 'null' },
     },
   }
 );
