@@ -71,9 +71,25 @@ describe('RBAC conversation access', () => {
     const filter = buildConversationFilter(agent, { status: 'OPEN' });
     expect(filter.tenantId).toBe('tenant-a');
     expect(filter.status).toBe('OPEN');
-    expect(filter.$or).toEqual([
-      { assignedUserId: 'agent-1' },
-      { permittedUsers: 'agent-1' },
+    expect(filter.$and).toEqual([
+      {
+        $or: [{ assignedUserId: 'agent-1' }, { permittedUsers: 'agent-1' }],
+      },
+    ]);
+  });
+
+  it('combines agent access with search filters', () => {
+    const filter = buildConversationFilter(agent, {
+      $or: [{ contactId: 'contact-1' }],
+    });
+
+    expect(filter.$and).toEqual([
+      {
+        $or: [{ assignedUserId: 'agent-1' }, { permittedUsers: 'agent-1' }],
+      },
+      {
+        $or: [{ contactId: 'contact-1' }],
+      },
     ]);
   });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   MessageSquare,
@@ -12,15 +13,22 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { useConversations } from '@/hooks/useConversations';
+import { Input } from '@/components/ui/input';
 import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
 import { getInitials } from '@/lib/utils';
 
 export function UserDashboard() {
   const { user } = useAuth();
+  const [search, setSearch] = useState('');
 
   const dashboardFilters = { mine: true, assignedByAdmin: true } as const;
-  const { data: myConversations, isLoading } = useConversations(dashboardFilters);
+  const conversationFilters = {
+    ...dashboardFilters,
+    ...(search.trim() ? { search: search.trim() } : {}),
+  };
+
+  const { data: myConversations, isLoading } = useConversations(conversationFilters);
   const { data: openData } = useConversations({ ...dashboardFilters, status: 'OPEN' });
   const { data: unreadData } = useConversations({ ...dashboardFilters, unread: true });
 
@@ -107,12 +115,19 @@ export function UserDashboard() {
         </section>
 
         <section>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">My Conversations</h2>
             <Link href="/whatsapp/inbox" className="text-sm text-whatsapp-dark hover:underline">
               View all
             </Link>
           </div>
+
+          <Input
+            placeholder="Search conversations..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="mb-4 max-w-md"
+          />
 
           <div className="rounded-xl border bg-card shadow-sm">
             {conversations.length === 0 ? (
@@ -120,9 +135,13 @@ export function UserDashboard() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-whatsapp-light">
                   <Inbox className="h-8 w-8 text-whatsapp" />
                 </div>
-                <p className="font-medium">No conversations assigned yet</p>
+                <p className="font-medium">
+                  {search.trim() ? 'No matching conversations' : 'No conversations assigned yet'}
+                </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  When an admin assigns conversations to you, they will appear here.
+                  {search.trim()
+                    ? 'Try a different name or phone number.'
+                    : 'When an admin assigns conversations to you, they will appear here.'}
                 </p>
               </div>
             ) : (

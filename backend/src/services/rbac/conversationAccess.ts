@@ -31,17 +31,35 @@ export async function getAccessibleConversation(
 }
 
 export function buildConversationFilter(user: AuthUser, filters: Record<string, unknown> = {}) {
-  const base: Record<string, unknown> = { tenantId: user.tenantId, ...filters };
+  const { $or: filterOr, $and: filterAnd, ...rest } = filters;
+  const base: Record<string, unknown> = { tenantId: user.tenantId, ...rest };
 
   if (user.role === 'ADMIN') {
+    if (filterOr) base.$or = filterOr;
+    if (filterAnd) base.$and = filterAnd;
     return base;
+  }
+
+  const andClauses: Record<string, unknown>[] = [
+    {
+      $or: [
+        { assignedUserId: user.userId },
+        { permittedUsers: user.userId },
+      ],
+    },
+  ];
+
+  if (filterOr) {
+    andClauses.push({ $or: filterOr });
+  }
+
+  if (filterAnd) {
+    const extraClauses = Array.isArray(filterAnd) ? filterAnd : [filterAnd];
+    andClauses.push(...extraClauses);
   }
 
   return {
     ...base,
-    $or: [
-      { assignedUserId: user.userId },
-      { permittedUsers: user.userId },
-    ],
+    $and: andClauses,
   };
 }

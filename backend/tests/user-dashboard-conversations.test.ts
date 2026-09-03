@@ -122,4 +122,57 @@ describe('User dashboard conversation filters', () => {
     expect(adminAssigned.data).toHaveLength(1);
     expect(adminAssigned.data[0].contact?.name).toBe('Carlos Rivera');
   });
+
+  it('filters assigned conversations by contact search for users', async () => {
+    const accountId = new mongoose.Types.ObjectId();
+
+    const sarah = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'Sarah Johnson',
+      phone: '+15551110004',
+      whatsappId: '15551110004',
+      tags: [],
+    });
+
+    const carlos = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'Carlos Rivera',
+      phone: '+15551110005',
+      whatsappId: '15551110005',
+      tags: [],
+    });
+
+    await Conversation.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      contactId: sarah._id,
+      assignedUserId: userId,
+      status: 'PENDING',
+      priority: 'NORMAL',
+      unreadCount: 0,
+      permittedUsers: [],
+    });
+
+    await Conversation.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      contactId: carlos._id,
+      assignedUserId: userId,
+      status: 'OPEN',
+      priority: 'NORMAL',
+      unreadCount: 0,
+      permittedUsers: [],
+    });
+
+    const results = await listConversations(user, {
+      mine: true,
+      assignedByAdmin: true,
+      search: 'sarah',
+    });
+
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].contact?.name).toBe('Sarah Johnson');
+  });
 });
