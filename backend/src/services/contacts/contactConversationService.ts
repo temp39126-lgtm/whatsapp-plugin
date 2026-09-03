@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, HydratedDocument } from 'mongoose';
 import { Conversation, IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
 import { AuthUser } from '../../types';
@@ -40,7 +40,7 @@ export async function getOrCreateContactConversation(params: {
   assignedUserId?: string;
   notifyNew?: boolean;
   contactLabel?: string;
-}): Promise<{ conversation: IConversation; created: boolean; reopened: boolean }> {
+}): Promise<{ conversation: HydratedDocument<IConversation>; created: boolean; reopened: boolean }> {
   await dedupeContactConversations(params.tenantId, params.contactId);
 
   let conversation = await Conversation.findOne({

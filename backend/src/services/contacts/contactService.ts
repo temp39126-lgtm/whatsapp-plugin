@@ -170,6 +170,10 @@ export async function openContactConversation(user: AuthUser, contactId: string)
     }
   }
 
+  if (!conversation) {
+    throw new AppError(500, 'Failed to open conversation');
+  }
+
   return { conversationId: conversation._id.toString() };
 }
 

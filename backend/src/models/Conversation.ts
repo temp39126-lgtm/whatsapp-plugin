@@ -15,6 +15,7 @@ export interface IConversation extends Document {
   lastMessageAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  __v: number;
 }
 
 const conversationSchema = new Schema<IConversation>(
