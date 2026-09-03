@@ -14,6 +14,7 @@ import {
   buildInboxHref,
   createUserNotification,
 } from '../notifications/notificationService';
+import { sendContactAssignmentNotice } from './assignmentContactNotice';
 import { escapeRegExp } from '../../utils/regex';
 
 interface ConversationFilters {
@@ -302,6 +303,12 @@ export async function assignConversation(
       conversationLabel,
       assignedByName: user.name ?? 'Admin',
     }).catch(() => undefined);
+
+    await sendContactAssignmentNotice({
+      conversation,
+      assigneeUserId: assignedUserId,
+      assignedByUserId: user.userId,
+    });
   }
 
   return getConversation(user, conversation._id.toString());
