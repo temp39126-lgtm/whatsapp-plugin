@@ -1,13 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthField } from '@/components/auth/AuthField';
 import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
-import { isOtpChallengeResponse } from '@/lib/auth-otp';
+import {
+  isOtpChallengeResponse,
+  loadOtpChallenge,
+  saveOtpChallenge,
+  clearOtpChallenge,
+} from '@/lib/auth-otp';
 import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function SignupForm() {
@@ -19,6 +24,13 @@ export function SignupForm() {
   const [submitting, setSubmitting] = useState(false);
   const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
+  useEffect(() => {
+    const saved = loadOtpChallenge('signup');
+    if (saved) {
+      setOtpChallenge(saved);
+    }
+  }, []);
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
@@ -28,6 +40,7 @@ export function SignupForm() {
       const result = await signup(name, email, password);
       if (isOtpChallengeResponse(result)) {
         setOtpChallenge(result);
+        saveOtpChallenge(result, 'signup');
         return;
       }
 
@@ -48,11 +61,17 @@ export function SignupForm() {
         maskedEmail={otpChallenge.maskedEmail}
         message={otpChallenge.message}
         purpose="signup"
-        onBack={() => setOtpChallenge(null)}
+        onBack={() => {
+          setOtpChallenge(null);
+          clearOtpChallenge();
+        }}
         onChallengeIdChange={(nextChallengeId) =>
-          setOtpChallenge((current) =>
-            current ? { ...current, challengeId: nextChallengeId } : current
-          )
+          setOtpChallenge((current) => {
+            if (!current) return current;
+            const next = { ...current, challengeId: nextChallengeId };
+            saveOtpChallenge(next, 'signup');
+            return next;
+          })
         }
         onVerified={(result) => {
           if (!result.user) {
@@ -60,6 +79,7 @@ export function SignupForm() {
             return;
           }
           completeLogin(result.user as Parameters<typeof completeLogin>[0]);
+          clearOtpChallenge();
         }}
       />
     );

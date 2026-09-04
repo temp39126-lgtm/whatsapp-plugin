@@ -8,6 +8,14 @@ import { logger } from '../../config/logger';
 const MAX_OTP_ATTEMPTS = 5;
 const OTP_LENGTH = 6;
 
+function getOtpExpiryMs(): number {
+  const minutes =
+    env.NODE_ENV === 'development'
+      ? Math.max(env.OTP_EXPIRES_MINUTES, 30)
+      : env.OTP_EXPIRES_MINUTES;
+  return minutes * 60 * 1000;
+}
+
 function hashOtpCode(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex');
 }
@@ -40,7 +48,7 @@ export async function createOtpChallenge(params: {
 }): Promise<{ challengeId: string; code: string }> {
   const normalizedEmail = params.email.toLowerCase().trim();
   const code = generateOtpCode();
-  const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + getOtpExpiryMs());
 
   const existing = await AuthOtpChallenge.findOne({
     email: normalizedEmail,
@@ -93,7 +101,7 @@ export async function sendOtpChallengeEmail(params: {
     name: params.name,
     code: params.code,
     purposeLabel,
-    expiresMinutes: env.OTP_EXPIRES_MINUTES,
+    expiresMinutes: Math.ceil(getOtpExpiryMs() / 60000),
   });
 
   if (!sent) {
@@ -156,7 +164,7 @@ export async function resendOtpChallenge(challengeId: string): Promise<{ challen
 
   const code = generateOtpCode();
   existing.codeHash = hashOtpCode(code);
-  existing.expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60 * 1000);
+  existing.expiresAt = new Date(Date.now() + getOtpExpiryMs());
   await existing.save();
 
   return { challengeId: existing.challengeId, code };

@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthField } from '@/components/auth/AuthField';
 import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector, type AuthRoleChoice } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 import { getDemoCredentials, isDemoAuthEnabled } from '@/lib/demo-credentials';
-import { isOtpChallengeResponse } from '@/lib/auth-otp';
+import { isOtpChallengeResponse, loadOtpChallenge, saveOtpChallenge, clearOtpChallenge } from '@/lib/auth-otp';
 import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function LoginForm() {
@@ -22,6 +22,13 @@ export function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
+  useEffect(() => {
+    const saved = loadOtpChallenge('login');
+    if (saved) {
+      setOtpChallenge(saved);
+    }
+  }, []);
+
   function handleRoleChange(role: AuthRoleChoice) {
     setSelectedRole(role);
     if (isDemoAuthEnabled()) {
@@ -30,6 +37,7 @@ export function LoginForm() {
     }
     setError('');
     setOtpChallenge(null);
+    clearOtpChallenge();
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -41,6 +49,7 @@ export function LoginForm() {
       const result = await login(email, password, { keepSignedIn });
       if (isOtpChallengeResponse(result)) {
         setOtpChallenge(result);
+        saveOtpChallenge(result, 'login');
         return;
       }
 
@@ -65,11 +74,17 @@ export function LoginForm() {
         maskedEmail={otpChallenge.maskedEmail}
         message={otpChallenge.message}
         purpose="login"
-        onBack={() => setOtpChallenge(null)}
+        onBack={() => {
+          setOtpChallenge(null);
+          clearOtpChallenge();
+        }}
         onChallengeIdChange={(nextChallengeId) =>
-          setOtpChallenge((current) =>
-            current ? { ...current, challengeId: nextChallengeId } : current
-          )
+          setOtpChallenge((current) => {
+            if (!current) return current;
+            const next = { ...current, challengeId: nextChallengeId };
+            saveOtpChallenge(next, 'login');
+            return next;
+          })
         }
         onVerified={(result) => {
           if (!result.user) {
@@ -84,6 +99,7 @@ export function LoginForm() {
             return;
           }
           completeLogin(authUser);
+          clearOtpChallenge();
         }}
       />
     );

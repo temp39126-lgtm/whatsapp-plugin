@@ -77,10 +77,10 @@ export function AuthOtpStep({
       const result = await authApi.post<{ message: string; challengeId?: string }>('/resend-otp', {
         challengeId,
       });
-      setInfo(result.message);
       if (result.challengeId) {
         onChallengeIdChange?.(result.challengeId);
       }
+      setInfo(`${result.message} Use the newest code in your inbox.`);
       setCode('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to resend code');
