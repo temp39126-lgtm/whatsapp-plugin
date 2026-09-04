@@ -4,11 +4,23 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> Installing backend dependencies"
-npm install --prefix backend
+NPM_INSTALL_FLAGS=(--no-audit --no-fund --prefer-offline)
 
-echo "==> Installing frontend dependencies"
-npm install --prefix frontend
+install_deps() {
+  local dir="$1"
+  local name="$2"
+
+  echo "==> Installing ${name} dependencies"
+  if [[ -d "${dir}/node_modules" ]]; then
+    npm install --prefix "$dir" "${NPM_INSTALL_FLAGS[@]}"
+  else
+    echo "    (first install — may take a few minutes)"
+    npm install --prefix "$dir" --no-audit --no-fund
+  fi
+}
+
+install_deps backend backend
+install_deps frontend frontend
 
 echo "==> Building backend"
 npm run build --prefix backend
