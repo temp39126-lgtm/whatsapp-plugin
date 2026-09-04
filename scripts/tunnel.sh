@@ -13,6 +13,13 @@ fi
 echo "==> Ensuring MongoDB is running"
 bash scripts/start-mongo.sh || true
 
+if [[ ! -f backend/.env ]]; then
+  cp backend/.env.example backend/.env
+fi
+
+echo "==> Seeding default users and demo data"
+(cd backend && npm run seed) || true
+
 echo "==> Starting backend (CORS allows Cloudflare tunnels in development)"
 pkill -f "tsx watch src/server.ts" 2>/dev/null || true
 sleep 1
