@@ -54,18 +54,22 @@ fi
 cd frontend
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
 STANDALONE_DIR=".next/standalone/frontend"
+DEPLOY_DIR="/tmp/whatsapp-crm-frontend"
 # Standalone output requires static/public beside server.js or CSS/JS return 400/404.
-rm -rf "$STANDALONE_DIR/.next/static" "$STANDALONE_DIR/public"
-mkdir -p "$STANDALONE_DIR/.next"
-cp -r .next/static "$STANDALONE_DIR/.next/static"
-mkdir -p "$STANDALONE_DIR/public"
-cp -r public/. "$STANDALONE_DIR/public/" 2>/dev/null || true
-CSS_COUNT=$(find "$STANDALONE_DIR/.next/static/css" -name '*.css' 2>/dev/null | wc -l)
+# Deploy to a stable path so later `npm run build` does not break a running server.
+rm -rf "$DEPLOY_DIR"
+mkdir -p "$DEPLOY_DIR"
+cp -a "$STANDALONE_DIR/." "$DEPLOY_DIR/"
+mkdir -p "$DEPLOY_DIR/.next"
+cp -r .next/static "$DEPLOY_DIR/.next/static"
+mkdir -p "$DEPLOY_DIR/public"
+cp -r public/. "$DEPLOY_DIR/public/" 2>/dev/null || true
+CSS_COUNT=$(find "$DEPLOY_DIR/.next/static/css" -name '*.css' 2>/dev/null | wc -l)
 if [[ "$CSS_COUNT" -lt 1 ]]; then
   echo "ERROR: Standalone static assets were not copied" >&2
   exit 1
 fi
-(cd "$STANDALONE_DIR" && PORT=3000 HOSTNAME=0.0.0.0 node server.js > /tmp/next-prod.log 2>&1 &)
+(cd "$DEPLOY_DIR" && PORT=3000 HOSTNAME=0.0.0.0 node server.js > /tmp/next-prod.log 2>&1 &)
 for _ in $(seq 1 30); do
   if curl -sf http://127.0.0.1:3000 >/dev/null 2>&1; then
     break
