@@ -108,9 +108,7 @@ export function LoginForm() {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-5">
-        {isDemoAuthEnabled() && (
-          <RoleSelector value={selectedRole} onChange={handleRoleChange} />
-        )}
+        <RoleSelector value={selectedRole} onChange={handleRoleChange} />
 
         <AuthField
           id="login-email"
@@ -164,9 +162,7 @@ export function LoginForm() {
         >
           {submitting
             ? 'Signing in...'
-            : isDemoAuthEnabled()
-              ? `Sign in as ${demoCredentials[selectedRole].label}`
-              : 'Sign in'}
+            : `Sign in as ${demoCredentials[selectedRole].label}`}
         </button>
       </form>
 
