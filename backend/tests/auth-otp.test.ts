@@ -23,6 +23,7 @@ import { encrypt } from '../src/utils/encryption';
 import { loginWithPassword, registerUser } from '../src/services/auth/authService';
 import {
   createOtpChallenge,
+  getOtpChallengeStatus,
   resendOtpChallenge,
   verifyOtpChallenge,
 } from '../src/services/auth/otpService';
@@ -151,6 +152,23 @@ describe('Email OTP auth', () => {
     const spacedCode = code.split('').join(' ');
     const verified = await verifyOtpChallenge(challengeId, spacedCode);
     expect(verified.email).toBe('user@example.com');
+  });
+
+  it('reports challenge status for active and missing sessions', async () => {
+    const user = await User.findOne({ email: 'user@example.com' });
+    const { challengeId } = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
+
+    const active = await getOtpChallengeStatus(challengeId);
+    expect(active.valid).toBe(true);
+    expect(active.maskedEmail).toContain('@example.com');
+
+    const missing = await getOtpChallengeStatus('00000000-0000-4000-8000-000000000000');
+    expect(missing.valid).toBe(false);
   });
 
   it('does not reset failed attempt counter when OTP is resent', async () => {

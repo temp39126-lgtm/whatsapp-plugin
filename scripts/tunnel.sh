@@ -13,7 +13,7 @@ fi
 echo "==> Ensuring MongoDB is running"
 bash scripts/start-mongo.sh || true
 
-echo "==> Starting backend (restart so CORS picks up tunnel origins)"
+echo "==> Starting backend (CORS allows Cloudflare tunnels in development)"
 pkill -f "tsx watch src/server.ts" 2>/dev/null || true
 sleep 1
 (cd backend && CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)

@@ -9,11 +9,7 @@ const MAX_OTP_ATTEMPTS = 5;
 const OTP_LENGTH = 6;
 
 function getOtpExpiryMs(): number {
-  const minutes =
-    env.NODE_ENV === 'development'
-      ? Math.max(env.OTP_EXPIRES_MINUTES, 30)
-      : env.OTP_EXPIRES_MINUTES;
-  return minutes * 60 * 1000;
+  return getOtpExpiryMinutes() * 60 * 1000;
 }
 
 function hashOtpCode(code: string): string {
@@ -37,6 +33,41 @@ export function buildOtpChallengeResponse(challengeId: string, email: string) {
     challengeId,
     maskedEmail: maskEmail(email),
     message: `We sent a ${OTP_LENGTH}-digit verification code to your email.`,
+  };
+}
+
+export function getOtpExpiryMinutes(): number {
+  return env.NODE_ENV === 'development'
+    ? Math.max(env.OTP_EXPIRES_MINUTES, 30)
+    : env.OTP_EXPIRES_MINUTES;
+}
+
+export async function getOtpChallengeStatus(challengeId: string): Promise<{
+  valid: boolean;
+  maskedEmail?: string;
+  purpose?: OtpPurpose;
+  message?: string;
+}> {
+  const challenge = await AuthOtpChallenge.findOne({ challengeId });
+  if (!challenge) {
+    return {
+      valid: false,
+      message: 'Verification session expired. Sign in again and use the latest code.',
+    };
+  }
+
+  if (challenge.expiresAt.getTime() < Date.now()) {
+    await AuthOtpChallenge.deleteOne({ _id: challenge._id });
+    return {
+      valid: false,
+      message: 'Verification code has expired. Sign in again to receive a new code.',
+    };
+  }
+
+  return {
+    valid: true,
+    maskedEmail: maskEmail(challenge.email),
+    purpose: challenge.purpose,
   };
 }
 
@@ -129,6 +160,7 @@ export async function verifyOtpChallenge(
 
   const challenge = await AuthOtpChallenge.findOne({ challengeId }).select('+codeHash +payload.passwordHash');
   if (!challenge) {
+    logger.warn({ challengeId }, 'OTP verification failed: challenge not found');
     throw new AppError(400, 'Verification session expired. Sign in again and use the latest code.');
   }
 

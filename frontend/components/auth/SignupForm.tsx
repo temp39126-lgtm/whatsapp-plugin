@@ -9,7 +9,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 import {
   isOtpChallengeResponse,
-  loadOtpChallenge,
+  restoreOtpChallenge,
   saveOtpChallenge,
   clearOtpChallenge,
 } from '@/lib/auth-otp';
@@ -25,10 +25,17 @@ export function SignupForm() {
   const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
   useEffect(() => {
-    const saved = loadOtpChallenge('signup');
-    if (saved) {
-      setOtpChallenge(saved);
-    }
+    let cancelled = false;
+
+    restoreOtpChallenge('signup').then((saved) => {
+      if (!cancelled && saved) {
+        setOtpChallenge(saved);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -64,6 +71,11 @@ export function SignupForm() {
         onBack={() => {
           setOtpChallenge(null);
           clearOtpChallenge();
+        }}
+        onSessionExpired={(message) => {
+          setOtpChallenge(null);
+          clearOtpChallenge();
+          setError(message);
         }}
         onChallengeIdChange={(nextChallengeId) =>
           setOtpChallenge((current) => {

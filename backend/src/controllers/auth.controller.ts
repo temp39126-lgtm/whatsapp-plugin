@@ -11,7 +11,12 @@ import {
   logoutUser,
 } from '../services/auth/authService';
 import { getUserProfile } from '../services/users/userProfileService';
-import { resendOtpChallenge, sendOtpChallengeEmail, verifyOtpChallenge } from '../services/auth/otpService';
+import {
+  getOtpChallengeStatus,
+  resendOtpChallenge,
+  sendOtpChallengeEmail,
+  verifyOtpChallenge,
+} from '../services/auth/otpService';
 import { AuthOtpChallenge } from '../models/AuthOtpChallenge';
 import { clearAuthCookie, setAuthCookie } from '../services/auth/authCookie';
 import { sendAuthPayload } from '../utils/authResponse';
@@ -67,6 +72,16 @@ export async function verifyOtp(req: AuthenticatedRequest, res: Response, next: 
 
     const result = await issuePasswordResetTokenAfterOtp(challenge);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function otpChallengeStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { challengeId } = req.query as { challengeId: string };
+    const status = await getOtpChallengeStatus(challengeId);
+    res.json(status);
   } catch (error) {
     next(error);
   }

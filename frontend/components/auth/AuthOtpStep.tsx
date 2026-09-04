@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { authApi } from '@/lib/api';
+import { isOtpSessionExpiredError } from '@/lib/auth-otp';
 
 type OtpPurpose = 'login' | 'signup' | 'password_reset';
 
@@ -18,6 +19,7 @@ interface AuthOtpStepProps {
   }) => void;
   onChallengeIdChange?: (challengeId: string) => void;
   onBack?: () => void;
+  onSessionExpired?: (message: string) => void;
 }
 
 function normalizeOtpInput(value: string): string {
@@ -32,6 +34,7 @@ export function AuthOtpStep({
   onVerified,
   onChallengeIdChange,
   onBack,
+  onSessionExpired,
 }: AuthOtpStepProps) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -63,7 +66,13 @@ export function AuthOtpStep({
       });
       onVerified(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
+      const message = err instanceof Error ? err.message : 'Verification failed';
+      if (isOtpSessionExpiredError(message)) {
+        setInfo('');
+        onSessionExpired?.(message);
+        return;
+      }
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +92,13 @@ export function AuthOtpStep({
       setInfo(`${result.message} Use the newest code in your inbox.`);
       setCode('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to resend code');
+      const message = err instanceof Error ? err.message : 'Unable to resend code';
+      if (isOtpSessionExpiredError(message)) {
+        setInfo('');
+        onSessionExpired?.(message);
+        return;
+      }
+      setError(message);
     } finally {
       setResending(false);
     }

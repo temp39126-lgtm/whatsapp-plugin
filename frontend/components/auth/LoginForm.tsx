@@ -8,7 +8,7 @@ import { RoleSelector, type AuthRoleChoice } from '@/components/auth/RoleSelecto
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
 import { getDemoCredentials, isDemoAuthEnabled } from '@/lib/demo-credentials';
-import { isOtpChallengeResponse, loadOtpChallenge, saveOtpChallenge, clearOtpChallenge } from '@/lib/auth-otp';
+import { isOtpChallengeResponse, restoreOtpChallenge, saveOtpChallenge, clearOtpChallenge, isOtpSessionExpiredError } from '@/lib/auth-otp';
 import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function LoginForm() {
@@ -23,10 +23,17 @@ export function LoginForm() {
   const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
 
   useEffect(() => {
-    const saved = loadOtpChallenge('login');
-    if (saved) {
-      setOtpChallenge(saved);
-    }
+    let cancelled = false;
+
+    restoreOtpChallenge('login').then((saved) => {
+      if (!cancelled && saved) {
+        setOtpChallenge(saved);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function handleRoleChange(role: AuthRoleChoice) {
@@ -77,6 +84,11 @@ export function LoginForm() {
         onBack={() => {
           setOtpChallenge(null);
           clearOtpChallenge();
+        }}
+        onSessionExpired={(message) => {
+          setOtpChallenge(null);
+          clearOtpChallenge();
+          setError(message);
         }}
         onChallengeIdChange={(nextChallengeId) =>
           setOtpChallenge((current) => {
