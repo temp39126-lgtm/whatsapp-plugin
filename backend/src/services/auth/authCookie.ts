@@ -4,6 +4,7 @@ import { env } from '../../config/env';
 export const AUTH_COOKIE_NAME = 'whatsapp_crm_session';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function parseCookies(header?: string): Record<string, string> {
   if (!header) return {};
@@ -41,36 +42,58 @@ export function extractBearerOrCookieToken(
   return undefined;
 }
 
-function getAuthCookieOptions(): CookieOptions {
-  const isProduction = env.NODE_ENV === 'production';
-
-  return {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    path: '/',
-    maxAge: SEVEN_DAYS_MS,
-  };
+function usesCrossSiteCookies(): boolean {
+  if (env.AUTH_COOKIE_CROSS_SITE) return true;
+  if (env.NODE_ENV === 'production') return true;
+  return (
+    env.CORS_ORIGIN.includes('trycloudflare.com') || env.FRONTEND_URL.includes('trycloudflare.com')
+  );
 }
 
-export function setAuthCookie(res: Response, token: string): void {
-  res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+export function getAuthCookieOptions(keepSignedIn = true): CookieOptions {
+  const crossSite = usesCrossSiteCookies();
+
+  const options: CookieOptions = {
+    httpOnly: true,
+    secure: crossSite || env.NODE_ENV === 'production',
+    sameSite: crossSite || env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+  };
+
+  if (keepSignedIn) {
+    options.maxAge = SEVEN_DAYS_MS;
+  }
+
+  return options;
+}
+
+export function setAuthCookie(res: Response, token: string, keepSignedIn = true): void {
+  res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(keepSignedIn));
+}
+
+export function refreshAuthCookie(res: Response, token: string): void {
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    ...getAuthCookieOptions(true),
+    maxAge: THIRTY_DAYS_MS,
+  });
 }
 
 export function clearAuthCookie(res: Response): void {
+  const crossSite = usesCrossSiteCookies();
   res.clearCookie(AUTH_COOKIE_NAME, {
     path: '/',
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: crossSite || env.NODE_ENV === 'production',
+    sameSite: crossSite || env.NODE_ENV === 'production' ? 'none' : 'lax',
   });
 }
 
 export function attachAuthCookie<T extends { token?: string }>(
   res: Response,
-  payload: T
+  payload: T,
+  keepSignedIn = true
 ): T {
   if (payload.token) {
-    setAuthCookie(res, payload.token);
+    setAuthCookie(res, payload.token, keepSignedIn);
   }
   return payload;
 }

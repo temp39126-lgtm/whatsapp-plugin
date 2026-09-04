@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  keepSignedIn: z.boolean().optional().default(true),
 });
 
 export const signupSchema = z.object({
@@ -26,6 +27,7 @@ export const verifyOtpSchema = z.object({
     .string()
     .transform((value) => value.replace(/\D/g, '').slice(0, 6))
     .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code')),
+  keepSignedIn: z.boolean().optional().default(true),
 });
 
 export const resendOtpSchema = z.object({

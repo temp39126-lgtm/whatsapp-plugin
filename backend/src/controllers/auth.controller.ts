@@ -18,18 +18,22 @@ import {
   verifyOtpChallenge,
 } from '../services/auth/otpService';
 import { AuthOtpChallenge } from '../models/AuthOtpChallenge';
-import { clearAuthCookie, setAuthCookie } from '../services/auth/authCookie';
+import { clearAuthCookie, refreshAuthCookie, setAuthCookie } from '../services/auth/authCookie';
 import { sendAuthPayload } from '../utils/authResponse';
 
 export async function login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const { email, password } = req.body as { email: string; password: string };
+    const { email, password, keepSignedIn } = req.body as {
+      email: string;
+      password: string;
+      keepSignedIn?: boolean;
+    };
     const result = await loginWithPassword(email, password);
     if ('requiresOtp' in result) {
       res.json(result);
       return;
     }
-    sendAuthPayload(res, result);
+    sendAuthPayload(res, result, 200, { keepSignedIn: keepSignedIn ?? true });
   } catch (error) {
     next(error);
   }
@@ -55,18 +59,23 @@ export async function signup(req: AuthenticatedRequest, res: Response, next: Nex
 
 export async function verifyOtp(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const { challengeId, code } = req.body as { challengeId: string; code: string };
+    const { challengeId, code, keepSignedIn } = req.body as {
+      challengeId: string;
+      code: string;
+      keepSignedIn?: boolean;
+    };
     const challenge = await verifyOtpChallenge(challengeId, code);
+    const cookieOptions = { keepSignedIn: keepSignedIn ?? true };
 
     if (challenge.purpose === 'login') {
       const result = await completeLoginAfterOtp(challenge);
-      sendAuthPayload(res, result);
+      sendAuthPayload(res, result, 200, cookieOptions);
       return;
     }
 
     if (challenge.purpose === 'signup') {
       const result = await completeSignupAfterOtp(challenge);
-      sendAuthPayload(res, result, 201);
+      sendAuthPayload(res, result, 201, cookieOptions);
       return;
     }
 

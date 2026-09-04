@@ -1,6 +1,6 @@
 import { Response, NextFunction, Request } from 'express';
 import { AuthenticatedRequest, AppError } from '../types';
-import { extractBearerOrCookieToken } from '../services/auth/authCookie';
+import { AUTH_COOKIE_NAME, extractBearerOrCookieToken, refreshAuthCookie } from '../services/auth/authCookie';
 import { resolveAuthUser } from '../services/rbac/authAdapter';
 import { enforceActiveSession } from '../services/auth/sessionService';
 import { logger } from '../config/logger';
@@ -17,6 +17,11 @@ export async function authenticate(
     const bearerAuthorization = token ? `Bearer ${token}` : undefined;
     const tokenUser = await resolveAuthUser(bearerAuthorization, cookie);
     req.user = await enforceActiveSession(bearerAuthorization, tokenUser);
+
+    if (token && cookie?.includes(`${AUTH_COOKIE_NAME}=`)) {
+      refreshAuthCookie(res, token);
+    }
+
     next();
   } catch (error) {
     logger.warn({ error }, 'Authentication failed');

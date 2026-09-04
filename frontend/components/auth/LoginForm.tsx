@@ -20,7 +20,9 @@ export function LoginForm() {
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [otpChallenge, setOtpChallenge] = useState<AuthOtpChallengeResponse | null>(null);
+  const [otpChallenge, setOtpChallenge] = useState<
+    (AuthOtpChallengeResponse & { keepSignedIn?: boolean }) | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +58,7 @@ export function LoginForm() {
       const result = await login(email, password, { keepSignedIn });
       if (isOtpChallengeResponse(result)) {
         setOtpChallenge(result);
-        saveOtpChallenge(result, 'login');
+        saveOtpChallenge(result, 'login', keepSignedIn);
         return;
       }
 
@@ -81,6 +83,7 @@ export function LoginForm() {
         maskedEmail={otpChallenge.maskedEmail}
         message={otpChallenge.message}
         purpose="login"
+        keepSignedIn={otpChallenge.keepSignedIn ?? keepSignedIn}
         onBack={() => {
           setOtpChallenge(null);
           clearOtpChallenge();
@@ -94,7 +97,7 @@ export function LoginForm() {
           setOtpChallenge((current) => {
             if (!current) return current;
             const next = { ...current, challengeId: nextChallengeId };
-            saveOtpChallenge(next, 'login');
+            saveOtpChallenge(next, 'login', keepSignedIn);
             return next;
           })
         }

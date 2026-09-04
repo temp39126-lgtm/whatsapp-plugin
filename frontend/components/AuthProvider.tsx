@@ -53,9 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authApi
       .get<AuthUser>('/me')
       .then(setUser)
-      .catch(() => {
-        setUser(null);
-      })
+      .catch(() =>
+        authApi
+          .get<AuthUser>('/me')
+          .then(setUser)
+          .catch(() => {
+            setUser(null);
+          })
+      )
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -68,10 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router]
   );
 
-  const login = useCallback(async (email: string, password: string, _options?: LoginOptions) => {
+  const login = useCallback(async (email: string, password: string, options?: LoginOptions) => {
     return authApi.post<AuthSuccessResponse | AuthOtpChallengeResponse>('/login', {
       email,
       password,
+      keepSignedIn: options?.keepSignedIn ?? true,
     });
   }, []);
 

@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import {
   AUTH_COOKIE_NAME,
   extractBearerOrCookieToken,
+  getAuthCookieOptions,
   parseCookies,
 } from '../src/services/auth/authCookie';
 import { sendAuthPayload } from '../src/utils/authResponse';
@@ -14,6 +15,9 @@ vi.mock('../src/config/env', () => ({
     META_APP_SECRET: 'meta-test-secret',
     ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     NODE_ENV: 'test',
+    AUTH_COOKIE_CROSS_SITE: false,
+    CORS_ORIGIN: 'http://localhost:3000',
+    FRONTEND_URL: 'http://localhost:3000',
   },
 }));
 
@@ -30,6 +34,25 @@ describe('Auth cookie helpers', () => {
   it('parses cookie values with encoded characters', () => {
     expect(parseCookies('whatsapp_crm_session=abc%2B123')).toEqual({
       whatsapp_crm_session: 'abc+123',
+    });
+  });
+
+  it('uses cross-site cookie settings when AUTH_COOKIE_CROSS_SITE is enabled', async () => {
+    vi.resetModules();
+    vi.doMock('../src/config/env', () => ({
+      env: {
+        NODE_ENV: 'development',
+        AUTH_COOKIE_CROSS_SITE: true,
+        CORS_ORIGIN: 'https://frontend.trycloudflare.com',
+        FRONTEND_URL: 'https://frontend.trycloudflare.com',
+      },
+    }));
+
+    const { getAuthCookieOptions: getCrossSiteOptions } = await import('../src/services/auth/authCookie');
+    expect(getCrossSiteOptions(true)).toMatchObject({
+      secure: true,
+      sameSite: 'none',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   });
 });

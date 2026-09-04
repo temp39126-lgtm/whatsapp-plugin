@@ -16,7 +16,7 @@ bash scripts/start-mongo.sh || true
 echo "==> Starting backend (CORS allows Cloudflare tunnels in development)"
 pkill -f "tsx watch src/server.ts" 2>/dev/null || true
 sleep 1
-(cd backend && CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)
+(cd backend && AUTH_COOKIE_CROSS_SITE=true CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)
 sleep 3
 
 echo "==> Starting backend Cloudflare tunnel"
@@ -86,7 +86,7 @@ echo "Frontend tunnel: $FRONTEND_URL"
 echo "==> Restarting backend with FRONTEND_URL for password reset links"
 pkill -f "tsx watch src/server.ts" 2>/dev/null || true
 sleep 2
-(cd "$ROOT/backend" && FRONTEND_URL="$FRONTEND_URL" CORS_ORIGIN="$FRONTEND_URL,http://localhost:3000" CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)
+(cd "$ROOT/backend" && AUTH_COOKIE_CROSS_SITE=true FRONTEND_URL="$FRONTEND_URL" CORS_ORIGIN="$FRONTEND_URL,http://localhost:3000" CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)
 sleep 5
 
 echo ""

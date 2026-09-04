@@ -20,6 +20,7 @@ interface AuthOtpStepProps {
   onChallengeIdChange?: (challengeId: string) => void;
   onBack?: () => void;
   onSessionExpired?: (message: string) => void;
+  keepSignedIn?: boolean;
 }
 
 function normalizeOtpInput(value: string): string {
@@ -35,6 +36,7 @@ export function AuthOtpStep({
   onChallengeIdChange,
   onBack,
   onSessionExpired,
+  keepSignedIn = true,
 }: AuthOtpStepProps) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -63,6 +65,7 @@ export function AuthOtpStep({
       }>('/verify-otp', {
         challengeId,
         code: normalizedCode,
+        keepSignedIn,
       });
       onVerified(result);
     } catch (err) {

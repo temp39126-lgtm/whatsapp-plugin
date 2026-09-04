@@ -43,6 +43,7 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   PASSWORD_RESET_EXPIRES_MINUTES: z.coerce.number().default(60),
   OTP_EXPIRES_MINUTES: z.coerce.number().default(10),
+  AUTH_COOKIE_CROSS_SITE: z.coerce.boolean().default(false),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(200),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),

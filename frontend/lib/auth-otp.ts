@@ -27,6 +27,7 @@ const OTP_SESSION_MAX_AGE_MS = 25 * 60 * 1000;
 interface StoredOtpChallenge extends AuthOtpChallengeResponse {
   purpose: OtpPurpose;
   savedAt: number;
+  keepSignedIn?: boolean;
 }
 
 export interface OtpChallengeStatusResponse {
@@ -47,19 +48,24 @@ export function isOtpChallengeResponse(
   );
 }
 
-export function saveOtpChallenge(challenge: AuthOtpChallengeResponse, purpose: OtpPurpose): void {
+export function saveOtpChallenge(
+  challenge: AuthOtpChallengeResponse,
+  purpose: OtpPurpose,
+  keepSignedIn = true
+): void {
   if (typeof window === 'undefined') return;
   const payload: StoredOtpChallenge = {
     ...challenge,
     purpose,
     savedAt: Date.now(),
+    keepSignedIn,
   };
   sessionStorage.setItem(OTP_SESSION_KEY, JSON.stringify(payload));
 }
 
 export function loadOtpChallenge(
   purpose?: OtpPurpose
-): (AuthOtpChallengeResponse & { purpose: OtpPurpose }) | null {
+): (AuthOtpChallengeResponse & { purpose: OtpPurpose; keepSignedIn?: boolean }) | null {
   if (typeof window === 'undefined') return null;
   const raw = sessionStorage.getItem(OTP_SESSION_KEY);
   if (!raw) return null;
@@ -81,7 +87,7 @@ export function loadOtpChallenge(
 
 export async function restoreOtpChallenge(
   purpose: OtpPurpose
-): Promise<(AuthOtpChallengeResponse & { purpose: OtpPurpose }) | null> {
+): Promise<(AuthOtpChallengeResponse & { purpose: OtpPurpose; keepSignedIn?: boolean }) | null> {
   const saved = loadOtpChallenge(purpose);
   if (!saved) return null;
 
