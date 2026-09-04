@@ -16,7 +16,7 @@ import {
   atomicClaimConversation,
   getOrCreateContactConversation,
 } from './contactConversationService';
-import { emitToTenant } from '../realtime/socketService';
+import { emitContactDeletedToAuthorizedUsers } from '../realtime/socketService';
 
 function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
   const digits = normalizeWhatsAppId(phone);
@@ -253,7 +253,7 @@ export async function deleteContact(user: AuthUser, contactId: string) {
   const conversations = await Conversation.find({
     tenantId: user.tenantId,
     contactId: contact._id,
-  }).select('_id');
+  }).select('_id assignedUserId permittedUsers');
   const conversationIds = conversations.map((conversation) => conversation._id);
 
   await Promise.all([
@@ -270,10 +270,7 @@ export async function deleteContact(user: AuthUser, contactId: string) {
 
   await logActivity(user, 'contact.deleted', 'contact', contactId, { name: contact.name });
 
-  emitToTenant(user.tenantId, 'contact.deleted', {
-    contactId,
-    conversationIds: conversationIds.map((id) => id.toString()),
-  });
+  await emitContactDeletedToAuthorizedUsers(user.tenantId, contactId, conversations);
 
   return { deleted: true };
 }

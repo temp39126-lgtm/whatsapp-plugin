@@ -10,6 +10,26 @@ export function canAccessConversation(user: AuthUser, conversation: IConversatio
   return false;
 }
 
+export function filterAccessibleConversationIds(
+  user: AuthUser,
+  tenantId: string,
+  conversations: Array<{
+    _id: { toString(): string };
+    assignedUserId?: string;
+    permittedUsers?: string[];
+  }>
+): string[] {
+  return conversations
+    .filter((conversation) =>
+      canAccessConversation(user, {
+        tenantId,
+        assignedUserId: conversation.assignedUserId,
+        permittedUsers: conversation.permittedUsers ?? [],
+      } as IConversation)
+    )
+    .map((conversation) => conversation._id.toString());
+}
+
 export async function getAccessibleConversation(
   user: AuthUser,
   conversationId: string

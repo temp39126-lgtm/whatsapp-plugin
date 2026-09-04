@@ -4,6 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Conversation } from '../src/models/Conversation';
 import {
   canAccessConversation,
+  filterAccessibleConversationIds,
   getAccessibleConversation,
   buildConversationFilter,
 } from '../src/services/rbac/conversationAccess';
@@ -56,6 +57,40 @@ describe('RBAC conversation access', () => {
 
   it('denies unassigned agent without permission', () => {
     expect(canAccessConversation(otherAgent, conversation)).toBe(false);
+  });
+
+  it('filters contact deletion events to conversations a user could access', () => {
+    const conversations = [
+      {
+        _id: { toString: () => 'conv-assigned' },
+        assignedUserId: 'agent-1',
+        permittedUsers: [] as string[],
+      },
+      {
+        _id: { toString: () => 'conv-other' },
+        assignedUserId: 'agent-2',
+        permittedUsers: [] as string[],
+      },
+      {
+        _id: { toString: () => 'conv-shared' },
+        assignedUserId: 'agent-2',
+        permittedUsers: ['agent-1'],
+      },
+    ];
+
+    expect(filterAccessibleConversationIds(agent, 'tenant-a', conversations)).toEqual([
+      'conv-assigned',
+      'conv-shared',
+    ]);
+    expect(filterAccessibleConversationIds(otherAgent, 'tenant-a', conversations)).toEqual([
+      'conv-other',
+      'conv-shared',
+    ]);
+    expect(filterAccessibleConversationIds(admin, 'tenant-a', conversations)).toEqual([
+      'conv-assigned',
+      'conv-other',
+      'conv-shared',
+    ]);
   });
 
   it('denies cross-tenant access', () => {

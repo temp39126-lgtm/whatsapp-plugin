@@ -6,7 +6,7 @@ import { AuthUser } from '../../types';
 import { extractBearerOrCookieToken } from '../auth/authCookie';
 import { resolveAuthUser } from '../rbac/authAdapter';
 import { enforceActiveSession } from '../auth/sessionService';
-import { canAccessConversation } from '../rbac/conversationAccess';
+import { canAccessConversation, filterAccessibleConversationIds } from '../rbac/conversationAccess';
 import { Conversation } from '../../models/Conversation';
 import { logger } from '../../config/logger';
 
@@ -86,6 +86,29 @@ export async function emitToTenantAdmins(
     if (user.tenantId === tenantId && user.role === 'ADMIN') {
       socket.emit(event, data);
     }
+  }
+}
+
+export async function emitContactDeletedToAuthorizedUsers(
+  tenantId: string,
+  contactId: string,
+  conversations: Array<{
+    _id: { toString(): string };
+    assignedUserId?: string;
+    permittedUsers?: string[];
+  }>
+): Promise<void> {
+  if (!io || conversations.length === 0) return;
+
+  const sockets = await io.fetchSockets();
+  for (const socket of sockets) {
+    const user = socket.data.user as AuthUser;
+    if (user.tenantId !== tenantId) continue;
+
+    const conversationIds = filterAccessibleConversationIds(user, tenantId, conversations);
+    if (conversationIds.length === 0) continue;
+
+    socket.emit('contact.deleted', { contactId, conversationIds });
   }
 }
 
