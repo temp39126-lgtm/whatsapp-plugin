@@ -50,7 +50,7 @@ export function SignupForm() {
         purpose="signup"
         onBack={() => setOtpChallenge(null)}
         onVerified={(result) => {
-          if (!result.token || !result.user) {
+          if (!result.user) {
             setError('Verification succeeded but sign up could not be completed.');
             return;
           }

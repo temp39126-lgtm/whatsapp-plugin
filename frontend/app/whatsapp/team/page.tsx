@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DashboardRoleGuard } from '@/components/whatsapp/dashboard/DashboardRoleGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { TeamUserDTO } from '@/types';
@@ -38,7 +39,8 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="overflow-y-auto p-4 sm:p-6">
+    <DashboardRoleGuard allowedRole="ADMIN">
+      <div className="overflow-y-auto p-4 sm:p-6">
       <div className="mb-6">
         <Link
           href="/whatsapp/admin"
@@ -108,6 +110,7 @@ export default function TeamPage() {
           </p>
         )}
       </section>
-    </div>
+      </div>
+    </DashboardRoleGuard>
   );
 }

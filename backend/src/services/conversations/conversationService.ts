@@ -18,6 +18,7 @@ import {
 import { sendContactAssignmentNotice } from './assignmentContactNotice';
 import { saveConversationWithVersion } from './conversationLock';
 import { escapeRegExp } from '../../utils/regex';
+import { assertActiveTenantUser } from '../users/assigneeValidation';
 
 interface ConversationFilters {
   status?: string;
@@ -277,6 +278,8 @@ export async function assignConversation(
 
     return getConversation(user, conversation._id.toString());
   }
+
+  await assertActiveTenantUser(user.tenantId, assignedUserId);
 
   await saveConversationWithVersion(conversation, expectedVersion, () => {
     conversation.assignedUserId = assignedUserId;

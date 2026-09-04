@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import crypto from 'crypto';
+import type { Response } from 'express';
 import {
   AUTH_COOKIE_NAME,
   extractBearerOrCookieToken,
   parseCookies,
 } from '../src/services/auth/authCookie';
+import { sendAuthPayload } from '../src/utils/authResponse';
 import { verifyWebhookSignature } from '../src/utils/encryption';
 
 vi.mock('../src/config/env', () => ({
@@ -16,9 +18,9 @@ vi.mock('../src/config/env', () => ({
 }));
 
 describe('Auth cookie helpers', () => {
-  it('prefers the HttpOnly session cookie over Authorization header', () => {
+  it('prefers Authorization header over session cookie when both are present', () => {
     const cookieHeader = `${AUTH_COOKIE_NAME}=cookie-token; other=value`;
-    expect(extractBearerOrCookieToken('Bearer header-token', cookieHeader)).toBe('cookie-token');
+    expect(extractBearerOrCookieToken('Bearer header-token', cookieHeader)).toBe('header-token');
   });
 
   it('falls back to Authorization header when cookie is absent', () => {
@@ -28,6 +30,27 @@ describe('Auth cookie helpers', () => {
   it('parses cookie values with encoded characters', () => {
     expect(parseCookies('whatsapp_crm_session=abc%2B123')).toEqual({
       whatsapp_crm_session: 'abc+123',
+    });
+  });
+});
+
+describe('Auth response payload', () => {
+  it('sets the session cookie but omits token from JSON body', () => {
+    const json = vi.fn();
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json,
+      cookie: vi.fn(),
+    } as unknown as Response;
+
+    sendAuthPayload(res, {
+      token: 'secret-jwt',
+      user: { userId: 'user-001', tenantId: 'tenant-001', role: 'USER', permissions: [] },
+    });
+
+    expect(res.cookie).toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith({
+      user: { userId: 'user-001', tenantId: 'tenant-001', role: 'USER', permissions: [] },
     });
   });
 });

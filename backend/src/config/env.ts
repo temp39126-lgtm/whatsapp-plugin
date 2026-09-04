@@ -67,5 +67,41 @@ export const env = envSchema
         path: ['JWT_SECRET'],
       });
     }
+
+    if (!data.META_APP_SECRET || data.META_APP_SECRET.length < 16) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'META_APP_SECRET must be set to a strong value in production',
+        path: ['META_APP_SECRET'],
+      });
+    }
+
+    if (
+      !data.META_VERIFY_TOKEN ||
+      data.META_VERIFY_TOKEN === 'verify-token' ||
+      data.META_VERIFY_TOKEN.length < 16
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'META_VERIFY_TOKEN must be set to a strong random value in production',
+        path: ['META_VERIFY_TOKEN'],
+      });
+    }
+
+    if (data.S3_ACCESS_KEY === 'minioadmin' || data.S3_SECRET_KEY === 'minioadmin') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'S3 credentials must not use default minioadmin values in production',
+        path: ['S3_ACCESS_KEY'],
+      });
+    }
+
+    if (data.AUTH_ADAPTER === 'mock') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'AUTH_ADAPTER mock is not allowed in production',
+        path: ['AUTH_ADAPTER'],
+      });
+    }
   })
   .parse(process.env);

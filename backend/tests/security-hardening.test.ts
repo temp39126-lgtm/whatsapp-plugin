@@ -6,6 +6,8 @@ import { Conversation } from '../src/models/Conversation';
 import { Message } from '../src/models/Message';
 import { listContacts } from '../src/services/contacts/contactService';
 import { getMessageById } from '../src/services/messages/messageService';
+import { listGroups, getGroup } from '../src/services/groups/groupService';
+import { Group } from '../src/models/Group';
 import { AppError } from '../src/types';
 import type { AuthUser } from '../src/types';
 import '../src/models/Tag';
@@ -126,5 +128,48 @@ describe('Security hardening', () => {
     });
 
     await expect(getMessageById(user, message._id.toString())).rejects.toBeInstanceOf(AppError);
+  });
+
+  it('does not expose groups without assigned contacts to agents', async () => {
+    const accountId = new mongoose.Types.ObjectId();
+    const assignedContact = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'My Customer',
+      phone: '+15559990006',
+      whatsappId: '15559990006',
+      assignedUserId: userId,
+      tags: [],
+    });
+    const otherContact = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'Other Customer',
+      phone: '+15559990007',
+      whatsappId: '15559990007',
+      assignedUserId: otherUserId,
+      tags: [],
+    });
+
+    await Group.create({
+      tenantId: 'tenant-001',
+      name: 'Visible Group',
+      contactIds: [assignedContact._id],
+      createdBy: userId,
+    });
+    const hiddenGroup = await Group.create({
+      tenantId: 'tenant-001',
+      name: 'Hidden Group',
+      contactIds: [otherContact._id],
+      createdBy: otherUserId,
+    });
+
+    const groups = await listGroups(user);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].name).toBe('Visible Group');
+
+    await expect(getGroup(user, hiddenGroup._id.toString())).rejects.toMatchObject({
+      statusCode: 403,
+    });
   });
 });

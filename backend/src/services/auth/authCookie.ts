@@ -29,13 +29,13 @@ export function extractBearerOrCookieToken(
   authorization?: string,
   cookieHeader?: string
 ): string | undefined {
+  if (authorization?.startsWith('Bearer ')) {
+    return authorization.slice(7);
+  }
+
   const cookies = parseCookies(cookieHeader);
   if (cookies[AUTH_COOKIE_NAME]) {
     return cookies[AUTH_COOKIE_NAME];
-  }
-
-  if (authorization?.startsWith('Bearer ')) {
-    return authorization.slice(7);
   }
 
   return undefined;

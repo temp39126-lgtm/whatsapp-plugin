@@ -86,9 +86,9 @@ export async function sendOtpChallengeEmail(params: {
   });
 
   if (!sent) {
-    logger.info(
-      { email: params.email, purpose: params.purpose, code: params.code },
-      'OTP code (email delivery failed)'
+    logger.warn(
+      { email: params.email, purpose: params.purpose },
+      'OTP email delivery failed'
     );
   }
 
@@ -114,7 +114,10 @@ export async function verifyOtpChallenge(
     throw new AppError(429, 'Too many failed attempts. Request a new verification code.');
   }
 
-  const isValid = hashOtpCode(code.trim()) === challenge.codeHash;
+  const candidateHash = hashOtpCode(code.trim());
+  const isValid =
+    candidateHash.length === challenge.codeHash.length &&
+    crypto.timingSafeEqual(Buffer.from(candidateHash), Buffer.from(challenge.codeHash));
   if (!isValid) {
     challenge.attempts += 1;
     await challenge.save();

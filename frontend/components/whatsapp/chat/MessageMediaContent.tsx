@@ -41,6 +41,7 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       try {
         const response = await fetch(resolveMediaUrl(mediaPath), {
           headers: getAuthHeaders(),
+          credentials: 'include',
         });
         if (!response.ok) return;
         const blob = await response.blob();
@@ -86,7 +87,10 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
         anchor.download = fileName;
         anchor.click();
       } else {
-        const response = await fetch(resolveMediaUrl(mediaPath), { headers: getAuthHeaders() });
+        const response = await fetch(resolveMediaUrl(mediaPath), {
+          headers: getAuthHeaders(),
+          credentials: 'include',
+        });
         if (!response.ok) return;
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);

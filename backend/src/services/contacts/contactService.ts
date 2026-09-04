@@ -8,6 +8,7 @@ import { InternalNote } from '../../models/InternalNote';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
+import { assertActiveTenantUser } from '../users/assigneeValidation';
 import { storeAvatar, readAvatar } from '../avatars/avatarService';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { escapeRegExp } from '../../utils/regex';
@@ -219,6 +220,8 @@ export async function updateContact(user: AuthUser, contactId: string, data: Par
 }
 
 export async function assignContact(user: AuthUser, contactId: string, assignedUserId: string) {
+  await assertActiveTenantUser(user.tenantId, assignedUserId);
+
   const contact = await Contact.findOneAndUpdate(
     { _id: contactId, tenantId: user.tenantId },
     { assignedUserId },

@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { DashboardRoleGuard } from '@/components/whatsapp/dashboard/DashboardRoleGuard';
 import type { AnalyticsConversations } from '@/types';
 
 function StatCard({ label, value }: { label: string; value: number }) {
@@ -42,7 +43,8 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="h-full min-w-0 overflow-y-auto p-4 sm:p-6">
+    <DashboardRoleGuard allowedRole="ADMIN">
+      <div className="h-full min-w-0 overflow-y-auto p-4 sm:p-6">
       <h1 className="mb-4 text-xl font-semibold sm:mb-6 sm:text-2xl">Analytics</h1>
 
       <section className="mb-6 sm:mb-8">
@@ -70,6 +72,7 @@ export default function AnalyticsPage() {
           <StatCard label="Rejected" value={calls?.rejected ?? 0} />
         </div>
       </section>
-    </div>
+      </div>
+    </DashboardRoleGuard>
   );
 }

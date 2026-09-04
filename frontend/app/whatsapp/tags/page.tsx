@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DashboardRoleGuard } from '@/components/whatsapp/dashboard/DashboardRoleGuard';
 import type { TagDTO } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,8 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
+    <DashboardRoleGuard allowedRole="ADMIN">
+      <div className="p-4 sm:p-6">
       <h1 className="mb-2 text-2xl font-semibold">Tags</h1>
       <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
         Tags label conversations (for example Complaint, VIP, Refund). Create, assign, and delete
@@ -92,6 +94,7 @@ export default function TagsPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </DashboardRoleGuard>
   );
 }

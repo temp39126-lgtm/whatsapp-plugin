@@ -25,6 +25,14 @@ export const authRateLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later' },
 });
 
+export const adminEmailRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many test emails sent. Try again later.' },
+});
+
 export const webhookRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 500,

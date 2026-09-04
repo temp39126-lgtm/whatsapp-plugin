@@ -4,6 +4,7 @@ import { tenantAccess } from '../middleware/tenantAccess';
 import { requireRole } from '../middleware/requireRole';
 import { requirePermission } from '../middleware/requirePermission';
 import { validateBody } from '../middleware/validate';
+import { adminEmailRateLimiter } from '../middleware/rateLimiter';
 import { whatsAppAccountSchema, updateProfileSchema, updatePreferencesSchema } from '../validators/message.validator';
 import {
   updateWhatsAppAccountSchema,
@@ -66,6 +67,7 @@ router.post(
   '/settings/notifications/test',
   requireRole('ADMIN'),
   requirePermission('manage_settings'),
+  adminEmailRateLimiter,
   validateBody(testNotificationEmailSchema),
   controller.sendNotificationTestEmail
 );

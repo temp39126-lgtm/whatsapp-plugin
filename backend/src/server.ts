@@ -14,6 +14,7 @@ import { initSocketServer } from './services/realtime/socketService';
 import { scheduleDailyDigestEmails } from './services/email/digestService';
 import { errorHandler } from './middleware/authenticate';
 import { globalApiRateLimiter } from './middleware/rateLimiter';
+import { csrfProtection } from './middleware/csrfProtection';
 
 import authRoutes from './routes/auth.routes';
 import conversationRoutes from './routes/conversation.routes';
@@ -57,6 +58,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api', globalApiRateLimiter);
+app.use('/api', csrfProtection);
 
 app.use('/api/auth', authRoutes);
 

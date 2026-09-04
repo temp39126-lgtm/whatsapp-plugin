@@ -7,11 +7,26 @@ import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 import { createGroupInboxConversation } from './groupInboxService';
 import { storeAvatar } from '../avatars/avatarService';
+import { assertActiveTenantUser } from '../users/assigneeValidation';
 
 const memberFields = 'name phone whatsappId profileImage';
 
 export async function listGroups(user: AuthUser) {
-  return Group.find({ tenantId: user.tenantId })
+  const query: Record<string, unknown> = { tenantId: user.tenantId };
+
+  if (user.role !== 'ADMIN') {
+    const assignedContacts = await Contact.find({
+      tenantId: user.tenantId,
+      assignedUserId: user.userId,
+    }).select('_id');
+    const contactIds = assignedContacts.map((contact) => contact._id);
+    if (contactIds.length === 0) {
+      return [];
+    }
+    query.contactIds = { $in: contactIds };
+  }
+
+  return Group.find(query)
     .sort({ createdAt: -1 })
     .populate('contactIds', memberFields)
     .lean();
@@ -23,6 +38,23 @@ export async function getGroup(user: AuthUser, groupId: string) {
     .lean();
 
   if (!group) throw new AppError(404, 'Group not found');
+
+  if (user.role !== 'ADMIN') {
+    const contactIds = (group.contactIds as Array<{ _id?: unknown } | string>).map((contact) =>
+      typeof contact === 'object' && contact && '_id' in contact ? contact._id : contact
+    );
+
+    const assignedContacts = await Contact.countDocuments({
+      tenantId: user.tenantId,
+      assignedUserId: user.userId,
+      _id: { $in: contactIds },
+    });
+
+    if (assignedContacts === 0) {
+      throw new AppError(403, 'Access denied to this group');
+    }
+  }
+
   return group;
 }
 

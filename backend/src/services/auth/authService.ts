@@ -253,7 +253,7 @@ export async function requestPasswordReset(
   });
 
   if (!emailSent) {
-    logger.info({ email: user.email, resetUrl }, 'Password reset link (email delivery failed)');
+    logger.warn({ email: user.email }, 'Password reset email delivery failed');
     return {
       message:
         'We could not send the reset email. Check SMTP settings or try again later.',

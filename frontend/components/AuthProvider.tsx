@@ -36,10 +36,10 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAdmin: false,
-  login: async () => ({ token: '', user: null as unknown as AuthUser }),
+  login: async () => ({ user: null as unknown as AuthUser }),
   completeLogin: () => undefined,
   refreshUser: () => undefined,
-  signup: async () => ({ token: '', user: null as unknown as AuthUser }),
+  signup: async () => ({ user: null as unknown as AuthUser }),
   logout: async () => undefined,
 });
 

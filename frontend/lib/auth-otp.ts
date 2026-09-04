@@ -10,7 +10,6 @@ export interface AuthOtpChallengeResponse {
 }
 
 export interface AuthSuccessResponse {
-  token: string;
   user: AuthUser;
 }
 

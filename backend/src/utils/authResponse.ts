@@ -7,5 +7,6 @@ export function sendAuthPayload<T extends { token?: string }>(
   status = 200
 ): void {
   attachAuthCookie(res, payload);
-  res.status(status).json(payload);
+  const { token: _token, ...publicPayload } = payload;
+  res.status(status).json(publicPayload);
 }

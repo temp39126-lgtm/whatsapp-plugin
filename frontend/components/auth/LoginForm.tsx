@@ -7,15 +7,16 @@ import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector, type AuthRoleChoice } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
-import { DEMO_CREDENTIALS } from '@/lib/demo-credentials';
+import { getDemoCredentials, isDemoAuthEnabled } from '@/lib/demo-credentials';
 import { isOtpChallengeResponse } from '@/lib/auth-otp';
 import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
 
 export function LoginForm() {
+  const demoCredentials = getDemoCredentials();
   const { login, completeLogin } = useAuth();
   const [selectedRole, setSelectedRole] = useState<AuthRoleChoice>('USER');
-  const [email, setEmail] = useState(DEMO_CREDENTIALS.USER.email);
-  const [password, setPassword] = useState(DEMO_CREDENTIALS.USER.password);
+  const [email, setEmail] = useState(demoCredentials.USER.email);
+  const [password, setPassword] = useState(demoCredentials.USER.password);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -23,8 +24,10 @@ export function LoginForm() {
 
   function handleRoleChange(role: AuthRoleChoice) {
     setSelectedRole(role);
-    setEmail(DEMO_CREDENTIALS[role].email);
-    setPassword(DEMO_CREDENTIALS[role].password);
+    if (isDemoAuthEnabled()) {
+      setEmail(demoCredentials[role].email);
+      setPassword(demoCredentials[role].password);
+    }
     setError('');
     setOtpChallenge(null);
   }
@@ -64,7 +67,7 @@ export function LoginForm() {
         purpose="login"
         onBack={() => setOtpChallenge(null)}
         onVerified={(result) => {
-          if (!result.token || !result.user) {
+          if (!result.user) {
             setError('Verification succeeded but login could not be completed.');
             return;
           }
@@ -84,7 +87,9 @@ export function LoginForm() {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <RoleSelector value={selectedRole} onChange={handleRoleChange} />
+        {isDemoAuthEnabled() && (
+          <RoleSelector value={selectedRole} onChange={handleRoleChange} />
+        )}
 
         <AuthField
           id="login-email"
@@ -92,7 +97,7 @@ export function LoginForm() {
           type="email"
           value={email}
           onChange={setEmail}
-          placeholder={DEMO_CREDENTIALS[selectedRole].email}
+          placeholder={isDemoAuthEnabled() ? demoCredentials[selectedRole].email : 'you@example.com'}
           autoComplete="email"
           required
         />
@@ -136,7 +141,11 @@ export function LoginForm() {
           disabled={submitting}
           className="w-full rounded-xl bg-whatsapp px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-whatsapp-dark disabled:opacity-60"
         >
-          {submitting ? 'Signing in...' : `Sign in as ${DEMO_CREDENTIALS[selectedRole].label}`}
+          {submitting
+            ? 'Signing in...'
+            : isDemoAuthEnabled()
+              ? `Sign in as ${demoCredentials[selectedRole].label}`
+              : 'Sign in'}
         </button>
       </form>
 
