@@ -8,7 +8,7 @@ import { InternalNote } from '../../models/InternalNote';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
-import { storeAvatar } from '../avatars/avatarService';
+import { storeAvatar, readAvatar } from '../avatars/avatarService';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { escapeRegExp } from '../../utils/regex';
 import { normalizeWhatsAppId, formatPhoneDisplay } from '../../utils/phone';
@@ -111,6 +111,22 @@ function assertUserCanAccessContact(user: AuthUser, contact: IContact): void {
   if (!canUserAccessContact(user, contact)) {
     throw new AppError(403, 'Access denied to this contact');
   }
+}
+
+export async function getContactAvatar(user: AuthUser, contactId: string) {
+  const contact = await Contact.findOne({
+    _id: contactId,
+    tenantId: user.tenantId,
+  });
+
+  if (!contact?.profileImage) {
+    throw new AppError(404, 'Avatar not found');
+  }
+
+  assertUserCanAccessContact(user, contact);
+
+  const { body, mimeType } = await readAvatar(contact.profileImage);
+  return { body, mimeType };
 }
 
 async function claimUnassignedConversation(
@@ -226,6 +242,10 @@ export async function assignContact(user: AuthUser, contactId: string, assignedU
 }
 
 export async function deleteContact(user: AuthUser, contactId: string) {
+  if (user.role !== 'ADMIN') {
+    throw new AppError(403, 'Only admins can delete contacts');
+  }
+
   const contact = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
   if (!contact) throw new AppError(404, 'Contact not found');
   assertUserCanAccessContact(user, contact);

@@ -333,6 +333,10 @@ export async function resetPasswordWithToken(
   return { message: 'Password updated. You can sign in with your new password.' };
 }
 
+export async function logoutUser(userId: string): Promise<void> {
+  await incrementUserTokenVersion(userId);
+}
+
 export async function seedDefaultUsers(tenantId: string): Promise<void> {
   const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
 

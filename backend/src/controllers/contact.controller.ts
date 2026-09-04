@@ -1,8 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as contactService from '../services/contacts/contactService';
-import { readAvatar } from '../services/avatars/avatarService';
-import { Contact } from '../models/Contact';
 import { AppError } from '../types';
 
 export async function createContact(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -92,17 +90,10 @@ export async function uploadContactAvatar(req: AuthenticatedRequest, res: Respon
 
 export async function getContactAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const contact = await Contact.findOne({
-      _id: getParam(req.params.id),
-      tenantId: req.user!.tenantId,
-    });
-
-    if (!contact?.profileImage) {
-      res.status(404).json({ error: 'Avatar not found' });
-      return;
-    }
-
-    const { body, mimeType } = await readAvatar(contact.profileImage);
+    const { body, mimeType } = await contactService.getContactAvatar(
+      req.user!,
+      getParam(req.params.id)
+    );
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(body);

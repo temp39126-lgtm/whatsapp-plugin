@@ -1,7 +1,7 @@
 import { Response, NextFunction, Request } from 'express';
 import { AuthenticatedRequest, AppError } from '../types';
 import { resolveAuthUser } from '../services/rbac/authAdapter';
-import { validateActiveSession } from '../services/auth/sessionService';
+import { enforceActiveSession } from '../services/auth/sessionService';
 import { logger } from '../config/logger';
 
 export async function authenticate(
@@ -12,8 +12,8 @@ export async function authenticate(
   try {
     const authorization = req.headers.authorization;
     const cookie = req.headers.cookie;
-    req.user = await resolveAuthUser(authorization, cookie);
-    await validateActiveSession(authorization);
+    const tokenUser = await resolveAuthUser(authorization, cookie);
+    req.user = await enforceActiveSession(authorization, tokenUser);
     next();
   } catch (error) {
     logger.warn({ error }, 'Authentication failed');

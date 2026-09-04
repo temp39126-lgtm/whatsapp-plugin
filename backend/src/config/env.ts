@@ -53,4 +53,19 @@ const envSchema = z.object({
   ADMIN_PASSWORD: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+export const env = envSchema
+  .superRefine((data, ctx) => {
+    if (data.NODE_ENV !== 'production') {
+      return;
+    }
+
+    if (!data.JWT_SECRET || data.JWT_SECRET === 'dev-secret' || data.JWT_SECRET.length < 32) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'JWT_SECRET must be set to a strong value (at least 32 characters) in production',
+        path: ['JWT_SECRET'],
+      });
+    }
+  })
+  .parse(process.env);

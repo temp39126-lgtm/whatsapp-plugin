@@ -71,8 +71,10 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
     const phoneNumberId = value?.metadata?.phone_number_id;
 
     const { appSecret, isDemoAccount } = await resolveWebhookAppSecret(phoneNumberId);
+    const skipSignatureVerification =
+      isDemoAccount && env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test';
 
-    if (!isDemoAccount) {
+    if (!skipSignatureVerification) {
       if (!signature) {
         logger.warn({ phoneNumberId }, 'Webhook rejected: missing signature');
         res.status(401).send('Missing signature');

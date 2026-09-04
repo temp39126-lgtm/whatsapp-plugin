@@ -8,6 +8,7 @@ import {
   completeLoginAfterOtp,
   completeSignupAfterOtp,
   issuePasswordResetTokenAfterOtp,
+  logoutUser,
 } from '../services/auth/authService';
 import { getUserProfile } from '../services/users/userProfileService';
 import { resendOtpChallenge, sendOtpChallengeEmail, verifyOtpChallenge } from '../services/auth/otpService';
@@ -101,8 +102,15 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response, n
   }
 }
 
-export async function logout(_req: AuthenticatedRequest, res: Response) {
-  res.status(204).send();
+export async function logout(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    if (req.user) {
+      await logoutUser(req.user.userId);
+    }
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function forgotPassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {

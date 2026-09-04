@@ -19,6 +19,6 @@ router.post('/:id/open-conversation', controller.openContactConversation);
 router.get('/:id', controller.getContact);
 router.put('/:id', controller.updateContact);
 router.put('/:id/assign', requireRole('ADMIN'), controller.assignContact);
-router.delete('/:id', controller.deleteContact);
+router.delete('/:id', requireRole('ADMIN'), controller.deleteContact);
 
 export default router;

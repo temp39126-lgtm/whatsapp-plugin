@@ -4,6 +4,7 @@ import { corsOptions } from '../../config/cors';
 import { env } from '../../config/env';
 import { AuthUser } from '../../types';
 import { resolveAuthUser } from '../rbac/authAdapter';
+import { enforceActiveSession } from '../auth/sessionService';
 import { canAccessConversation } from '../rbac/conversationAccess';
 import { Conversation } from '../../models/Conversation';
 import { logger } from '../../config/logger';
@@ -19,11 +20,9 @@ export function initSocketServer(httpServer: HttpServer): SocketServer {
     try {
       const token = socket.handshake.auth.token as string | undefined;
       const cookie = socket.handshake.headers.cookie;
-      const user = await resolveAuthUser(
-        token ? `Bearer ${token}` : undefined,
-        cookie
-      );
-      socket.data.user = user;
+      const authorization = token ? `Bearer ${token}` : undefined;
+      const tokenUser = await resolveAuthUser(authorization, cookie);
+      socket.data.user = await enforceActiveSession(authorization, tokenUser);
       next();
     } catch {
       next(new Error('Authentication failed'));
