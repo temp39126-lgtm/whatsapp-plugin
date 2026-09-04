@@ -133,7 +133,6 @@ export async function resendOtpChallenge(challengeId: string): Promise<{ challen
 
   const code = generateOtpCode();
   existing.codeHash = hashOtpCode(code);
-  existing.attempts = 0;
   existing.expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60 * 1000);
   await existing.save();
 

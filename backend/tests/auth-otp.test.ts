@@ -21,7 +21,11 @@ import { User } from '../src/models/User';
 import { TenantSettings } from '../src/models/TenantSettings';
 import { encrypt } from '../src/utils/encryption';
 import { loginWithPassword, registerUser } from '../src/services/auth/authService';
-import { verifyOtpChallenge } from '../src/services/auth/otpService';
+import {
+  createOtpChallenge,
+  resendOtpChallenge,
+  verifyOtpChallenge,
+} from '../src/services/auth/otpService';
 import { completeLoginAfterOtp, completeSignupAfterOtp } from '../src/services/auth/authService';
 
 describe('Email OTP auth', () => {
@@ -71,17 +75,21 @@ describe('Email OTP auth', () => {
     expect('requiresOtp' in result).toBe(true);
     if ('requiresOtp' in result) {
       expect(result.challengeId).toBeTruthy();
-      expect(result.devOtpCode).toMatch(/^\d{6}$/);
+      expect('devOtpCode' in result).toBe(false);
+      expect(result.emailDeliveryFailed).toBe(true);
     }
   });
 
   it('completes login after OTP verification', async () => {
-    const challenge = await loginWithPassword('user@example.com', 'user123');
-    if (!('requiresOtp' in challenge) || !challenge.devOtpCode) {
-      throw new Error('Expected OTP challenge');
-    }
+    const user = await User.findOne({ email: 'user@example.com' });
+    const { challengeId, code } = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
 
-    const verified = await verifyOtpChallenge(challenge.challengeId, challenge.devOtpCode);
+    const verified = await verifyOtpChallenge(challengeId, code);
     const result = await completeLoginAfterOtp(verified);
     expect(result.token).toBeTruthy();
     expect(result.user.email).toBe('user@example.com');
@@ -91,9 +99,41 @@ describe('Email OTP auth', () => {
     const result = await registerUser('New User', 'newuser@example.com', 'password123');
     expect('requiresOtp' in result).toBe(true);
     if ('requiresOtp' in result) {
-      const verified = await verifyOtpChallenge(result.challengeId, result.devOtpCode!);
-      const created = await completeSignupAfterOtp(verified);
-      expect(created.user.email).toBe('newuser@example.com');
+      expect('devOtpCode' in result).toBe(false);
     }
+
+    const { challengeId, code } = await createOtpChallenge({
+      email: 'newuser@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'signup',
+      payload: {
+        name: 'New User',
+        passwordHash: await bcrypt.hash('password123', 10),
+      },
+    });
+    const verified = await verifyOtpChallenge(challengeId, code);
+    const created = await completeSignupAfterOtp(verified);
+    expect(created.user.email).toBe('newuser@example.com');
+  });
+
+  it('does not reset failed attempt counter when OTP is resent', async () => {
+    const user = await User.findOne({ email: 'user@example.com' });
+    const { challengeId } = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await expect(verifyOtpChallenge(challengeId, '000000')).rejects.toThrow();
+    }
+
+    const resent = await resendOtpChallenge(challengeId);
+    await expect(verifyOtpChallenge(resent.challengeId, '000000')).rejects.toThrow();
+    await expect(verifyOtpChallenge(resent.challengeId, '000000')).rejects.toThrow();
+    await expect(verifyOtpChallenge(resent.challengeId, '000000')).rejects.toMatchObject({
+      statusCode: 429,
+    });
   });
 });

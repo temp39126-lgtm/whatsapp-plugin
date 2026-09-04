@@ -61,7 +61,6 @@ export function LoginForm() {
         challengeId={otpChallenge.challengeId}
         maskedEmail={otpChallenge.maskedEmail}
         message={otpChallenge.message}
-        devOtpCode={otpChallenge.devOtpCode}
         purpose="login"
         onBack={() => setOtpChallenge(null)}
         onVerified={(result) => {

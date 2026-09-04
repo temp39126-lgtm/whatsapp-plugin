@@ -66,6 +66,33 @@ describe('Security hardening', () => {
     expect(results.data[0].name).toBe('My Customer');
   });
 
+  it('does not expose unassigned contacts to agents', async () => {
+    const accountId = new mongoose.Types.ObjectId();
+
+    await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'Unassigned Lead',
+      phone: '+15559990004',
+      whatsappId: '15559990004',
+      tags: [],
+    });
+
+    await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: accountId,
+      name: 'My Customer',
+      phone: '+15559990005',
+      whatsappId: '15559990005',
+      assignedUserId: userId,
+      tags: [],
+    });
+
+    const results = await listContacts(user, 1, 20);
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].name).toBe('My Customer');
+  });
+
   it('denies message actions on conversations assigned to another user', async () => {
     const accountId = new mongoose.Types.ObjectId();
     const contact = await Contact.create({

@@ -9,7 +9,6 @@ import { AUTH_ROUTES } from '@/lib/auth-routes';
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [resetUrl, setResetUrl] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,22 +16,17 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     setError('');
     setMessage('');
-    setResetUrl('');
     setSubmitting(true);
 
     try {
       const result = await authApi.post<{
         message: string;
-        resetUrl?: string;
         emailSent?: boolean;
       }>('/forgot-password', {
         email,
       });
 
       setMessage(result.message);
-      if (result.resetUrl) {
-        setResetUrl(result.resetUrl);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send reset instructions');
     } finally {
@@ -65,19 +59,6 @@ export function ForgotPasswordForm() {
 
         {message && (
           <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{message}</p>
-        )}
-
-        {resetUrl && (
-          <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3 text-sm">
-            <p className="font-medium text-amber-900">Email delivery failed</p>
-            <p className="mt-1 break-all text-amber-800">
-              SMTP is saved but the server could not send the email (check host, port, username,
-              and app password). Use this one-time link instead:
-            </p>
-            <a href={resetUrl} className="mt-2 block break-all text-whatsapp-dark underline">
-              {resetUrl}
-            </a>
-          </div>
         )}
 
         <button

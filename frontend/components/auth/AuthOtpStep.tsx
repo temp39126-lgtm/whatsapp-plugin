@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { authApi } from '@/lib/api';
 
 type OtpPurpose = 'login' | 'signup' | 'password_reset';
@@ -9,7 +9,6 @@ interface AuthOtpStepProps {
   challengeId: string;
   maskedEmail: string;
   message?: string;
-  devOtpCode?: string;
   purpose: OtpPurpose;
   onVerified: (result: {
     token?: string;
@@ -24,22 +23,15 @@ export function AuthOtpStep({
   challengeId,
   maskedEmail,
   message,
-  devOtpCode,
   purpose,
   onVerified,
   onBack,
 }: AuthOtpStepProps) {
-  const [code, setCode] = useState(devOtpCode ?? '');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState(message ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-
-  useEffect(() => {
-    if (devOtpCode) {
-      setCode(devOtpCode);
-    }
-  }, [devOtpCode]);
 
   async function handleVerify(event: React.FormEvent) {
     event.preventDefault();
@@ -69,13 +61,11 @@ export function AuthOtpStep({
     setResending(true);
 
     try {
-      const result = await authApi.post<{ message: string; devOtpCode?: string }>('/resend-otp', {
+      const result = await authApi.post<{ message: string }>('/resend-otp', {
         challengeId,
       });
       setInfo(result.message);
-      if (result.devOtpCode) {
-        setCode(result.devOtpCode);
-      }
+      setCode('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to resend code');
     } finally {
@@ -117,13 +107,6 @@ export function AuthOtpStep({
           className="w-full rounded-xl border border-input bg-muted/40 px-4 py-2.5 text-center text-lg tracking-[0.4em] outline-none transition focus:border-whatsapp focus:bg-background focus:ring-2 focus:ring-whatsapp/20"
         />
       </div>
-
-      {devOtpCode && (
-        <p className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Email delivery failed. SMTP is configured but the server could not send the message.
-          Use this code to continue: <strong>{devOtpCode}</strong>
-        </p>
-      )}
 
       {info && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{info}</p>

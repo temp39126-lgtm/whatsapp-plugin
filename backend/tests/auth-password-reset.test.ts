@@ -10,8 +10,13 @@ import {
 } from '../src/services/auth/authService';
 import { AppError } from '../src/types';
 
+let capturedResetUrl = '';
+
 vi.mock('../src/services/email/emailService', () => ({
-  sendPasswordResetEmail: vi.fn().mockResolvedValue(false),
+  sendPasswordResetEmail: vi.fn().mockImplementation(async (params: { resetUrl: string }) => {
+    capturedResetUrl = params.resetUrl;
+    return false;
+  }),
   isTenantEmailConfigured: vi.fn().mockResolvedValue(false),
 }));
 
@@ -29,6 +34,7 @@ describe('Password reset service', () => {
   });
 
   beforeEach(async () => {
+    capturedResetUrl = '';
     await mongoose.connection.db?.dropDatabase();
     await User.create({
       email: 'user@example.com',
@@ -43,13 +49,14 @@ describe('Password reset service', () => {
   it('returns generic message for unknown email', async () => {
     const result = await requestPasswordReset('missing@example.com');
     expect(result.message).toContain('If an account exists');
-    expect(result.resetUrl).toBeUndefined();
+    expect('resetUrl' in result).toBe(false);
   });
 
-  it('creates reset token and returns dev reset URL', async () => {
+  it('creates reset token without exposing reset URL in API response', async () => {
     const result = await requestPasswordReset('user@example.com');
     expect(result.message).toContain('could not send the reset email');
-    expect(result.resetUrl).toMatch(/reset-password\?token=/);
+    expect('resetUrl' in result).toBe(false);
+    expect(capturedResetUrl).toMatch(/reset-password\?token=/);
 
     const user = await User.findOne({ email: 'user@example.com' }).select(
       '+passwordResetToken +passwordResetExpires'
@@ -59,11 +66,9 @@ describe('Password reset service', () => {
   });
 
   it('resets password with valid token', async () => {
-    const result = await requestPasswordReset('user@example.com');
-    if (!('resetUrl' in result) || !result.resetUrl) {
-      throw new Error('Expected reset URL');
-    }
-    const token = new URL(result.resetUrl).searchParams.get('token');
+    await requestPasswordReset('user@example.com');
+    expect(capturedResetUrl).toMatch(/reset-password\?token=/);
+    const token = new URL(capturedResetUrl).searchParams.get('token');
     expect(token).toBeTruthy();
 
     const resetResult = await resetPasswordWithToken(token!, 'newpassword123');

@@ -47,7 +47,6 @@ export function SignupForm() {
         challengeId={otpChallenge.challengeId}
         maskedEmail={otpChallenge.maskedEmail}
         message={otpChallenge.message}
-        devOtpCode={otpChallenge.devOtpCode}
         purpose="signup"
         onBack={() => setOtpChallenge(null)}
         onVerified={(result) => {

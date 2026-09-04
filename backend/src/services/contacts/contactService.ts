@@ -77,9 +77,7 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
   const andClauses: Record<string, unknown>[] = [];
 
   if (user.role !== 'ADMIN') {
-    andClauses.push({
-      $or: [{ assignedUserId: user.userId }, { assignedUserId: { $exists: false } }],
-    });
+    andClauses.push({ assignedUserId: user.userId });
   }
 
   if (search) {
@@ -104,7 +102,7 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
 
 function canUserAccessContact(user: AuthUser, contact: IContact): boolean {
   if (user.role === 'ADMIN') return true;
-  return !contact.assignedUserId || contact.assignedUserId === user.userId;
+  return contact.assignedUserId === user.userId;
 }
 
 function assertUserCanAccessContact(user: AuthUser, contact: IContact): void {

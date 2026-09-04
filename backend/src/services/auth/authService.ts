@@ -72,10 +72,6 @@ export async function incrementUserTokenVersion(userId: string): Promise<number>
   return updated?.tokenVersion ?? 1;
 }
 
-function canExposeAuthSecretsInApi(): boolean {
-  return env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
-}
-
 async function startEmailOtpChallenge(params: {
   email: string;
   tenantId: string;
@@ -94,11 +90,7 @@ async function startEmailOtpChallenge(params: {
 
   return {
     ...buildOtpChallengeResponse(challengeId, params.email),
-    ...(emailSent
-      ? { emailSent: true }
-      : canExposeAuthSecretsInApi()
-        ? { devOtpCode: code, emailDeliveryFailed: true }
-        : { emailDeliveryFailed: true }),
+    ...(emailSent ? { emailSent: true } : { emailDeliveryFailed: true }),
   };
 }
 
@@ -106,10 +98,7 @@ export async function registerUser(
   name: string,
   email: string,
   password: string
-): Promise<
-  | { token: string; user: AuthUser }
-  | ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string }
-> {
+): Promise<{ token: string; user: AuthUser } | ReturnType<typeof buildOtpChallengeResponse>> {
   if (env.NODE_ENV === 'production') {
     throw new AppError(403, 'Public signup is disabled. Contact your administrator.');
   }
@@ -179,10 +168,7 @@ export async function completeSignupAfterOtp(challenge: {
 export async function loginWithPassword(
   email: string,
   password: string
-): Promise<
-  | { token: string; user: AuthUser }
-  | ReturnType<typeof buildOtpChallengeResponse> & { devOtpCode?: string }
-> {
+): Promise<{ token: string; user: AuthUser } | ReturnType<typeof buildOtpChallengeResponse>> {
   const user = await User.findOne({
     email: email.toLowerCase().trim(),
     isActive: true,
@@ -241,7 +227,7 @@ function buildPasswordResetUrl(token: string): string {
 
 export async function requestPasswordReset(
   email: string
-): Promise<{ message: string; resetUrl?: string; emailSent?: boolean }> {
+): Promise<{ message: string; emailSent?: boolean }> {
   const normalizedEmail = email.toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail, isActive: true }).select(
     '+passwordResetToken +passwordResetExpires'
@@ -269,10 +255,9 @@ export async function requestPasswordReset(
   if (!emailSent) {
     logger.info({ email: user.email, resetUrl }, 'Password reset link (email delivery failed)');
     return {
-      message: canExposeAuthSecretsInApi()
-        ? 'We could not send the reset email. Check SMTP settings or use the link below to continue.'
-        : 'We could not send the reset email. Check SMTP settings or try again later.',
-      ...(canExposeAuthSecretsInApi() ? { resetUrl, emailSent: false } : { emailSent: false }),
+      message:
+        'We could not send the reset email. Check SMTP settings or try again later.',
+      emailSent: false,
     };
   }
 

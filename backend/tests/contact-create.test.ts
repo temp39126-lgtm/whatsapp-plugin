@@ -76,20 +76,18 @@ describe('Contact service create', () => {
     expect(stored?.assignedUserId).toBe('agent-id');
   });
 
-  it('opens and claims an unassigned conversation for a user', async () => {
+  it('denies agents opening unassigned contacts from the contacts page', async () => {
     const agent = { ...user, userId: 'agent-id', role: 'USER' as const, name: 'Agent User' };
     const contact = await createContact(user, {
       name: 'Legacy Customer',
       phone: '+15557654321',
     });
 
-    const result = await import('../src/services/contacts/contactService').then((mod) =>
-      mod.openContactConversation(agent, contact._id.toString())
-    );
-
-    const conversation = await Conversation.findOne({ contactId: contact._id });
-    expect(result.conversationId).toBe(conversation?._id.toString());
-    expect(conversation?.assignedUserId).toBe('agent-id');
+    await expect(
+      import('../src/services/contacts/contactService').then((mod) =>
+        mod.openContactConversation(agent, contact._id.toString())
+      )
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it('rejects duplicate phone numbers', async () => {
