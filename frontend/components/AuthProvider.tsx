@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { AUTH_ROUTES, getDashboardPath } from '@/lib/auth-routes';
-import { getAuthToken, initHostAuthListener, requestHostAuth, setAuthToken } from '@/lib/auth';
+import { clearLegacyAuthStorage, initHostAuthListener, requestHostAuth } from '@/lib/auth';
 import { resetSocket } from '@/lib/socket';
 import type { AuthUser } from '@/types';
 import type { AuthOtpChallengeResponse, AuthSuccessResponse } from '@/lib/auth-otp';
@@ -22,14 +22,14 @@ interface AuthContextType {
     password: string,
     options?: LoginOptions
   ) => Promise<AuthSuccessResponse | AuthOtpChallengeResponse>;
-  completeLogin: (token: string, user: AuthUser) => void;
+  completeLogin: (user: AuthUser) => void;
   refreshUser: (user: AuthUser) => void;
   signup: (
     name: string,
     email: string,
     password: string
   ) => Promise<AuthSuccessResponse | AuthOtpChallengeResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -40,7 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   completeLogin: () => undefined,
   refreshUser: () => undefined,
   signup: async () => ({ token: '', user: null as unknown as AuthUser }),
-  logout: () => undefined,
+  logout: async () => undefined,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,27 +49,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const loadUser = useCallback(() => {
-    const token = getAuthToken();
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     authApi
       .get<AuthUser>('/me')
       .then(setUser)
       .catch(() => {
-        setAuthToken(null);
         setUser(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const completeLogin = useCallback(
-    (token: string, authUser: AuthUser) => {
-      setAuthToken(token);
+    (authUser: AuthUser) => {
       setUser(authUser);
       resetSocket();
       router.replace(getDashboardPath(authUser.role));
@@ -96,14 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(authUser);
   }, []);
 
-  const logout = useCallback(() => {
-    setAuthToken(null);
+  const logout = useCallback(async () => {
+    await authApi.post('/logout').catch(() => undefined);
     setUser(null);
     resetSocket();
     router.replace(AUTH_ROUTES.home);
   }, [router]);
 
   useEffect(() => {
+    clearLegacyAuthStorage();
     const cleanupHostAuth = initHostAuthListener();
     requestHostAuth();
     loadUser();

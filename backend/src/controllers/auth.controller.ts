@@ -13,12 +13,18 @@ import {
 import { getUserProfile } from '../services/users/userProfileService';
 import { resendOtpChallenge, sendOtpChallengeEmail, verifyOtpChallenge } from '../services/auth/otpService';
 import { AuthOtpChallenge } from '../models/AuthOtpChallenge';
+import { clearAuthCookie, setAuthCookie } from '../services/auth/authCookie';
+import { sendAuthPayload } from '../utils/authResponse';
 
 export async function login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body as { email: string; password: string };
     const result = await loginWithPassword(email, password);
-    res.json(result);
+    if ('requiresOtp' in result) {
+      res.json(result);
+      return;
+    }
+    sendAuthPayload(res, result);
   } catch (error) {
     next(error);
   }
@@ -36,7 +42,7 @@ export async function signup(req: AuthenticatedRequest, res: Response, next: Nex
       res.status(200).json(result);
       return;
     }
-    res.status(201).json(result);
+    sendAuthPayload(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -49,13 +55,13 @@ export async function verifyOtp(req: AuthenticatedRequest, res: Response, next: 
 
     if (challenge.purpose === 'login') {
       const result = await completeLoginAfterOtp(challenge);
-      res.json(result);
+      sendAuthPayload(res, result);
       return;
     }
 
     if (challenge.purpose === 'signup') {
       const result = await completeSignupAfterOtp(challenge);
-      res.status(201).json(result);
+      sendAuthPayload(res, result, 201);
       return;
     }
 
@@ -102,11 +108,30 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response, n
   }
 }
 
+export async function establishSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const token = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : undefined;
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Missing bearer token' });
+      return;
+    }
+
+    setAuthCookie(res, token);
+    const profile = await getUserProfile(req.user!);
+    res.json({ user: profile });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function logout(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (req.user) {
       await logoutUser(req.user.userId);
     }
+    clearAuthCookie(res);
     res.status(204).send();
   } catch (error) {
     next(error);

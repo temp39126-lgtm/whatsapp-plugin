@@ -3,6 +3,7 @@ import { Server as HttpServer } from 'http';
 import { corsOptions } from '../../config/cors';
 import { env } from '../../config/env';
 import { AuthUser } from '../../types';
+import { extractBearerOrCookieToken } from '../auth/authCookie';
 import { resolveAuthUser } from '../rbac/authAdapter';
 import { enforceActiveSession } from '../auth/sessionService';
 import { canAccessConversation } from '../rbac/conversationAccess';
@@ -20,7 +21,11 @@ export function initSocketServer(httpServer: HttpServer): SocketServer {
     try {
       const token = socket.handshake.auth.token as string | undefined;
       const cookie = socket.handshake.headers.cookie;
-      const authorization = token ? `Bearer ${token}` : undefined;
+      const resolvedToken = extractBearerOrCookieToken(
+        token ? `Bearer ${token}` : undefined,
+        cookie
+      );
+      const authorization = resolvedToken ? `Bearer ${resolvedToken}` : undefined;
       const tokenUser = await resolveAuthUser(authorization, cookie);
       socket.data.user = await enforceActiveSession(authorization, tokenUser);
       next();

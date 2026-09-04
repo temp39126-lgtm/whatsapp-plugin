@@ -43,6 +43,11 @@ app.use(
 );
 app.use(compression());
 app.use(cors(corsOptions));
+app.use(
+  '/api/whatsapp/webhook',
+  express.raw({ type: 'application/json', limit: `${env.MAX_UPLOAD_SIZE_MB}mb` }),
+  webhookRoutes
+);
 app.use(express.json({ limit: `${env.MAX_UPLOAD_SIZE_MB}mb` }));
 app.use(mongoSanitize({ replaceWith: '_' }));
 app.use(pinoHttp({ logger }));
@@ -54,7 +59,6 @@ app.get('/api/health', (_req, res) => {
 app.use('/api', globalApiRateLimiter);
 
 app.use('/api/auth', authRoutes);
-app.use('/api/whatsapp/webhook', webhookRoutes);
 
 app.use('/api/whatsapp/conversations', conversationRoutes);
 app.use('/api/whatsapp', messageRoutes);

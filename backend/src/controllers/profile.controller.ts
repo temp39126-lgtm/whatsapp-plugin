@@ -10,6 +10,7 @@ import {
   changeUserPassword,
   changeUserEmail,
 } from '../services/users/userProfileService';
+import { sendAuthPayload } from '../utils/authResponse';
 
 export async function getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -77,7 +78,11 @@ export async function changePassword(req: AuthenticatedRequest, res: Response, n
       newPassword: string;
     };
     const profile = await changeUserPassword(req.user!, currentPassword, newPassword);
-    res.json({ profile: profile.profile, token: profile.token, message: 'Password updated successfully' });
+    sendAuthPayload(res, {
+      profile: profile.profile,
+      token: profile.token,
+      message: 'Password updated successfully',
+    });
   } catch (error) {
     next(error);
   }
@@ -87,7 +92,7 @@ export async function changeEmail(req: AuthenticatedRequest, res: Response, next
   try {
     const { email, currentPassword } = req.body as { email: string; currentPassword: string };
     const result = await changeUserEmail(req.user!, email, currentPassword);
-    res.json({
+    sendAuthPayload(res, {
       profile: result.profile,
       token: result.token,
       message: 'Email updated successfully',

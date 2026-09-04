@@ -1,5 +1,6 @@
 import { Response, NextFunction, Request } from 'express';
 import { AuthenticatedRequest, AppError } from '../types';
+import { extractBearerOrCookieToken } from '../services/auth/authCookie';
 import { resolveAuthUser } from '../services/rbac/authAdapter';
 import { enforceActiveSession } from '../services/auth/sessionService';
 import { logger } from '../config/logger';
@@ -12,8 +13,10 @@ export async function authenticate(
   try {
     const authorization = req.headers.authorization;
     const cookie = req.headers.cookie;
-    const tokenUser = await resolveAuthUser(authorization, cookie);
-    req.user = await enforceActiveSession(authorization, tokenUser);
+    const token = extractBearerOrCookieToken(authorization, cookie);
+    const bearerAuthorization = token ? `Bearer ${token}` : undefined;
+    const tokenUser = await resolveAuthUser(bearerAuthorization, cookie);
+    req.user = await enforceActiveSession(bearerAuthorization, tokenUser);
     next();
   } catch (error) {
     logger.warn({ error }, 'Authentication failed');

@@ -15,6 +15,7 @@ router.post('/resend-otp', authRateLimiter, validateBody(resendOtpSchema), contr
 router.post('/forgot-password', authRateLimiter, validateBody(forgotPasswordSchema), controller.forgotPassword);
 router.post('/reset-password', authRateLimiter, validateBody(resetPasswordSchema), controller.resetPassword);
 router.get('/me', authenticate, tenantAccess, controller.getCurrentUser);
+router.post('/establish-session', authRateLimiter, authenticate, controller.establishSession);
 router.post('/logout', authenticate, controller.logout);
 
 export default router;

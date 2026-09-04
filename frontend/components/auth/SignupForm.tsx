@@ -30,6 +30,10 @@ export function SignupForm() {
         setOtpChallenge(result);
         return;
       }
+
+      if (result.user) {
+        completeLogin(result.user as Parameters<typeof completeLogin>[0]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
     } finally {
@@ -51,7 +55,7 @@ export function SignupForm() {
             setError('Verification succeeded but sign up could not be completed.');
             return;
           }
-          completeLogin(result.token, result.user as Parameters<typeof completeLogin>[1]);
+          completeLogin(result.user as Parameters<typeof completeLogin>[0]);
         }}
       />
     );

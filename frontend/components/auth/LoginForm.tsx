@@ -47,7 +47,7 @@ export function LoginForm() {
         );
         return;
       }
-      completeLogin(result.token, result.user);
+      completeLogin(result.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -69,14 +69,14 @@ export function LoginForm() {
             setError('Verification succeeded but login could not be completed.');
             return;
           }
-          const authUser = result.user as Parameters<typeof completeLogin>[1];
+          const authUser = result.user as Parameters<typeof completeLogin>[0];
           if (authUser.role !== selectedRole) {
             setError(
               `These credentials belong to a ${authUser.role === 'ADMIN' ? 'Admin' : 'User'} account. Switch workspace or use different credentials.`
             );
             return;
           }
-          completeLogin(result.token, authUser);
+          completeLogin(authUser);
         }}
       />
     );
