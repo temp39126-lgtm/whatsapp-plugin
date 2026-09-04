@@ -71,10 +71,10 @@ function InboxPageContent() {
   const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-w-0 overflow-hidden">
+    <div className="flex h-full min-w-0 overflow-hidden xl:grid xl:grid-cols-[minmax(17.5rem,20rem)_minmax(0,1fr)_minmax(17.5rem,20rem)]">
       <div
         className={cn(
-          'flex min-w-0 flex-col overflow-hidden border-r bg-background lg:w-80 lg:shrink-0 xl:w-96',
+          'flex min-w-0 flex-col overflow-hidden border-r bg-background lg:w-80 lg:shrink-0 xl:w-auto xl:min-w-0',
           selectedId ? 'hidden lg:flex' : 'flex flex-1 lg:flex-none'
         )}
       >
@@ -134,7 +134,7 @@ function InboxPageContent() {
         onDeleted={() => setSelectedId(null)}
       />
 
-      <div className="hidden w-80 shrink-0 border-l bg-background xl:block">
+      <div className="hidden min-w-0 overflow-hidden border-l bg-background xl:block">
         <CustomerDetails
           conversation={selected}
           onDeleted={() => setSelectedId(null)}

@@ -61,8 +61,8 @@ export function MessageBubble({
   }, [menuOpen]);
 
   return (
-    <div className={cn('group flex', isOutgoing ? 'justify-end' : 'justify-start')}>
-      <div className="relative max-w-[75%]" ref={menuRef}>
+    <div className={cn('group flex w-full', isOutgoing ? 'justify-end' : 'justify-start')}>
+      <div className="relative max-w-[min(75%,32rem)]" ref={menuRef}>
         <div
           className={cn(
             'relative rounded-lg px-3 py-2 shadow-sm',

@@ -34,6 +34,19 @@ interface CustomerDetailsProps {
 const statuses = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const;
 const priorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
 
+function normalizeDigits(value?: string | null): string {
+  return value?.replace(/\D/g, '') ?? '';
+}
+
+function selectionChipClass(selected: boolean, selectedClass?: string) {
+  return cn(
+    'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+    selected
+      ? (selectedClass ?? 'border-whatsapp bg-whatsapp-light text-whatsapp-dark')
+      : 'border-transparent bg-muted text-muted-foreground hover:border-border hover:bg-muted/80'
+  );
+}
+
 export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProps) {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
@@ -83,6 +96,10 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const isDeleting = deleteContact.isPending || deleteGroup.isPending;
   const isUploading = uploadContactAvatar.isPending || uploadGroupAvatar.isPending;
   const conversationVersion = conversation.version;
+  const showWhatsappId =
+    !isGroup &&
+    contact?.whatsappId &&
+    normalizeDigits(contact.whatsappId) !== normalizeDigits(contact.phone);
 
   function toggleTag(tagId: string) {
     const nextTagIds = selectedTagIds.includes(tagId)
@@ -199,8 +216,8 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="border-b p-4 text-center">
-        <div className="mx-auto mb-3 flex justify-center">
+      <div className="border-b px-4 py-5">
+        <div className="flex flex-col items-center text-center">
           <ProfileAvatar
             name={displayName}
             imageUrl={group?.profileImage ?? contact?.profileImage}
@@ -210,32 +227,38 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             uploading={isUploading}
             onUpload={isAdmin ? handleAvatarUpload : undefined}
           />
+          <h3 className="mt-3 font-semibold">{displayName}</h3>
+          {isGroup ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {group?.memberCount ?? 0} participants
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">{contact?.phone}</p>
+              {showWhatsappId && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  WhatsApp ID: {contact?.whatsappId}
+                </p>
+              )}
+            </>
+          )}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4 text-red-600 hover:bg-red-50 hover:text-red-700"
+            disabled={isDeleting || (!isGroup && !contact?._id)}
+            onClick={handleDelete}
+          >
+            <Trash2 className="mr-1 h-4 w-4" />
+            {isDeleting ? 'Deleting...' : isGroup ? 'Delete group' : 'Delete contact'}
+          </Button>
+
+          {actionMessage && (
+            <p className="mt-2 text-xs text-muted-foreground">{actionMessage}</p>
+          )}
         </div>
-        <h3 className="font-semibold">{displayName}</h3>
-        {isGroup ? (
-          <p className="text-sm text-muted-foreground">{group?.memberCount ?? 0} participants</p>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">{contact?.phone}</p>
-            <p className="truncate text-xs text-muted-foreground">ID: {contact?.whatsappId}</p>
-          </>
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-3 text-red-600 hover:bg-red-50 hover:text-red-700"
-          disabled={isDeleting || (!isGroup && !contact?._id)}
-          onClick={handleDelete}
-        >
-          <Trash2 className="mr-1 h-4 w-4" />
-          {isDeleting ? 'Deleting...' : isGroup ? 'Delete group' : 'Delete contact'}
-        </Button>
-
-        {actionMessage && (
-          <p className="mt-2 text-xs text-muted-foreground">{actionMessage}</p>
-        )}
       </div>
 
       {isGroup && group?.members && group.members.length > 0 && (
@@ -268,15 +291,15 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
         </section>
       )}
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-4">
         <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Status
           </h4>
-          <p className="mb-2 text-[10px] text-muted-foreground">
-            Status values are fixed. Click tags below to assign them to this conversation.
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Tap a status to update this conversation.
           </p>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {statuses.map((status) => (
               <button
                 key={status}
@@ -284,12 +307,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                   updateStatus.mutate({ id: conversation._id, status, version: conversationVersion })
                 }
                 disabled={updateStatus.isPending}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs transition-colors',
-                  conversation.status === status
-                    ? 'bg-whatsapp text-white'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                )}
+                className={selectionChipClass(conversation.status === status)}
               >
                 {status}
               </button>
@@ -298,10 +316,10 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
         </section>
 
         <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Priority
           </h4>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {priorities.map((priority) => (
               <button
                 key={priority}
@@ -313,13 +331,11 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                   })
                 }
                 disabled={updatePriority.isPending}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs transition-colors',
-                  conversation.priority === priority
-                    ? priority === 'URGENT'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-whatsapp text-white'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                className={selectionChipClass(
+                  conversation.priority === priority,
+                  priority === 'URGENT'
+                    ? 'border-red-600 bg-red-50 text-red-700'
+                    : undefined
                 )}
               >
                 {priority}
@@ -329,10 +345,10 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
         </section>
 
         <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Tags
           </h4>
-          <p className="mb-2 text-[10px] text-muted-foreground">
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             {isAdmin ? (
               <>
                 Click a tag to assign it to this chat. Use × to delete a tag from the workspace.{' '}
@@ -358,7 +374,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
               </Button>
             </form>
           )}
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => {
               const selected = selectedTagIds.includes(tag._id);
               return (
@@ -366,14 +382,14 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                   key={tag._id}
                   className={cn(
                     'inline-flex items-center overflow-hidden rounded-full text-xs transition-colors',
-                    selected ? 'bg-whatsapp text-white' : 'bg-muted text-muted-foreground'
+                    selectionChipClass(selected)
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => toggleTag(tag._id)}
                     disabled={updateTags.isPending}
-                    className="px-2 py-0.5 hover:opacity-90 disabled:opacity-50"
+                    className="px-2.5 py-1 hover:opacity-90 disabled:opacity-50"
                   >
                     {tag.name}
                   </button>
@@ -383,7 +399,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                       aria-label={`Delete tag ${tag.name}`}
                       disabled={deleteTag.isPending}
                       onClick={() => handleDeleteTag(tag._id, tag.name)}
-                      className="border-l border-white/20 px-1.5 py-0.5 text-[10px] hover:bg-black/10 disabled:opacity-50"
+                      className="border-l border-current/10 px-1.5 py-1 text-[10px] hover:bg-black/5 disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -400,7 +416,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           </h4>
           {isAdmin ? (
             <>
-              <p className="mb-2 text-[11px] text-muted-foreground">
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                 Choose a user to own this chat, or select Unassigned to handle it as admin only.
               </p>
               <select
@@ -448,7 +464,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Shared access
             </h4>
-            <p className="mb-2 text-[10px] text-muted-foreground">
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
               Allow additional users to view and reply in this chat without changing the assignee.
             </p>
             <div className="space-y-1">
@@ -484,7 +500,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Internal Notes
           </h4>
-          <p className="mb-2 text-[10px] text-muted-foreground">
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             Notes are never sent to WhatsApp
           </p>
           <form

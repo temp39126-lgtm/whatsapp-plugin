@@ -141,8 +141,8 @@ export function ChatWindow({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-chat-bg">
-      <header className="relative flex shrink-0 items-center justify-between border-b bg-background px-4 py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <header className="relative flex shrink-0 items-center gap-2 border-b bg-background px-3 py-2.5 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {onBack && (
             <Button
               variant="ghost"
@@ -192,7 +192,7 @@ export function ChatWindow({
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
           {onShowDetails && (
             <Button
               variant="ghost"
@@ -217,7 +217,7 @@ export function ChatWindow({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-3 py-4 sm:space-y-3 sm:px-4">
         {pinnedMessages.length > 0 && (
           <div className="rounded-lg border border-whatsapp/30 bg-whatsapp-light/40 px-3 py-2">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-whatsapp-dark">
