@@ -40,13 +40,24 @@ export async function createOtpChallenge(params: {
 }): Promise<{ challengeId: string; code: string }> {
   const normalizedEmail = params.email.toLowerCase().trim();
   const code = generateOtpCode();
-  const challengeId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60 * 1000);
 
-  await AuthOtpChallenge.deleteMany({
+  const existing = await AuthOtpChallenge.findOne({
     email: normalizedEmail,
     purpose: params.purpose,
-  });
+  }).select('+payload.passwordHash');
+
+  if (existing) {
+    existing.codeHash = hashOtpCode(code);
+    existing.expiresAt = expiresAt;
+    existing.attempts = 0;
+    existing.tenantId = params.tenantId;
+    existing.payload = params.payload ?? {};
+    await existing.save();
+    return { challengeId: existing.challengeId, code };
+  }
+
+  const challengeId = crypto.randomUUID();
 
   await AuthOtpChallenge.create({
     challengeId,
@@ -95,13 +106,22 @@ export async function sendOtpChallengeEmail(params: {
   return sent;
 }
 
+function normalizeOtpCode(code: string): string {
+  return code.replace(/\D/g, '').slice(0, OTP_LENGTH);
+}
+
 export async function verifyOtpChallenge(
   challengeId: string,
   code: string
 ): Promise<IAuthOtpChallenge> {
+  const normalizedCode = normalizeOtpCode(code);
+  if (normalizedCode.length !== OTP_LENGTH) {
+    throw new AppError(400, 'Enter the 6-digit verification code');
+  }
+
   const challenge = await AuthOtpChallenge.findOne({ challengeId }).select('+codeHash +payload.passwordHash');
   if (!challenge) {
-    throw new AppError(400, 'Invalid or expired verification code');
+    throw new AppError(400, 'Verification session expired. Sign in again and use the latest code.');
   }
 
   if (challenge.expiresAt.getTime() < Date.now()) {
@@ -114,14 +134,14 @@ export async function verifyOtpChallenge(
     throw new AppError(429, 'Too many failed attempts. Request a new verification code.');
   }
 
-  const candidateHash = hashOtpCode(code.trim());
+  const candidateHash = hashOtpCode(normalizedCode);
   const isValid =
     candidateHash.length === challenge.codeHash.length &&
     crypto.timingSafeEqual(Buffer.from(candidateHash), Buffer.from(challenge.codeHash));
   if (!isValid) {
     challenge.attempts += 1;
     await challenge.save();
-    throw new AppError(400, 'Invalid verification code');
+    throw new AppError(400, 'Invalid verification code. Use the latest code from your email.');
   }
 
   await AuthOtpChallenge.deleteOne({ _id: challenge._id });

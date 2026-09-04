@@ -116,6 +116,43 @@ describe('Email OTP auth', () => {
     expect(created.user.email).toBe('newuser@example.com');
   });
 
+  it('reuses the same challenge id when login OTP is requested again', async () => {
+    const user = await User.findOne({ email: 'user@example.com' });
+    const first = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
+    const second = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
+
+    expect(second.challengeId).toBe(first.challengeId);
+    await expect(verifyOtpChallenge(first.challengeId, first.code)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    const verified = await verifyOtpChallenge(second.challengeId, second.code);
+    expect(verified.email).toBe('user@example.com');
+  });
+
+  it('accepts OTP codes with spaces or separators', async () => {
+    const user = await User.findOne({ email: 'user@example.com' });
+    const { challengeId, code } = await createOtpChallenge({
+      email: 'user@example.com',
+      tenantId: 'tenant-001',
+      purpose: 'login',
+      payload: { userId: user!._id.toString() },
+    });
+
+    const spacedCode = code.split('').join(' ');
+    const verified = await verifyOtpChallenge(challengeId, spacedCode);
+    expect(verified.email).toBe('user@example.com');
+  });
+
   it('does not reset failed attempt counter when OTP is resent', async () => {
     const user = await User.findOne({ email: 'user@example.com' });
     const { challengeId } = await createOtpChallenge({

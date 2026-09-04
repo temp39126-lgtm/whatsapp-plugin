@@ -16,7 +16,12 @@ interface AuthOtpStepProps {
     resetToken?: string;
     message?: string;
   }) => void;
+  onChallengeIdChange?: (challengeId: string) => void;
   onBack?: () => void;
+}
+
+function normalizeOtpInput(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 6);
 }
 
 export function AuthOtpStep({
@@ -25,6 +30,7 @@ export function AuthOtpStep({
   message,
   purpose,
   onVerified,
+  onChallengeIdChange,
   onBack,
 }: AuthOtpStepProps) {
   const [code, setCode] = useState('');
@@ -38,6 +44,13 @@ export function AuthOtpStep({
     setError('');
     setSubmitting(true);
 
+    const normalizedCode = normalizeOtpInput(code);
+    if (normalizedCode.length !== 6) {
+      setError('Enter the 6-digit verification code');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const result = await authApi.post<{
         token?: string;
@@ -46,7 +59,7 @@ export function AuthOtpStep({
         message?: string;
       }>('/verify-otp', {
         challengeId,
-        code: code.trim(),
+        code: normalizedCode,
       });
       onVerified(result);
     } catch (err) {
@@ -61,10 +74,13 @@ export function AuthOtpStep({
     setResending(true);
 
     try {
-      const result = await authApi.post<{ message: string }>('/resend-otp', {
+      const result = await authApi.post<{ message: string; challengeId?: string }>('/resend-otp', {
         challengeId,
       });
       setInfo(result.message);
+      if (result.challengeId) {
+        onChallengeIdChange?.(result.challengeId);
+      }
       setCode('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to resend code');
@@ -99,7 +115,7 @@ export function AuthOtpStep({
           inputMode="numeric"
           autoComplete="one-time-code"
           value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={(event) => setCode(normalizeOtpInput(event.target.value))}
           placeholder="123456"
           required
           minLength={6}
@@ -118,7 +134,7 @@ export function AuthOtpStep({
 
       <button
         type="submit"
-        disabled={submitting || code.length !== 6}
+        disabled={submitting || normalizeOtpInput(code).length !== 6}
         className="w-full rounded-xl bg-whatsapp px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-whatsapp-dark disabled:opacity-60"
       >
         {submitting ? 'Verifying...' : 'Verify code'}

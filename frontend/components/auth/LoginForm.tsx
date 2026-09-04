@@ -66,6 +66,11 @@ export function LoginForm() {
         message={otpChallenge.message}
         purpose="login"
         onBack={() => setOtpChallenge(null)}
+        onChallengeIdChange={(nextChallengeId) =>
+          setOtpChallenge((current) =>
+            current ? { ...current, challengeId: nextChallengeId } : current
+          )
+        }
         onVerified={(result) => {
           if (!result.user) {
             setError('Verification succeeded but login could not be completed.');

@@ -22,7 +22,10 @@ export const resetPasswordSchema = z.object({
 
 export const verifyOtpSchema = z.object({
   challengeId: z.string().uuid(),
-  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code'),
+  code: z
+    .string()
+    .transform((value) => value.replace(/\D/g, '').slice(0, 6))
+    .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code')),
 });
 
 export const resendOtpSchema = z.object({

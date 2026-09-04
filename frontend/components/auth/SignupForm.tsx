@@ -49,6 +49,11 @@ export function SignupForm() {
         message={otpChallenge.message}
         purpose="signup"
         onBack={() => setOtpChallenge(null)}
+        onChallengeIdChange={(nextChallengeId) =>
+          setOtpChallenge((current) =>
+            current ? { ...current, challengeId: nextChallengeId } : current
+          )
+        }
         onVerified={(result) => {
           if (!result.user) {
             setError('Verification succeeded but sign up could not be completed.');
