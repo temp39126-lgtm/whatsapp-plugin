@@ -194,8 +194,7 @@ fi
 write_ngrok_config "crm-backend" 5000 "${NGROK_CRM_BACKEND_DOMAIN:-}" "crm-frontend" 3000 "${NGROK_CRM_FRONTEND_DOMAIN:-}"
 
 echo "==> Starting ngrok (config: .ngrok-crm.yml — separate from other ngrok projects)"
-pkill -f "ngrok start --config $NGROK_CONFIG" 2>/dev/null || true
-pkill -f "ngrok start crm-backend" 2>/dev/null || true
+stop_crm_ngrok
 sleep 1
 "$NGROK_BIN" start --config "$NGROK_CONFIG" crm-backend crm-frontend >"$NGROK_LOG" 2>&1 &
 for _ in $(seq 1 30); do
