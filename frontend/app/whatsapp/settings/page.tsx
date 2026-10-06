@@ -6,7 +6,7 @@ import type { WhatsAppAccountSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth();
@@ -30,10 +30,26 @@ export default function SettingsPage() {
     accessToken: '',
   });
 
+  useEffect(() => {
+    if (!settings?.configured) return;
+    setForm((prev) => ({
+      phoneNumberId: prev.phoneNumberId || settings.phoneNumberId || '',
+      businessAccountId: prev.businessAccountId || settings.businessAccountId || '',
+      displayPhoneNumber: prev.displayPhoneNumber || settings.displayPhoneNumber || '',
+      accessToken: prev.accessToken,
+    }));
+  }, [settings]);
+
   const saveSettings = useMutation({
     mutationFn: () => api.put('/settings/account', form),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
+
+  const canSave =
+    form.phoneNumberId.trim() &&
+    form.businessAccountId.trim() &&
+    form.displayPhoneNumber.trim() &&
+    form.accessToken.trim();
 
   if (isLoading) {
     return (
@@ -91,10 +107,19 @@ export default function SettingsPage() {
             <Button
               variant="whatsapp"
               onClick={() => saveSettings.mutate()}
-              disabled={saveSettings.isPending}
+              disabled={saveSettings.isPending || !canSave}
             >
               Save Configuration
             </Button>
+            {!canSave && (
+              <p className="text-sm text-muted-foreground">
+                Fill all four fields before saving. The access token is required each time you update
+                settings (it is not shown again after save).
+              </p>
+            )}
+            {saveSettings.isError && (
+              <p className="text-sm text-destructive">{saveSettings.error.message}</p>
+            )}
           </section>
 
           {webhook && (
