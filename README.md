@@ -13,6 +13,8 @@ A production-ready, modular **WhatsApp CRM Plugin** designed to integrate into a
 
 ### Quick Start
 
+**Production VPS deploy:** see **[DEPLOY.md](./DEPLOY.md)** (Docker Compose + Caddy HTTPS).
+
 **One command — install, build, and test (single terminal):**
 
 ```bash
