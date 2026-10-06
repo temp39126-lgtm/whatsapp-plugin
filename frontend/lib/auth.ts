@@ -1,4 +1,5 @@
 const TOKEN_KEY = process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'whatsapp_crm_token';
+const LOGGED_OUT_KEY = 'whatsapp_crm_logged_out';
 const HOST_ORIGIN = process.env.NEXT_PUBLIC_HOST_SAAS_ORIGIN;
 
 export const HOST_AUTH_MESSAGE_TYPE = 'WHATSAPP_CRM_AUTH';
@@ -16,10 +17,21 @@ export function setAuthToken(token: string | null): void {
   if (typeof window === 'undefined') return;
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.removeItem(LOGGED_OUT_KEY);
   } else {
     localStorage.removeItem(TOKEN_KEY);
   }
   window.dispatchEvent(new CustomEvent('whatsapp-crm-auth-changed'));
+}
+
+export function isExplicitlyLoggedOut(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(LOGGED_OUT_KEY) === '1';
+}
+
+export function clearExplicitLogout(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(LOGGED_OUT_KEY);
 }
 
 export function getAuthHeaders(): Record<string, string> {
@@ -47,4 +59,12 @@ export function initHostAuthListener(): () => void {
 export function requestHostAuth(): void {
   if (typeof window === 'undefined') return;
   window.parent.postMessage({ type: 'WHATSAPP_CRM_REQUEST_AUTH' }, HOST_ORIGIN || '*');
+}
+
+/** Clears stored JWT and marks the session logged out until sign-in again. */
+export function logout(): void {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem(LOGGED_OUT_KEY, '1');
+  }
+  setAuthToken(null);
 }
