@@ -10,11 +10,9 @@ import {
   BarChart3,
   Settings,
   UserCog,
-  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
-import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'AGENT'] },
@@ -28,7 +26,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, isAdmin, logout, signInAgain } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const filteredItems = navItems.filter(
     (item) => user && item.roles.includes(user.role)
@@ -65,40 +63,12 @@ export function Sidebar() {
         })}
       </nav>
 
-      {user ? (
-        <div className="mt-auto w-full border-t border-white/10 pt-3">
-          <div className="flex flex-col items-center gap-2 px-1 lg:items-stretch lg:px-2">
-            <div className="hidden w-full min-w-0 lg:block">
-              <p className="truncate text-sm font-medium text-white">{user.name}</p>
-              <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'Agent'}</p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              title="Log out"
-              aria-label="Log out"
-              onClick={logout}
-              className="h-9 w-9 shrink-0 p-0 text-white/80 hover:bg-white/10 hover:text-white lg:h-9 lg:w-full lg:justify-start lg:px-3"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="ml-0 hidden text-sm font-medium lg:ml-2 lg:inline">Log out</span>
-            </Button>
+      {user && (
+        <div className="mt-auto hidden border-t border-white/10 pt-4 lg:block">
+          <div className="px-2">
+            <p className="truncate text-sm font-medium text-white">{user.name}</p>
+            <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'Agent'}</p>
           </div>
-        </div>
-      ) : (
-        <div className="mt-auto w-full border-t border-white/10 pt-3 px-1 lg:px-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={signInAgain}
-            className="h-9 w-9 p-0 text-white/80 hover:bg-white/10 hover:text-white lg:h-9 lg:w-full lg:justify-start lg:px-3"
-            title="Sign in"
-          >
-            <UserCog className="h-4 w-4" />
-            <span className="ml-0 hidden text-sm font-medium lg:ml-2 lg:inline">Sign in</span>
-          </Button>
         </div>
       )}
     </aside>
