@@ -42,23 +42,40 @@ export function extractBearerOrCookieToken(
   return undefined;
 }
 
+function publicOrigins(): string[] {
+  return [env.FRONTEND_URL, env.CORS_ORIGIN]
+    .flatMap((value) => String(value ?? '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function isPublicHttps(): boolean {
+  return publicOrigins().some((origin) => origin.startsWith('https://'));
+}
+
 function usesCrossSiteCookies(): boolean {
-  if (env.AUTH_COOKIE_CROSS_SITE) return true;
-  if (env.NODE_ENV === 'production') return true;
-  return (
-    env.CORS_ORIGIN.includes('trycloudflare.com') || env.FRONTEND_URL.includes('trycloudflare.com')
-  );
+  if (publicOrigins().some((origin) => /trycloudflare\.com|ngrok/i.test(origin))) {
+    return true;
+  }
+  // SameSite=None requires Secure, which browsers reject on plain HTTP (IP:port deploys).
+  if (env.AUTH_COOKIE_CROSS_SITE) {
+    return isPublicHttps();
+  }
+  return false;
+}
+
+function cookieSecurity(): Pick<CookieOptions, 'httpOnly' | 'secure' | 'sameSite' | 'path'> {
+  const crossSite = usesCrossSiteCookies();
+  return {
+    httpOnly: true,
+    secure: isPublicHttps() || crossSite,
+    sameSite: crossSite ? 'none' : 'lax',
+    path: '/',
+  };
 }
 
 export function getAuthCookieOptions(keepSignedIn = true): CookieOptions {
-  const crossSite = usesCrossSiteCookies();
-
-  const options: CookieOptions = {
-    httpOnly: true,
-    secure: crossSite || env.NODE_ENV === 'production',
-    sameSite: crossSite || env.NODE_ENV === 'production' ? 'none' : 'lax',
-    path: '/',
-  };
+  const options: CookieOptions = cookieSecurity();
 
   if (keepSignedIn) {
     options.maxAge = SEVEN_DAYS_MS;
@@ -79,12 +96,7 @@ export function refreshAuthCookie(res: Response, token: string): void {
 }
 
 export function clearAuthCookie(res: Response): void {
-  const crossSite = usesCrossSiteCookies();
-  res.clearCookie(AUTH_COOKIE_NAME, {
-    path: '/',
-    secure: crossSite || env.NODE_ENV === 'production',
-    sameSite: crossSite || env.NODE_ENV === 'production' ? 'none' : 'lax',
-  });
+  res.clearCookie(AUTH_COOKIE_NAME, cookieSecurity());
 }
 
 export function attachAuthCookie<T extends { token?: string }>(
