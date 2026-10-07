@@ -55,6 +55,25 @@ describe('Auth cookie helpers', () => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   });
+
+  it('keeps HTTP IP deploys on Lax cookies so browsers can store the session', async () => {
+    vi.resetModules();
+    vi.doMock('../src/config/env', () => ({
+      env: {
+        NODE_ENV: 'production',
+        AUTH_COOKIE_CROSS_SITE: true,
+        CORS_ORIGIN: 'http://129.121.135.248:3004',
+        FRONTEND_URL: 'http://129.121.135.248:3004',
+      },
+    }));
+
+    const { getAuthCookieOptions: getHttpOptions } = await import('../src/services/auth/authCookie');
+    expect(getHttpOptions(true)).toMatchObject({
+      secure: false,
+      sameSite: 'lax',
+      httpOnly: true,
+    });
+  });
 });
 
 describe('Auth response payload', () => {

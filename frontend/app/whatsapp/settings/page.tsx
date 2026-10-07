@@ -38,7 +38,13 @@ export default function SettingsPage() {
   const [panel, setPanel] = useState<SettingsPanel>('home');
   const [avatarVersion, setAvatarVersion] = useState(0);
 
-  const { data: profile, isLoading: isLoadingProfile } = useUserProfile();
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    isError: isProfileError,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useUserProfile();
 
   const { data: connection, isLoading: isLoadingConnection } = useQuery({
     queryKey: ['settings-connection'],
@@ -46,10 +52,30 @@ export default function SettingsPage() {
     enabled: !isAdmin,
   });
 
-  if (isLoadingProfile || !profile) {
+  if (isLoadingProfile) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (isProfileError || !profile) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-lg font-semibold">Unable to load settings</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {profileError instanceof Error
+            ? profileError.message
+            : 'Your session could not be verified. Sign in again, then retry.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetchProfile()}
+          className="rounded-lg bg-whatsapp px-4 py-2 text-sm font-medium text-white hover:bg-whatsapp-dark"
+        >
+          Try again
+        </button>
       </div>
     );
   }
