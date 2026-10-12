@@ -2,11 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Cloud, Copy, Link2 } from 'lucide-react';
+import { AlertCircle, Check, Cloud, Copy, Link2, Loader2, XCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { WhatsAppAccountSettings } from '@/types';
+
+type ConnectionCheckStatus = 'pass' | 'fail' | 'warn';
+
+interface ConnectionCheck {
+  id: string;
+  label: string;
+  status: ConnectionCheckStatus;
+  message: string;
+}
+
+interface ConnectionTestResult {
+  success: boolean;
+  checkedAt: string;
+  checks: ConnectionCheck[];
+}
 
 interface MetaFormState {
   metaAppId: string;
@@ -55,6 +70,7 @@ export function AdminMetaCloudPanel() {
     metaApiVersion: 'v21.0',
   });
   const [message, setMessage] = useState('');
+  const [connectionTest, setConnectionTest] = useState<ConnectionTestResult | null>(null);
   const [copiedField, setCopiedField] = useState<'callbackUrl' | null>(null);
 
   const { data: settings, isLoading } = useQuery({
@@ -81,6 +97,31 @@ export function AdminMetaCloudPanel() {
       metaApiVersion: settings.metaApiVersion ?? 'v21.0',
     }));
   }, [settings]);
+
+  const testConnection = useMutation({
+    mutationFn: () =>
+      api.post<ConnectionTestResult>('/settings/account/test-connection', {
+        phoneNumberId: form.phoneNumberId.trim() || undefined,
+        businessAccountId: form.businessAccountId.trim() || undefined,
+        displayPhoneNumber: form.displayPhoneNumber.trim() || undefined,
+        metaApiVersion: form.metaApiVersion.trim() || undefined,
+        webhookVerifyToken: form.webhookVerifyToken.trim() || undefined,
+        ...(form.accessToken.trim() ? { accessToken: form.accessToken.trim() } : {}),
+      }),
+    onSuccess: (result) => {
+      setConnectionTest(result);
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      setMessage(
+        result.success
+          ? 'Connection test passed. Meta API and webhook checks look good.'
+          : 'Connection test failed. Fix the items marked in red, then save and test again.'
+      );
+    },
+    onError: (error) => {
+      setConnectionTest(null);
+      setMessage(error instanceof Error ? error.message : 'Connection test failed');
+    },
+  });
 
   const saveSettings = useMutation({
     mutationFn: () =>
@@ -146,8 +187,14 @@ export function AdminMetaCloudPanel() {
             <h2 className="text-lg font-semibold">Meta Cloud API</h2>
           </div>
           {settings?.configured && (
-            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
-              {settings.connectionStatus ?? 'Connected'}
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                settings.connectionStatus === 'CONNECTED'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {settings.connectionStatus === 'CONNECTED' ? 'Connected' : 'Not verified'}
             </span>
           )}
         </div>
@@ -250,26 +297,100 @@ export function AdminMetaCloudPanel() {
           </Field>
         </div>
 
-        <Button
-          className="mt-6"
-          variant="whatsapp"
-          disabled={saveSettings.isPending}
-          onClick={() => {
-            const error = validateForm();
-            if (error) {
-              setMessage(error);
-              return;
-            }
-            setMessage('');
-            saveSettings.mutate();
-          }}
-        >
-          {saveSettings.isPending ? 'Saving...' : 'Save configuration'}
-        </Button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button
+            variant="whatsapp"
+            disabled={saveSettings.isPending}
+            onClick={() => {
+              const error = validateForm();
+              if (error) {
+                setMessage(error);
+                return;
+              }
+              setMessage('');
+              setConnectionTest(null);
+              saveSettings.mutate();
+            }}
+          >
+            {saveSettings.isPending ? 'Saving...' : 'Save configuration'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={testConnection.isPending || !settings?.configured}
+            onClick={() => {
+              if (!form.phoneNumberId.trim() || !form.businessAccountId.trim()) {
+                setMessage('Phone Number ID and WABA ID are required to test connection.');
+                return;
+              }
+              setMessage('');
+              testConnection.mutate();
+            }}
+          >
+            {testConnection.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing…
+              </>
+            ) : (
+              'Test connection'
+            )}
+          </Button>
+        </div>
+        {!settings?.configured && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Save configuration once, then use Test connection (you can paste a new token in the form
+            before testing without saving).
+          </p>
+        )}
+        {connectionTest && (
+          <div
+            className={`mt-4 rounded-lg border p-4 ${
+              connectionTest.success ? 'border-green-200 bg-green-50/80' : 'border-red-200 bg-red-50/80'
+            }`}
+          >
+            <p
+              className={`mb-3 flex items-center gap-2 text-sm font-semibold ${
+                connectionTest.success ? 'text-green-800' : 'text-red-800'
+              }`}
+            >
+              {connectionTest.success ? (
+                <Check className="h-4 w-4 shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0" />
+              )}
+              {connectionTest.success ? 'Connected successfully' : 'Not connected — fix the issues below'}
+            </p>
+            <ul className="space-y-2">
+              {connectionTest.checks.map((check) => (
+                <li key={check.id} className="flex gap-2 text-sm">
+                  {check.status === 'pass' && (
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden />
+                  )}
+                  {check.status === 'fail' && (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-hidden />
+                  )}
+                  {check.status === 'warn' && (
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+                  )}
+                  <div>
+                    <span className="font-medium">{check.label}: </span>
+                    <span className="text-muted-foreground">{check.message}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {message && (
           <p
             className={`mt-3 text-sm ${
-              saveSettings.isError || message.includes('required') ? 'text-red-600' : 'text-whatsapp-dark'
+              saveSettings.isError ||
+              testConnection.isError ||
+              message.includes('required') ||
+              message.includes('failed')
+                ? 'text-red-600'
+                : 'text-whatsapp-dark'
             }`}
           >
             {message}

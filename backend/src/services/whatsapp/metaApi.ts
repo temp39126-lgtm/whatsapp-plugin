@@ -121,6 +121,31 @@ async function metaPost(
   return metaJsonPost(path, body, account) as Promise<{ messages: Array<{ id: string }> }>;
 }
 
+export async function metaGet<T = Record<string, unknown>>(
+  path: string,
+  account?: IWhatsAppAccount,
+  query?: Record<string, string>
+): Promise<T> {
+  const token = getAccessToken(account);
+  const url = new URL(`${getBaseUrl(account)}${path}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 async function metaJsonPost<T = Record<string, unknown>>(
   path: string,
   body: unknown,

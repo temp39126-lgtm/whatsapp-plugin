@@ -10,6 +10,7 @@ import {
   updateWhatsAppAccountSchema,
   updateTenantNotificationSettingsSchema,
   testNotificationEmailSchema,
+  testWhatsAppConnectionSchema,
 } from '../validators/settings.validator';
 import { createTeamUserSchema, changePasswordSchema, changeEmailSchema } from '../validators/auth.validator';
 import { avatarUploadMiddleware } from '../middleware/upload';
@@ -49,6 +50,13 @@ router.put(
   requirePermission('manage_settings'),
   validateBody(updateWhatsAppAccountSchema),
   controller.updateAccountSettings
+);
+router.post(
+  '/settings/account/test-connection',
+  requireRole('ADMIN'),
+  requirePermission('manage_settings'),
+  validateBody(testWhatsAppConnectionSchema),
+  controller.testAccountConnection
 );
 router.get(
   '/settings/notifications',

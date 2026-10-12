@@ -29,3 +29,12 @@ export const updateTenantNotificationSettingsSchema = z.object({
 export const testNotificationEmailSchema = z.object({
   recipientEmail: z.string().email().optional(),
 });
+
+export const testWhatsAppConnectionSchema = z.object({
+  phoneNumberId: z.string().min(1).optional(),
+  businessAccountId: z.string().min(1).optional(),
+  displayPhoneNumber: z.string().min(1).optional(),
+  accessToken: z.string().min(1).optional(),
+  metaApiVersion: z.string().min(1).optional(),
+  webhookVerifyToken: z.string().min(1).optional(),
+});

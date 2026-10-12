@@ -5,6 +5,7 @@ import * as analyticsService from '../services/analytics/analyticsService';
 import { createTeamUser, getTeamUserAvatarStorageKey } from '../services/users/teamUserService';
 import { readAvatar } from '../services/avatars/avatarService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
+import { testWhatsAppConnection } from '../services/whatsapp/connectionTestService';
 import { WhatsAppAccount } from '../models/WhatsAppAccount';
 import { env } from '../config/env';
 import { getUserProfile } from '../services/users/userProfileService';
@@ -158,6 +159,30 @@ export async function getConnectionStatus(req: AuthenticatedRequest, res: Respon
       connectionStatus: account.connectionStatus,
       callingEnabled: env.CALLING_ENABLED,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function testAccountConnection(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const account = await WhatsAppAccount.findOne({ tenantId: req.user!.tenantId });
+    if (!account) {
+      throw new AppError(400, 'Save WhatsApp configuration first, then run Test connection.');
+    }
+
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const webhookUrl = `${protocol}://${host}/api/whatsapp/webhook`;
+
+    const result = await testWhatsAppConnection(account, req.body ?? {}, webhookUrl);
+
+    await WhatsAppAccount.updateOne(
+      { tenantId: req.user!.tenantId },
+      { connectionStatus: result.success ? 'CONNECTED' : 'DISCONNECTED' }
+    );
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
