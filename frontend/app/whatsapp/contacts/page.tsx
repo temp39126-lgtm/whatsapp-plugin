@@ -23,6 +23,7 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [sendWelcomeTemplate, setSendWelcomeTemplate] = useState(false);
   const [message, setMessage] = useState('');
   const [openingContactId, setOpeningContactId] = useState<string | null>(null);
   const deleteContact = useDeleteContact();
@@ -63,12 +64,25 @@ export default function ContactsPage() {
     event.preventDefault();
     setMessage('');
     createContact.mutate(
-      { name: name.trim(), phone: phone.trim() },
+      {
+        name: name.trim(),
+        phone: phone.trim(),
+        sendWelcomeWhatsAppTemplate: sendWelcomeTemplate,
+      },
       {
         onSuccess: (contact) => {
           setName('');
           setPhone('');
-          setMessage(`Saved contact "${contact.name}"`);
+          setSendWelcomeTemplate(false);
+          if (contact.welcomeTemplate?.sent) {
+            setMessage(`Saved contact "${contact.name}" and sent the hello_world WhatsApp template.`);
+          } else if (contact.welcomeTemplate?.sent === false) {
+            setMessage(
+              `Saved contact "${contact.name}". Welcome template failed: ${contact.welcomeTemplate.error ?? 'Unknown error'}`
+            );
+          } else {
+            setMessage(`Saved contact "${contact.name}"`);
+          }
         },
         onError: (error) =>
           setMessage(error instanceof Error ? error.message : 'Failed to save contact'),
@@ -86,28 +100,41 @@ export default function ContactsPage() {
             : 'Add customer contacts by name and phone number.'}
         </p>
 
-        <form
-          onSubmit={handleCreateContact}
-          className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_1fr_auto]"
-        >
-          <Input
-            placeholder="Contact name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            minLength={1}
-          />
-          <Input
-            placeholder="Phone number (e.g. +15551234567)"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            required
-            minLength={8}
-          />
-          <Button type="submit" variant="whatsapp" disabled={createContact.isPending}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            {createContact.isPending ? 'Saving...' : 'Save contact'}
-          </Button>
+        <form onSubmit={handleCreateContact} className="mt-4 max-w-3xl space-y-3">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <Input
+              placeholder="Contact name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              minLength={1}
+            />
+            <Input
+              placeholder="Phone number (e.g. +15551234567)"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              required
+              minLength={8}
+            />
+            <Button type="submit" variant="whatsapp" disabled={createContact.isPending}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              {createContact.isPending ? 'Saving...' : 'Save contact'}
+            </Button>
+          </div>
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+              checked={sendWelcomeTemplate}
+              onChange={(event) => setSendWelcomeTemplate(event.target.checked)}
+            />
+            <span>
+              Send welcome WhatsApp template (hello_world)
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Opt-in only. Uses Meta&apos;s approved template outside the 24-hour chat window.
+              </span>
+            </span>
+          </label>
         </form>
         {message && (
           <p

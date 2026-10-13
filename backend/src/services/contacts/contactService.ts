@@ -18,6 +18,8 @@ import {
   getOrCreateContactConversation,
 } from './contactConversationService';
 import { emitContactDeletedToAuthorizedUsers } from '../realtime/socketService';
+import { sendHelloWorldTemplateMessage } from '../whatsapp/whatsappService';
+import { logger } from '../../config/logger';
 
 function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
   const digits = normalizeWhatsAppId(phone);
@@ -29,9 +31,34 @@ function normalizePhoneInput(phone: string): { phone: string; whatsappId: string
   return { phone: formatPhoneDisplay(digits), whatsappId: digits };
 }
 
+export type CreateContactInput = {
+  name: string;
+  phone: string;
+  sendWelcomeWhatsAppTemplate?: boolean;
+};
+
+export type CreateContactResult = {
+  welcomeTemplate?: { sent: boolean; error?: string };
+  [key: string]: unknown;
+};
+
+function sanitizeTemplateError(error: unknown): string {
+  if (error instanceof AppError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    const message = error.message.replace(/Bearer\s+\S+/gi, '[redacted]').slice(0, 240);
+    if (message.startsWith('Meta API error:')) {
+      return 'Meta rejected the template message. Check template approval and phone number.';
+    }
+    return message || 'Template message could not be sent.';
+  }
+  return 'Template message could not be sent.';
+}
+
 export async function createContact(
   user: AuthUser,
-  input: { name: string; phone: string }
+  input: CreateContactInput
 ) {
   const account = await WhatsAppAccount.findOne({ tenantId: user.tenantId });
   if (!account) {
@@ -56,7 +83,7 @@ export async function createContact(
     ...(assignToCreator ? { assignedUserId: user.userId } : {}),
   });
 
-  await getOrCreateContactConversation({
+  const { conversation } = await getOrCreateContactConversation({
     tenantId: user.tenantId,
     whatsappAccountId: account._id,
     contactId: contact._id,
@@ -70,7 +97,24 @@ export async function createContact(
     phone: contact.phone,
   });
 
-  return contact.toObject();
+  let welcomeTemplate: { sent: boolean; error?: string } | undefined;
+  if (input.sendWelcomeWhatsAppTemplate === true) {
+    try {
+      await sendHelloWorldTemplateMessage(account, conversation, contact, user.userId);
+      welcomeTemplate = { sent: true };
+    } catch (error) {
+      logger.warn(
+        { err: error, contactId: contact._id.toString(), tenantId: user.tenantId },
+        'Welcome WhatsApp template failed after contact create'
+      );
+      welcomeTemplate = { sent: false, error: sanitizeTemplateError(error) };
+    }
+  }
+
+  return {
+    ...contact.toObject(),
+    ...(welcomeTemplate ? { welcomeTemplate } : {}),
+  };
 }
 
 export async function listContacts(user: AuthUser, page = 1, limit = 20, search?: string) {

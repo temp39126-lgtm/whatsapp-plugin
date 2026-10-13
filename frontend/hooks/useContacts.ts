@@ -4,11 +4,21 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { ContactDTO } from '@/types';
 
+export type CreateContactPayload = {
+  name: string;
+  phone: string;
+  sendWelcomeWhatsAppTemplate?: boolean;
+};
+
+export type CreateContactResponse = ContactDTO & {
+  welcomeTemplate?: { sent: boolean; error?: string };
+};
+
 export function useCreateContact() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { name: string; phone: string }) =>
-      api.post<ContactDTO>('/contacts', payload),
+    mutationFn: (payload: CreateContactPayload) =>
+      api.post<CreateContactResponse>('/contacts', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });

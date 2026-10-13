@@ -14,6 +14,29 @@ function getAccessToken(account?: IWhatsAppAccount): string {
   return env.WHATSAPP_ACCESS_TOKEN;
 }
 
+export async function sendTemplateMessage(
+  phoneNumberId: string,
+  to: string,
+  templateName: string,
+  languageCode: string,
+  account?: IWhatsAppAccount
+): Promise<{ messages: Array<{ id: string }> }> {
+  return metaJsonPost(
+    `/${phoneNumberId}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+      },
+    },
+    account
+  );
+}
+
 export async function sendTextMessage(
   phoneNumberId: string,
   to: string,

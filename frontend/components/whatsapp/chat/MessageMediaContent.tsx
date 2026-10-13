@@ -26,13 +26,19 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       typeof window !== 'undefined' &&
       sessionStorage.getItem(`chat-downloaded:${message._id}`) === '1'
   );
-  const content = message.content as { caption?: string; fileName?: string; text?: string };
+  const content = message.content as {
+    caption?: string;
+    fileName?: string;
+    text?: string;
+    templateName?: string;
+    preview?: string;
+  };
   const fileName = message.media?.fileName ?? content.fileName ?? 'Attachment';
   const caption = content.caption?.trim();
   const mediaPath = message.media?.url ?? getWhatsAppMediaUrl(message._id);
 
   useEffect(() => {
-    if (message.type === 'TEXT') return;
+    if (message.type === 'TEXT' || message.type === 'TEMPLATE') return;
 
     let objectUrl: string | null = null;
     let cancelled = false;
@@ -62,6 +68,20 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
 
   if (message.type === 'TEXT') {
     return <p className="whitespace-pre-wrap break-words text-sm">{content.text}</p>;
+  }
+
+  if (message.type === 'TEMPLATE') {
+    const body = content.preview ?? content.text ?? '';
+    return (
+      <div className="space-y-1">
+        {content.templateName ? (
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Template · {content.templateName}
+          </p>
+        ) : null}
+        <p className="whitespace-pre-wrap break-words text-sm">{body}</p>
+      </div>
+    );
   }
 
   if (message.type === 'IMAGE') {

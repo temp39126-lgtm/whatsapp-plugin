@@ -10,9 +10,15 @@ import { logger } from '../../config/logger';
 import {
   sendTextMessage,
   sendMediaMessage,
+  sendTemplateMessage,
   downloadMetaMedia,
   markMessageAsRead,
 } from './metaApi';
+
+export const HELLO_WORLD_TEMPLATE_NAME = 'hello_world';
+export const HELLO_WORLD_TEMPLATE_LANGUAGE = 'en_US';
+export const HELLO_WORLD_TEMPLATE_PREVIEW =
+  'Hello World\nWelcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta.';
 import {
   uploadToS3,
   downloadFromUrl,
@@ -520,6 +526,75 @@ export async function sendOutgoingMessage(
 
     message.metaMessageId = metaResponse.messages[0].id;
     return finalizeMessage('SENT');
+  } catch (error) {
+    message.status = 'FAILED';
+    await message.save();
+    throw error;
+  }
+}
+
+export async function sendHelloWorldTemplateMessage(
+  account: IWhatsAppAccount,
+  conversation: IConversation,
+  contact: IContact,
+  sentByUserId: string
+): Promise<IMessage> {
+  const content = {
+    templateName: HELLO_WORLD_TEMPLATE_NAME,
+    languageCode: HELLO_WORLD_TEMPLATE_LANGUAGE,
+    preview: HELLO_WORLD_TEMPLATE_PREVIEW,
+    text: HELLO_WORLD_TEMPLATE_PREVIEW,
+  };
+  const preview = `Template: ${HELLO_WORLD_TEMPLATE_NAME}`;
+
+  const message = await Message.create({
+    tenantId: account.tenantId,
+    conversationId: conversation._id,
+    contactId: contact._id,
+    metaMessageId: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    direction: 'OUTGOING',
+    type: 'TEMPLATE',
+    content,
+    status: 'SENDING',
+    sentByUserId,
+  });
+
+  async function finalizeTemplateMessage(status: IMessage['status'], metaMessageId?: string) {
+    message.status = status;
+    if (metaMessageId) message.metaMessageId = metaMessageId;
+    await message.save();
+
+    await Conversation.findByIdAndUpdate(conversation._id, {
+      lastMessage: preview,
+      lastMessageAt: new Date(),
+    });
+
+    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'message.created', {
+      message: message.toObject(),
+      conversationId: conversation._id.toString(),
+    });
+
+    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.updated', {
+      conversationId: conversation._id.toString(),
+      lastMessage: preview,
+    });
+
+    return message;
+  }
+
+  if (isDemoWhatsAppAccount(account)) {
+    return finalizeTemplateMessage('SENT', `demo-template-${message._id}`);
+  }
+
+  try {
+    const metaResponse = await sendTemplateMessage(
+      account.phoneNumberId,
+      contact.whatsappId,
+      HELLO_WORLD_TEMPLATE_NAME,
+      HELLO_WORLD_TEMPLATE_LANGUAGE,
+      account
+    );
+    return finalizeTemplateMessage('SENT', metaResponse.messages[0].id);
   } catch (error) {
     message.status = 'FAILED';
     await message.save();
