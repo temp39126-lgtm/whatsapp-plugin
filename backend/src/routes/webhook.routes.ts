@@ -157,6 +157,22 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
 
     if (value.statuses) {
       for (const status of value.statuses as Array<Record<string, unknown>>) {
+        if (String(status.status) === 'failed') {
+          const errors = Array.isArray(status.errors)
+            ? (status.errors as Array<Record<string, unknown>>).map((error) => ({
+                code: error.code,
+                title: error.title,
+                message: error.message,
+                details: (error.error_data as Record<string, unknown> | undefined)?.details,
+              }))
+            : [];
+
+          logger.warn(
+            { metaMessageId: String(status.id), errors },
+            'Meta reported WhatsApp message delivery failure'
+          );
+        }
+
         await processStatusUpdate(account, String(status.id), String(status.status));
       }
     }
