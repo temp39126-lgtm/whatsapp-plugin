@@ -4,11 +4,16 @@ import { Phone, PhoneOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PendingIncomingCall } from '@/lib/incoming-call-types';
 
+type MicStatus = 'checking' | 'ready' | 'blocked';
+
 interface IncomingCallModalProps {
   pending: PendingIncomingCall;
   isAccepting: boolean;
   isDeclining: boolean;
+  micStatus: MicStatus;
+  isEnablingMic: boolean;
   error?: string;
+  onEnableMicrophone: () => void;
   onAccept: () => void;
   onDecline: () => void;
 }
@@ -17,7 +22,10 @@ export function IncomingCallModal({
   pending,
   isAccepting,
   isDeclining,
+  micStatus,
+  isEnablingMic,
   error,
+  onEnableMicrophone,
   onAccept,
   onDecline,
 }: IncomingCallModalProps) {
@@ -47,6 +55,24 @@ export function IncomingCallModal({
               the offer.
             </p>
           ) : null}
+          {micStatus === 'checking' ? (
+            <p className="mt-3 text-xs text-muted-foreground">Checking microphone access…</p>
+          ) : null}
+          {micStatus === 'ready' ? (
+            <p className="mt-3 text-xs text-green-700">Microphone is ready for this call.</p>
+          ) : null}
+          {micStatus === 'blocked' ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={isEnablingMic || isAccepting || isDeclining}
+              onClick={onEnableMicrophone}
+            >
+              {isEnablingMic ? 'Enabling…' : 'Enable microphone'}
+            </Button>
+          ) : null}
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
         </div>
         <div className="mt-6 flex gap-3">
@@ -64,7 +90,9 @@ export function IncomingCallModal({
             type="button"
             variant="whatsapp"
             className="flex-1 gap-2"
-            disabled={isAccepting || isDeclining || !pending.session}
+            disabled={
+              isAccepting || isDeclining || !pending.session || micStatus !== 'ready'
+            }
             onClick={onAccept}
           >
             <Phone className="h-4 w-4" />

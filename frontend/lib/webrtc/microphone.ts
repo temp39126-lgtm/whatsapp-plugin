@@ -16,20 +16,20 @@ export function mapMicrophoneError(error: unknown): string {
     switch (error.name) {
       case 'NotFoundError':
       case 'DevicesNotFoundError':
-        return 'No microphone was found. Connect a headset or microphone, check your system audio input, then reload the page and try again.';
+        return 'Your browser cannot use a microphone. Open the CRM with HTTPS, allow the mic for this site (lock icon in the address bar), set your OS default input to the headset (Windows: Settings → Sound → Input), and avoid Remote Desktop without audio redirection. Reload, then click Enable microphone.';
       case 'NotAllowedError':
       case 'PermissionDeniedError':
-        return 'Microphone permission was denied. Allow microphone access in your browser site settings, then try again.';
+        return 'Microphone permission was denied. Click the lock icon in the address bar → Microphone → Allow, then click Enable microphone again.';
       case 'NotReadableError':
       case 'TrackStartError':
-        return 'Your microphone is in use by another app. Close other apps using the mic and try again.';
+        return 'Your microphone is in use by another app (Zoom, Teams, etc.). Close those apps and try again.';
       case 'SecurityError':
-        return 'Microphone access requires a secure HTTPS connection. Open the app using the Cloudflare link, not localhost over HTTP.';
+        return 'Microphone access requires HTTPS. Open https://wa.zenablers.com (or your secure domain), not http:// or a raw IP address.';
       case 'OverconstrainedError':
-        return 'No microphone matched the requested settings. Try a different audio input device.';
+        return 'No microphone matched the requested settings. Choose a different input device in system sound settings.';
       default:
         if (error.message.toLowerCase().includes('requested device not found')) {
-          return 'No microphone was found. Connect a headset or microphone, check your system audio input, then reload the page and try again.';
+          return 'Your browser cannot see a microphone input. Check headset connection, OS input device, and browser permission for this site, then reload.';
         }
         return error.message || 'Unable to access the microphone.';
     }
@@ -37,7 +37,7 @@ export function mapMicrophoneError(error: unknown): string {
 
   if (error instanceof Error) {
     if (error.message.toLowerCase().includes('requested device not found')) {
-      return 'No microphone was found. Connect a headset or microphone, check your system audio input, then reload the page and try again.';
+      return 'Your browser cannot see a microphone input. Check headset connection, OS input device, and browser permission for this site, then reload.';
     }
     return error.message;
   }
@@ -46,16 +46,12 @@ export function mapMicrophoneError(error: unknown): string {
 }
 
 export async function getMicrophoneStream(): Promise<MediaStream> {
-  if (!navigator.mediaDevices?.getUserMedia) {
+  if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     throw new Error('Microphone access is not available in this browser.');
   }
 
-  const hasMic = await hasAudioInputDevice();
-  if (!hasMic) {
-    throw new DOMException(
-      'No microphone was found. Connect a headset or microphone and try again.',
-      'NotFoundError'
-    );
+  if (!window.isSecureContext) {
+    throw new DOMException('Microphone requires HTTPS.', 'SecurityError');
   }
 
   try {
@@ -73,4 +69,10 @@ export async function getMicrophoneStream(): Promise<MediaStream> {
       throw fallbackError ?? error;
     }
   }
+}
+
+/** Requests permission and releases the stream so WebRTC can open the mic for the call. */
+export async function prepareMicrophoneAccess(): Promise<void> {
+  const stream = await getMicrophoneStream();
+  stream.getTracks().forEach((track) => track.stop());
 }

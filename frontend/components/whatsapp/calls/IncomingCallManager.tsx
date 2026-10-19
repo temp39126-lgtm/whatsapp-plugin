@@ -13,7 +13,7 @@ import {
 } from '@/lib/incoming-call-state';
 import { createIncomingCallSession } from '@/lib/webrtc/incomingCall';
 import type { IncomingCallSession } from '@/lib/webrtc/incomingCall';
-import { mapMicrophoneError } from '@/lib/webrtc/microphone';
+import { mapMicrophoneError, prepareMicrophoneAccess } from '@/lib/webrtc/microphone';
 import { IncomingCallModal } from './IncomingCallModal';
 import { ActiveCallBar } from './ActiveCallBar';
 
@@ -39,6 +39,8 @@ export function IncomingCallManager() {
   const [isDeclining, setIsDeclining] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [error, setError] = useState('');
+  const [micStatus, setMicStatus] = useState<'checking' | 'ready' | 'blocked'>('checking');
+  const [isEnablingMic, setIsEnablingMic] = useState(false);
 
   const cleanupSession = useCallback(() => {
     sessionRef.current?.close();
@@ -49,6 +51,21 @@ export function IncomingCallManager() {
     pendingIdRef.current = null;
     setPending(null);
     setError('');
+    setMicStatus('checking');
+  }, []);
+
+  const enableMicrophone = useCallback(async () => {
+    setIsEnablingMic(true);
+    setError('');
+    try {
+      await prepareMicrophoneAccess();
+      setMicStatus('ready');
+    } catch (err) {
+      setMicStatus('blocked');
+      setError(mapMicrophoneError(err));
+    } finally {
+      setIsEnablingMic(false);
+    }
   }, []);
 
   const clearActive = useCallback(() => {
@@ -123,6 +140,12 @@ export function IncomingCallManager() {
       // Ignore sync errors (calling disabled, auth, etc.)
     }
   }, [applyPendingPayload]);
+
+  useEffect(() => {
+    if (!pending) return;
+    setMicStatus('checking');
+    void enableMicrophone();
+  }, [pending?.call._id, enableMicrophone, pending]);
 
   useEffect(() => {
     connectSocket();
@@ -236,7 +259,10 @@ export function IncomingCallManager() {
           pending={pending!}
           isAccepting={isAccepting}
           isDeclining={isDeclining}
+          micStatus={micStatus}
+          isEnablingMic={isEnablingMic}
           error={error}
+          onEnableMicrophone={enableMicrophone}
           onAccept={handleAccept}
           onDecline={handleDecline}
         />
