@@ -204,11 +204,60 @@ export async function deleteMessage(user: AuthUser, message: IMessage, scope: 'm
   return { deleted: true };
 }
 
-export async function editMessage(
+function sanitizeCorrectionError(error: unknown): string {
+  if (error instanceof AppError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    const cleaned = error.message.replace(/Bearer\s+\S+/gi, '[redacted]').slice(0, 240);
+    if (cleaned.startsWith('Meta API error:')) {
+      return 'Meta rejected the correction message. Check the 24-hour window or use a template.';
+    }
+    return cleaned || 'Correction message could not be sent.';
+  }
+  return 'Correction message could not be sent.';
+}
+
+async function sendCorrectionAfterEdit(
   user: AuthUser,
   message: IMessage,
   text: string
 ): Promise<EnrichedMessage> {
+  const conversation = await getAccessibleConversation(user, message.conversationId.toString());
+  if (conversation.groupId) {
+    throw new AppError(400, 'Corrections can only be sent in individual chats');
+  }
+  if (!conversation.contactId) {
+    throw new AppError(400, 'Conversation has no contact for WhatsApp delivery');
+  }
+
+  const [account, contact] = await Promise.all([
+    WhatsAppAccount.findById(conversation.whatsappAccountId),
+    Contact.findById(conversation.contactId),
+  ]);
+  if (!account || !contact) {
+    throw new AppError(404, 'Account or contact not found');
+  }
+
+  const correction = await sendOutgoingMessage(account, conversation, contact, {
+    type: 'TEXT',
+    content: { text },
+    sentByUserId: user.userId,
+  });
+
+  return enrichMessageRecord(correction.toObject());
+}
+
+export async function editMessage(
+  user: AuthUser,
+  message: IMessage,
+  text: string,
+  options: { sendCorrectionToWhatsApp?: boolean } = {}
+): Promise<{
+  message: EnrichedMessage;
+  correctionMessage?: EnrichedMessage;
+  correctionError?: string;
+}> {
   if (message.direction !== 'OUTGOING') {
     throw new AppError(400, 'Only outgoing messages can be edited');
   }
@@ -269,7 +318,22 @@ export async function editMessage(
     { messageId: message._id.toString(), message: enriched }
   );
 
-  return enriched;
+  let correctionMessage: EnrichedMessage | undefined;
+  let correctionError: string | undefined;
+
+  if (options.sendCorrectionToWhatsApp) {
+    try {
+      correctionMessage = await sendCorrectionAfterEdit(user, message, text);
+    } catch (error) {
+      correctionError = sanitizeCorrectionError(error);
+    }
+  }
+
+  return {
+    message: enriched,
+    ...(correctionMessage ? { correctionMessage } : {}),
+    ...(correctionError ? { correctionError } : {}),
+  };
 }
 
 export async function retryMessage(

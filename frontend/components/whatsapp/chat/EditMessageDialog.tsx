@@ -8,21 +8,27 @@ interface EditMessageDialogProps {
   open: boolean;
   initialText: string;
   isPending: boolean;
+  allowSendCorrection?: boolean;
   onClose: () => void;
-  onSave: (text: string) => void;
+  onSave: (text: string, sendCorrectionToWhatsApp: boolean) => void;
 }
 
 export function EditMessageDialog({
   open,
   initialText,
   isPending,
+  allowSendCorrection = false,
   onClose,
   onSave,
 }: EditMessageDialogProps) {
   const [text, setText] = useState(initialText);
+  const [sendCorrection, setSendCorrection] = useState(false);
 
   useEffect(() => {
-    if (open) setText(initialText);
+    if (open) {
+      setText(initialText);
+      setSendCorrection(false);
+    }
   }, [open, initialText]);
 
   if (!open) return null;
@@ -48,6 +54,23 @@ export function EditMessageDialog({
           disabled={isPending}
           autoFocus
         />
+        {allowSendCorrection && (
+          <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+              checked={sendCorrection}
+              onChange={(event) => setSendCorrection(event.target.checked)}
+              disabled={isPending}
+            />
+            <span>
+              Send correction on WhatsApp
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Sends a new message with this text to the customer (separate bubble on their phone).
+              </span>
+            </span>
+          </label>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
             Cancel
@@ -56,9 +79,9 @@ export function EditMessageDialog({
             type="button"
             variant="whatsapp"
             disabled={isPending || !text.trim()}
-            onClick={() => onSave(text.trim())}
+            onClick={() => onSave(text.trim(), sendCorrection)}
           >
-            {isPending ? 'Saving…' : 'Save'}
+            {isPending ? 'Saving…' : sendCorrection ? 'Save & send correction' : 'Save'}
           </Button>
         </div>
       </div>

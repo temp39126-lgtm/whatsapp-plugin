@@ -19,6 +19,7 @@ export const deleteMessageSchema = z.object({
 
 export const editMessageSchema = z.object({
   text: z.string().trim().min(1).max(4096),
+  sendCorrectionToWhatsApp: z.boolean().optional().default(false),
 });
 
 export const whatsAppAccountSchema = z.object({

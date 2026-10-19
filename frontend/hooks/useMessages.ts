@@ -90,11 +90,28 @@ export function useSendMediaMessage() {
   });
 }
 
+export type EditMessageResponse = {
+  message: MessageDTO;
+  correctionMessage?: MessageDTO;
+  correctionError?: string;
+};
+
 export function useEditMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, text }: { messageId: string; text: string }) =>
-      api.post<MessageDTO>(`/messages/${messageId}/edit`, { text }),
+    mutationFn: ({
+      messageId,
+      text,
+      sendCorrectionToWhatsApp,
+    }: {
+      messageId: string;
+      text: string;
+      sendCorrectionToWhatsApp?: boolean;
+    }) =>
+      api.post<EditMessageResponse>(`/messages/${messageId}/edit`, {
+        text,
+        sendCorrectionToWhatsApp: sendCorrectionToWhatsApp ?? false,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });

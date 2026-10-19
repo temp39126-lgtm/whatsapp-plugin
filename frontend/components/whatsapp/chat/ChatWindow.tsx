@@ -280,13 +280,23 @@ export function ChatWindow({
         open={Boolean(editingMessage)}
         initialText={editingMessage ? getEditableMessageText(editingMessage) : ''}
         isPending={editMessage.isPending}
+        allowSendCorrection={!isGroup}
         onClose={() => setEditingMessage(null)}
-        onSave={(text) => {
+        onSave={(text, sendCorrectionToWhatsApp) => {
           if (!editingMessage) return;
           editMessage.mutate(
-            { messageId: editingMessage._id, text },
+            { messageId: editingMessage._id, text, sendCorrectionToWhatsApp },
             {
-              onSuccess: () => setEditingMessage(null),
+              onSuccess: (result) => {
+                setEditingMessage(null);
+                if (result.correctionMessage) {
+                  setSendError('');
+                } else if (result.correctionError) {
+                  setSendError(
+                    `CRM message updated, but WhatsApp correction failed: ${result.correctionError}`
+                  );
+                }
+              },
               onError: (error) => {
                 setSendError(error instanceof Error ? error.message : 'Failed to edit message');
                 setEditingMessage(null);

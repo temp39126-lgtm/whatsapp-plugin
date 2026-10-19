@@ -9,7 +9,9 @@ import {
   EDIT_MESSAGE_WINDOW_MS,
   editMessage,
 } from '../src/services/messages/messageService';
+import * as whatsappService from '../src/services/whatsapp/whatsappService';
 import { AppError } from '../src/types';
+import { vi } from 'vitest';
 
 describe('editMessage', () => {
   let mongo: MongoMemoryServer;
@@ -77,9 +79,9 @@ describe('editMessage', () => {
 
     const updated = await editMessage(user, message, 'hello updated');
 
-    expect(updated.content).toEqual({ text: 'hello updated' });
-    expect(updated.isEdited).toBe(true);
-    expect(updated.editedAt).toBeTruthy();
+    expect(updated.message.content).toEqual({ text: 'hello updated' });
+    expect(updated.message.isEdited).toBe(true);
+    expect(updated.message.editedAt).toBeTruthy();
 
     const storedConversation = await Conversation.findById(conversation._id);
     expect(storedConversation?.lastMessage).toBe('hello updated');
@@ -114,6 +116,57 @@ describe('editMessage', () => {
     });
 
     await expect(editMessage(user, message, 'new text')).rejects.toBeInstanceOf(AppError);
+  });
+
+  it('optionally sends a new WhatsApp correction after edit', async () => {
+    const account = await WhatsAppAccount.findOne({ tenantId: 'tenant-001' });
+    const contact = await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: account!._id,
+      name: 'Customer',
+      phone: '+917303769921',
+      whatsappId: '917303769921',
+    });
+    const conversation = await Conversation.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: account!._id,
+      contactId: contact._id,
+      status: 'OPEN',
+      priority: 'NORMAL',
+      unreadCount: 0,
+    });
+    const message = await Message.create({
+      tenantId: 'tenant-001',
+      conversationId: conversation._id,
+      contactId: contact._id,
+      direction: 'OUTGOING',
+      type: 'TEXT',
+      content: { text: 'helo' },
+      status: 'SENT',
+      sentByUserId: user.userId,
+    });
+
+    const correctionDoc = await Message.create({
+      tenantId: 'tenant-001',
+      conversationId: conversation._id,
+      contactId: contact._id,
+      direction: 'OUTGOING',
+      type: 'TEXT',
+      content: { text: 'hello' },
+      status: 'SENT',
+      sentByUserId: user.userId,
+    });
+    const sendSpy = vi
+      .spyOn(whatsappService, 'sendOutgoingMessage')
+      .mockResolvedValue(correctionDoc);
+
+    const result = await editMessage(user, message, 'hello', {
+      sendCorrectionToWhatsApp: true,
+    });
+
+    expect(result.message.content).toEqual({ text: 'hello' });
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    expect(result.correctionMessage).toBeTruthy();
   });
 
   it('rejects editing after the time window', async () => {

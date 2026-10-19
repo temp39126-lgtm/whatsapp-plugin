@@ -78,7 +78,9 @@ export async function toggleStar(req: AuthenticatedRequest, res: Response, next:
 export async function editMessage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const message = await messageService.getMessageById(req.user!, getParam(req.params.id));
-    const result = await messageService.editMessage(req.user!, message, req.body.text);
+    const result = await messageService.editMessage(req.user!, message, req.body.text, {
+      sendCorrectionToWhatsApp: req.body.sendCorrectionToWhatsApp,
+    });
     res.json(result);
   } catch (error) {
     next(error);
