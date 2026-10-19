@@ -12,6 +12,7 @@ import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { normalizeWhatsAppId } from '../../utils/phone';
 import { isDuplicateKeyError } from '../../utils/mongo';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
+import { upsertCallTimelineMessage } from './callTimelineService';
 
 export type ActiveIncomingCall = {
   _id: unknown;
@@ -162,6 +163,8 @@ export async function startCall(
     call: call.toObject(),
   });
 
+  await upsertCallTimelineMessage(call);
+
   return call;
 }
 
@@ -198,6 +201,7 @@ export async function acceptCall(
   await emitToAuthorizedUsers(user.tenantId, call.conversationId.toString(), 'call.connected', {
     callId: call._id.toString(),
   });
+  await upsertCallTimelineMessage(call);
   return call;
 }
 
@@ -226,6 +230,7 @@ export async function rejectCall(user: AuthUser, call: ICall) {
     callId: call._id.toString(),
     status: 'REJECTED',
   });
+  await upsertCallTimelineMessage(call);
   return call;
 }
 
@@ -256,6 +261,7 @@ export async function endCall(user: AuthUser, call: ICall) {
     status: 'ENDED',
     duration: call.duration,
   });
+  await upsertCallTimelineMessage(call);
   return call;
 }
 
@@ -291,6 +297,7 @@ export async function processCallWebhook(
         sdp: data.session.sdp,
       },
     });
+    await upsertCallTimelineMessage(call);
     return;
   }
 
@@ -315,6 +322,7 @@ export async function processCallWebhook(
       status: call.status,
       duration: call.duration,
     });
+    await upsertCallTimelineMessage(call);
     return;
   }
 
@@ -387,4 +395,6 @@ export async function processIncomingCallWebhook(
     },
     ...(data.session ? { session: data.session } : {}),
   });
+
+  await upsertCallTimelineMessage(call);
 }

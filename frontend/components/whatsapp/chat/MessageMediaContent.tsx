@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Download, Check, Film, Music } from 'lucide-react';
+import { FileText, Download, Check, Film, Music, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth';
 import { getWhatsAppMediaUrl, resolveMediaUrl } from '@/lib/api';
 import type { MessageDTO } from '@/types';
@@ -76,6 +76,24 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [message._id, message.type, mediaPath]);
+
+  if (message.type === 'CALL') {
+    const callContent = content as {
+      label?: string;
+      direction?: string;
+      status?: string;
+      duration?: number;
+    };
+    const isOutgoing =
+      callContent.direction === 'OUTGOING' || message.direction === 'OUTGOING';
+    const Icon = isOutgoing ? PhoneOutgoing : PhoneIncoming;
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <Icon className="h-4 w-4 shrink-0 text-whatsapp-dark" aria-hidden="true" />
+        <span>{callContent.label ?? (isOutgoing ? 'Outgoing call' : 'Incoming call')}</span>
+      </div>
+    );
+  }
 
   if (message.type === 'TEXT') {
     return (

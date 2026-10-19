@@ -36,6 +36,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isCallTimeline = message.type === 'CALL';
   const isOutgoing = message.direction === 'OUTGOING';
   const isDeletedForEveryone = Boolean(message.deletedForEveryone);
   const canDeleteForEveryone =
@@ -63,6 +64,16 @@ export function MessageBubble({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [menuOpen]);
+
+  if (isCallTimeline) {
+    return (
+      <div className="flex w-full justify-center py-1">
+        <div className="rounded-full border bg-muted/80 px-3 py-1.5 shadow-sm">
+          <MessageMediaContent message={message} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('group flex w-full', isOutgoing ? 'justify-end' : 'justify-start')}>

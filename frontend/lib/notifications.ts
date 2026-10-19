@@ -90,6 +90,10 @@ export function getMessagePreview(content: unknown, type?: string): string {
   if (record.text?.trim()) return record.text.trim();
   if (record.caption?.trim()) return record.caption.trim();
   if (record.fileName?.trim()) return record.fileName.trim();
+  if (type === 'CALL') {
+    const call = content as { label?: string };
+    return call.label?.trim() || 'Voice call';
+  }
   return type ? `[${type}]` : 'New message';
 }
 

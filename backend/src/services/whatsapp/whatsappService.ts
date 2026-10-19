@@ -37,6 +37,7 @@ import { normalizeWhatsAppId, formatPhoneDisplay } from '../../utils/phone';
 import { isDuplicateKeyError } from '../../utils/mongo';
 import { shouldApplyMessageStatus } from '../../utils/messageStatus';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
+import { isCallNotificationMessage } from '../../utils/callMessageFilter';
 
 interface IncomingTextMessage {
   from: string;
@@ -207,6 +208,10 @@ export async function processIncomingMessage(
   incoming: IncomingTextMessage,
   contactName?: string
 ): Promise<void> {
+  if (isCallNotificationMessage(incoming as unknown as Record<string, unknown>)) {
+    return;
+  }
+
   if (incoming.type === 'reaction') {
     await processIncomingReaction(account, incoming);
     return;

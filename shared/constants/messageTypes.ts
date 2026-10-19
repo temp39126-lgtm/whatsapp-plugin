@@ -10,6 +10,7 @@ export const MESSAGE_TYPES = [
   'CONTACT',
   'INTERACTIVE',
   'TEMPLATE',
+  'CALL',
 ] as const;
 
 export type MessageType = (typeof MESSAGE_TYPES)[number];
