@@ -13,6 +13,14 @@ function formatFileSize(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function defaultMediaLabel(type: string): string {
+  if (type === 'VOICE' || type === 'AUDIO') return 'Voice message';
+  if (type === 'VIDEO') return 'Video';
+  if (type === 'IMAGE') return 'Image';
+  if (type === 'INTERACTIVE') return 'Message';
+  return 'Attachment';
+}
+
 function MediaIcon({ type }: { type: string }) {
   if (type === 'VIDEO') return <Film className="h-5 w-5 shrink-0 text-whatsapp-dark" />;
   if (type === 'AUDIO' || type === 'VOICE') return <Music className="h-5 w-5 shrink-0 text-whatsapp-dark" />;
@@ -26,14 +34,17 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       typeof window !== 'undefined' &&
       sessionStorage.getItem(`chat-downloaded:${message._id}`) === '1'
   );
-  const content = message.content as {
+  const content = (message.content && typeof message.content === 'object'
+    ? message.content
+    : {}) as {
     caption?: string;
     fileName?: string;
     text?: string;
     templateName?: string;
     preview?: string;
   };
-  const fileName = message.media?.fileName ?? content.fileName ?? 'Attachment';
+  const fileName =
+    message.media?.fileName ?? content.fileName ?? defaultMediaLabel(message.type);
   const caption = content.caption?.trim();
   const mediaPath = message.media?.url ?? getWhatsAppMediaUrl(message._id);
 
@@ -67,7 +78,28 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
   }, [message._id, message.type, mediaPath]);
 
   if (message.type === 'TEXT') {
-    return <p className="whitespace-pre-wrap break-words text-sm">{content.text}</p>;
+    return (
+      <p className="whitespace-pre-wrap break-words text-sm">{content.text ?? ''}</p>
+    );
+  }
+
+  if (message.type === 'INTERACTIVE') {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Interactive or system message (not shown as a file download).
+      </p>
+    );
+  }
+
+  if ((message.type === 'VOICE' || message.type === 'AUDIO') && blobUrl) {
+    return (
+      <div className="space-y-2">
+        <audio controls src={blobUrl} className="max-w-full" preload="metadata">
+          <track kind="captions" />
+        </audio>
+        {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
+      </div>
+    );
   }
 
   if (message.type === 'TEMPLATE') {

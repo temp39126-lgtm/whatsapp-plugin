@@ -16,7 +16,9 @@ export function canEditMessage(message: MessageDTO): boolean {
 }
 
 export function getEditableMessageText(message: MessageDTO): string {
-  const content = message.content as { text?: string; preview?: string; caption?: string };
+  const content = (message.content && typeof message.content === 'object'
+    ? message.content
+    : {}) as { text?: string; preview?: string; caption?: string };
   if (message.type === 'TEXT') return content.text ?? '';
   if (message.type === 'TEMPLATE') return content.text ?? content.preview ?? '';
   return content.caption ?? '';

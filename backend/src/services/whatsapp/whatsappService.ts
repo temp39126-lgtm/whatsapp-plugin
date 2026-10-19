@@ -239,6 +239,7 @@ export async function processIncomingMessage(
       type = 'VIDEO';
       break;
     case 'audio':
+      content = { voice: true };
       mediaId = incoming.audio?.id;
       mimeType = incoming.audio?.mime_type;
       type = 'VOICE';
