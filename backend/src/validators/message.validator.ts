@@ -17,6 +17,10 @@ export const deleteMessageSchema = z.object({
   scope: z.enum(['me', 'everyone']),
 });
 
+export const editMessageSchema = z.object({
+  text: z.string().trim().min(1).max(4096),
+});
+
 export const whatsAppAccountSchema = z.object({
   phoneNumberId: z.string().min(1),
   businessAccountId: z.string().min(1),

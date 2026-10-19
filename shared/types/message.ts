@@ -15,6 +15,8 @@ export interface MessageDTO {
   isPinned: boolean;
   isStarred: boolean;
   deletedForEveryone?: boolean;
+  isEdited?: boolean;
+  editedAt?: string;
   createdAt: string;
   updatedAt: string;
   media?: {

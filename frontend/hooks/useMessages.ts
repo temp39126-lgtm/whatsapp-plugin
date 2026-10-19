@@ -90,6 +90,19 @@ export function useSendMediaMessage() {
   });
 }
 
+export function useEditMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, text }: { messageId: string; text: string }) =>
+      api.post<MessageDTO>(`/messages/${messageId}/edit`, { text }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['pinned'] });
+    },
+  });
+}
+
 export function useRetryMessage() {
   const queryClient = useQueryClient();
   return useMutation({

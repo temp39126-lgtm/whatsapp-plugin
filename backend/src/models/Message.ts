@@ -16,6 +16,8 @@ export interface IMessage extends Document {
   deletedAt?: Date;
   deletedForEveryone?: boolean;
   deletedByUserId?: string;
+  isEdited: boolean;
+  editedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +43,8 @@ const messageSchema = new Schema<IMessage>(
     deletedAt: { type: Date },
     deletedForEveryone: { type: Boolean, default: false },
     deletedByUserId: { type: String },
+    isEdited: { type: Boolean, default: false },
+    editedAt: { type: Date },
   },
   { timestamps: true }
 );

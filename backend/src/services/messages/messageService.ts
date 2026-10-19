@@ -4,6 +4,7 @@ import { MessageMedia } from '../../models/MessageMedia';
 import { MessageReaction } from '../../models/MessageReaction';
 import { IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
+import { Conversation } from '../../models/Conversation';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { sendOutgoingMessage } from '../whatsapp/whatsappService';
 import { getMessageMediaPath, readMediaFile } from '../media/mediaService';
@@ -151,6 +152,10 @@ export async function toggleStar(user: AuthUser, message: IMessage) {
 }
 
 const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** Aligns with WhatsApp app edit window; Cloud API cannot edit on the recipient device. */
+export const EDIT_MESSAGE_WINDOW_MS = 15 * 60 * 1000;
+
+const EDITABLE_OUTGOING_STATUSES: IMessage['status'][] = ['SENT', 'DELIVERED', 'READ'];
 
 export async function deleteMessage(user: AuthUser, message: IMessage, scope: 'me' | 'everyone') {
   if (message.deletedForEveryone) {
@@ -197,6 +202,74 @@ export async function deleteMessage(user: AuthUser, message: IMessage, scope: 'm
   );
 
   return { deleted: true };
+}
+
+export async function editMessage(
+  user: AuthUser,
+  message: IMessage,
+  text: string
+): Promise<EnrichedMessage> {
+  if (message.direction !== 'OUTGOING') {
+    throw new AppError(400, 'Only outgoing messages can be edited');
+  }
+  if (message.deletedForEveryone || message.deletedAt) {
+    throw new AppError(400, 'Deleted messages cannot be edited');
+  }
+  if (!EDITABLE_OUTGOING_STATUSES.includes(message.status)) {
+    throw new AppError(400, 'Only sent messages can be edited. Retry failed messages instead.');
+  }
+
+  const ageMs = Date.now() - message.createdAt.getTime();
+  if (ageMs > EDIT_MESSAGE_WINDOW_MS) {
+    throw new AppError(400, 'Messages can only be edited within 15 minutes of sending');
+  }
+
+  if (message.type === 'TEXT') {
+    message.content = { ...(message.content as object), text };
+  } else if (message.type === 'TEMPLATE') {
+    const previous = message.content as Record<string, unknown>;
+    message.content = {
+      ...previous,
+      text,
+      preview: text,
+    };
+  } else if (message.type === 'IMAGE' || message.type === 'VIDEO' || message.type === 'DOCUMENT') {
+    message.content = { ...(message.content as object), caption: text };
+  } else {
+    throw new AppError(400, 'This message type cannot be edited');
+  }
+
+  message.isEdited = true;
+  message.editedAt = new Date();
+  await message.save();
+
+  const latest = await Message.findOne({
+    tenantId: user.tenantId,
+    conversationId: message.conversationId,
+    deletedForEveryone: { $ne: true },
+  })
+    .sort({ createdAt: -1 })
+    .select('_id');
+
+  if (latest?._id.equals(message._id)) {
+    let lastMessage = text.slice(0, 240);
+    if (message.type === 'TEMPLATE') {
+      const templateName = (message.content as { templateName?: string }).templateName;
+      lastMessage = templateName ? `Template: ${templateName}` : lastMessage;
+    }
+    await Conversation.findByIdAndUpdate(message.conversationId, { lastMessage });
+  }
+
+  const enriched = await enrichMessageRecord(message.toObject());
+
+  await emitToAuthorizedUsers(
+    user.tenantId,
+    message.conversationId.toString(),
+    'message.updated',
+    { messageId: message._id.toString(), message: enriched }
+  );
+
+  return enriched;
 }
 
 export async function retryMessage(

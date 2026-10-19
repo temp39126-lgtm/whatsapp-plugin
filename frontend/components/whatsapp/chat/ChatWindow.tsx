@@ -6,6 +6,7 @@ import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
+import { EditMessageDialog } from './EditMessageDialog';
 import {
   useMessages,
   useSendMessage,
@@ -14,8 +15,10 @@ import {
   useToggleStar,
   useRetryMessage,
   useDeleteMessage,
+  useEditMessage,
   usePinnedMessages,
 } from '@/hooks/useMessages';
+import { canEditMessage, getEditableMessageText } from '@/lib/message-edit';
 import { useMarkConversationRead } from '@/hooks/useConversations';
 import type { ConversationDTO, MessageDTO } from '@/types';
 import { useState, useEffect, useRef } from 'react';
@@ -36,6 +39,7 @@ export function ChatWindow({
   onShowDetails,
 }: ChatWindowProps) {
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
+  const [editingMessage, setEditingMessage] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
   const [showMembers, setShowMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,6 +52,7 @@ export function ChatWindow({
   const toggleStar = useToggleStar();
   const retryMessage = useRetryMessage();
   const deleteMessage = useDeleteMessage();
+  const editMessage = useEditMessage();
   const markRead = useMarkConversationRead();
 
   const { data: pinnedMessages = [] } = usePinnedMessages(conversation?._id ?? null);
@@ -243,6 +248,8 @@ export function ChatWindow({
               key={message._id}
               message={message}
               onReply={setReplyTo}
+              canEdit={canEditMessage(message)}
+              onEdit={setEditingMessage}
               onPin={(id) => togglePin.mutate(id)}
               onStar={(id) => toggleStar.mutate(id)}
               onDelete={(id) => deleteMessage.mutate({ messageId: id, scope: 'me' })}
@@ -269,6 +276,25 @@ export function ChatWindow({
       {sendError && (
         <div className="border-t bg-red-50 px-4 py-2 text-sm text-red-700">{sendError}</div>
       )}
+      <EditMessageDialog
+        open={Boolean(editingMessage)}
+        initialText={editingMessage ? getEditableMessageText(editingMessage) : ''}
+        isPending={editMessage.isPending}
+        onClose={() => setEditingMessage(null)}
+        onSave={(text) => {
+          if (!editingMessage) return;
+          editMessage.mutate(
+            { messageId: editingMessage._id, text },
+            {
+              onSuccess: () => setEditingMessage(null),
+              onError: (error) => {
+                setSendError(error instanceof Error ? error.message : 'Failed to edit message');
+                setEditingMessage(null);
+              },
+            }
+          );
+        }}
+      />
     </div>
   );
 }

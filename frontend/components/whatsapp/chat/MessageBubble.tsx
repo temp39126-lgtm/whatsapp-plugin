@@ -12,6 +12,8 @@ import type { MessageDTO } from '@/types';
 interface MessageBubbleProps {
   message: MessageDTO;
   onReply?: (message: MessageDTO) => void;
+  onEdit?: (message: MessageDTO) => void;
+  canEdit?: boolean;
   onPin?: (messageId: string) => void;
   onStar?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
@@ -24,6 +26,8 @@ const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
 export function MessageBubble({
   message,
   onReply,
+  onEdit,
+  canEdit = false,
   onPin,
   onStar,
   onDelete,
@@ -86,6 +90,7 @@ export function MessageBubble({
             )}
             <span className="text-[10px] text-muted-foreground">
               {format(new Date(message.createdAt), 'HH:mm')}
+              {message.isEdited ? ' · edited' : ''}
             </span>
             {isOutgoing && !isDeletedForEveryone && <DeliveryStatus status={message.status} />}
           </div>
@@ -135,6 +140,18 @@ export function MessageBubble({
                 }}
               >
                 Reply
+              </button>
+            )}
+            {canEdit && onEdit && (
+              <button
+                type="button"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onEdit(message);
+                  setMenuOpen(false);
+                }}
+              >
+                Edit
               </button>
             )}
             {onPin && (
