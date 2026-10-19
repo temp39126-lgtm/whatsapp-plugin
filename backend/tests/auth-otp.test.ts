@@ -11,6 +11,7 @@ vi.mock('../src/config/env', () => ({
     FRONTEND_URL: 'http://localhost:3000',
     PASSWORD_RESET_EXPIRES_MINUTES: 60,
     OTP_EXPIRES_MINUTES: 10,
+    PUBLIC_USER_SIGNUP_ENABLED: true,
   },
 }));
 

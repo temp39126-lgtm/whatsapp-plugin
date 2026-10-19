@@ -99,7 +99,7 @@ export async function registerUser(
   email: string,
   password: string
 ): Promise<{ token: string; user: AuthUser } | ReturnType<typeof buildOtpChallengeResponse>> {
-  if (env.NODE_ENV === 'production') {
+  if (!env.PUBLIC_USER_SIGNUP_ENABLED) {
     throw new AppError(403, 'Public signup is disabled. Contact your administrator.');
   }
 
