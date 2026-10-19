@@ -66,3 +66,10 @@ export const startCallSchema = z.object({
     })
     .optional(),
 });
+
+export const acceptCallSchema = z.object({
+  session: z.object({
+    sdp_type: z.literal('answer'),
+    sdp: z.string().min(1),
+  }),
+});

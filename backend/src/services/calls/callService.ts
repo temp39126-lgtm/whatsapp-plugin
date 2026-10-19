@@ -13,6 +13,53 @@ import { normalizeWhatsAppId } from '../../utils/phone';
 import { isDuplicateKeyError } from '../../utils/mongo';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
 
+export type ActiveIncomingCall = {
+  _id: unknown;
+  tenantId: string;
+  conversationId: unknown;
+  contactId: string;
+  direction: string;
+  status: string;
+  metaCallId?: string;
+  contact?: { _id: string; name?: string; phone?: string };
+  [key: string]: unknown;
+};
+
+export async function listActiveIncomingCalls(user: AuthUser): Promise<ActiveIncomingCall[]> {
+  const query: Record<string, unknown> = {
+    tenantId: user.tenantId,
+    direction: 'INCOMING',
+    status: 'RINGING',
+  };
+
+  if (user.role !== 'ADMIN') {
+    const accessibleConversations = await Conversation.find(
+      buildConversationFilter(user)
+    ).select('_id');
+    query.conversationId = { $in: accessibleConversations.map((c) => c._id) };
+  }
+
+  const calls = await Call.find(query)
+    .sort({ createdAt: -1 })
+    .populate('contactId', 'name phone')
+    .lean();
+
+  return calls.map((call) => {
+    const contact = call.contactId as { _id?: unknown; name?: string; phone?: string } | null;
+    const contactId =
+      contact && typeof contact === 'object' && '_id' in contact
+        ? String(contact._id)
+        : String(call.contactId);
+    return {
+      ...call,
+      contactId,
+      contact: contact
+        ? { _id: contactId, name: contact.name, phone: contact.phone }
+        : undefined,
+    };
+  });
+}
+
 export async function listCalls(user: AuthUser, page = 1, limit = 20) {
   const { skip, limit: lim } = getPagination({ page, limit });
 
@@ -125,6 +172,14 @@ export async function acceptCall(
 ) {
   if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
 
+  if (call.direction !== 'INCOMING' || call.status !== 'RINGING') {
+    throw new AppError(409, 'Only ringing incoming calls can be accepted');
+  }
+
+  if (!session?.sdp) {
+    throw new AppError(400, 'WebRTC answer session is required to accept the call');
+  }
+
   if (call.metaCallId) {
     const account = await WhatsAppAccount.findById(call.whatsappAccountId);
     if (account) {
@@ -147,6 +202,10 @@ export async function acceptCall(
 }
 
 export async function rejectCall(user: AuthUser, call: ICall) {
+  if (call.direction !== 'INCOMING' || call.status !== 'RINGING') {
+    throw new AppError(409, 'Only ringing incoming calls can be rejected');
+  }
+
   if (call.metaCallId) {
     const account = await WhatsAppAccount.findById(call.whatsappAccountId);
     if (account) {
@@ -237,8 +296,14 @@ export async function processCallWebhook(
 
   if (data.event === 'terminate') {
     const call = await Call.findOne({ tenantId, metaCallId: data.callId });
-    if (!call || call.status === 'ENDED') return;
-    call.status = 'ENDED';
+    if (!call || call.status === 'ENDED' || call.status === 'REJECTED' || call.status === 'MISSED') {
+      return;
+    }
+    if (call.status === 'RINGING' && call.direction === 'INCOMING') {
+      call.status = 'MISSED';
+    } else {
+      call.status = 'ENDED';
+    }
     call.endedAt = new Date();
     if (call.startedAt) {
       call.duration = Math.floor((call.endedAt.getTime() - call.startedAt.getTime()) / 1000);
@@ -247,7 +312,7 @@ export async function processCallWebhook(
     await createCallEvent(call, 'call.ended', { source: 'meta_webhook' });
     await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.ended', {
       callId: call._id.toString(),
-      status: 'ENDED',
+      status: call.status,
       duration: call.duration,
     });
     return;
@@ -315,6 +380,11 @@ export async function processIncomingCallWebhook(
   await createCallEvent(call, 'call.incoming');
   await emitToAuthorizedUsers(tenantId, conversation._id.toString(), 'call.incoming', {
     call: call.toObject(),
+    contact: {
+      _id: contact._id.toString(),
+      name: contact.name,
+      phone: contact.phone,
+    },
     ...(data.session ? { session: data.session } : {}),
   });
 }

@@ -36,8 +36,21 @@ export async function startCall(req: AuthenticatedRequest, res: Response, next: 
 
 export async function acceptCall(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const call = await callService.acceptCall(req.user!, req.call!);
+    const call = await callService.acceptCall(req.user!, req.call!, req.body.session);
     res.json(call);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listActiveIncomingCalls(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const calls = await callService.listActiveIncomingCalls(req.user!);
+    res.json({ data: calls });
   } catch (error) {
     next(error);
   }
