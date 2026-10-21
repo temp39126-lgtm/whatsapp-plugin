@@ -54,7 +54,7 @@ const envSchema = z.object({
   ADMIN_PASSWORD: z.string().optional(),
   ADMIN_NAME: z.string().optional(),
   /** When false, POST /auth/signup returns 403 (User role only; Admin still via seed/team). */
-  PUBLIC_USER_SIGNUP_ENABLED: z.coerce.boolean().default(true),
+  PUBLIC_USER_SIGNUP_ENABLED: z.coerce.boolean().default(false),
 });
 
 export const env = envSchema

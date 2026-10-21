@@ -74,7 +74,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME:-}
-      PUBLIC_USER_SIGNUP_ENABLED: ${PUBLIC_USER_SIGNUP_ENABLED:-true}
+      PUBLIC_USER_SIGNUP_ENABLED: ${PUBLIC_USER_SIGNUP_ENABLED:-false}
     networks:
       - internal
 
@@ -85,6 +85,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${APP_URL}
         NEXT_PUBLIC_SOCKET_URL: ${APP_URL}
+        NEXT_PUBLIC_PUBLIC_USER_SIGNUP_ENABLED: ${PUBLIC_USER_SIGNUP_ENABLED:-false}
     restart: unless-stopped
     depends_on:
       - backend

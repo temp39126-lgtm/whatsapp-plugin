@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, Inbox, MessageSquare, UserPlus, Users } from 'lucide-react';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
+import { isPublicSignupEnabled } from '@/lib/publicSignup';
 
 export function WelcomeScreen() {
   return (
@@ -37,13 +38,15 @@ export function WelcomeScreen() {
           Sign in
           <ArrowRight className="h-5 w-5" />
         </Link>
-        <Link
-          href={AUTH_ROUTES.signup}
-          className="inline-flex items-center gap-2 rounded-xl border border-whatsapp/30 bg-card px-8 py-3.5 text-base font-semibold text-whatsapp-dark transition hover:bg-whatsapp-light/40"
-        >
-          <UserPlus className="h-5 w-5" />
-          Sign up
-        </Link>
+        {isPublicSignupEnabled() && (
+          <Link
+            href={AUTH_ROUTES.signup}
+            className="inline-flex items-center gap-2 rounded-xl border border-whatsapp/30 bg-card px-8 py-3.5 text-base font-semibold text-whatsapp-dark transition hover:bg-whatsapp-light/40"
+          >
+            <UserPlus className="h-5 w-5" />
+            Sign up
+          </Link>
+        )}
       </div>
     </div>
   );

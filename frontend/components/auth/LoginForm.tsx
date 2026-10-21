@@ -7,6 +7,7 @@ import { AuthOtpStep } from '@/components/auth/AuthOtpStep';
 import { RoleSelector, type AuthRoleChoice } from '@/components/auth/RoleSelector';
 import { useAuth } from '@/components/AuthProvider';
 import { AUTH_ROUTES } from '@/lib/auth-routes';
+import { isPublicSignupEnabled } from '@/lib/publicSignup';
 import { getDemoCredentials, isDemoAuthEnabled } from '@/lib/demo-credentials';
 import { isOtpChallengeResponse, restoreOtpChallenge, saveOtpChallenge, clearOtpChallenge, isOtpSessionExpiredError } from '@/lib/auth-otp';
 import type { AuthOtpChallengeResponse } from '@/lib/auth-otp';
@@ -181,12 +182,14 @@ export function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
-        <Link href={AUTH_ROUTES.signup} className="font-medium text-whatsapp-dark hover:underline">
-          Sign up
-        </Link>
-      </p>
+      {isPublicSignupEnabled() && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link href={AUTH_ROUTES.signup} className="font-medium text-whatsapp-dark hover:underline">
+            Sign up
+          </Link>
+        </p>
+      )}
     </>
   );
 }

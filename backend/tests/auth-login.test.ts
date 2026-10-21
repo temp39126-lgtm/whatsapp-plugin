@@ -1,4 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+
+vi.mock('../src/config/env', () => ({
+  env: {
+    NODE_ENV: 'test',
+    DEFAULT_TENANT_ID: 'tenant-001',
+    JWT_SECRET: 'test-secret',
+    JWT_ALGORITHM: 'HS256',
+    JWT_EXPIRES_IN: '7d',
+    PUBLIC_USER_SIGNUP_ENABLED: true,
+  },
+}));
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { User } from '../src/models/User';

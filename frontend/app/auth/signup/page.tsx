@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { SignupForm } from '@/components/auth/SignupForm';
+import { SignupDisabledNotice } from '@/components/auth/SignupDisabledNotice';
+import { isPublicSignupEnabled } from '@/lib/publicSignup';
 import { useAuth } from '@/components/AuthProvider';
 import { getDashboardPath } from '@/lib/auth-routes';
 
@@ -25,9 +27,18 @@ export default function AuthSignupPage() {
     );
   }
 
+  const signupEnabled = isPublicSignupEnabled();
+
   return (
-    <AuthShell title="Sign up" subtitle="Create your User workspace to get started.">
-      <SignupForm />
+    <AuthShell
+      title={signupEnabled ? 'Sign up' : 'Sign up unavailable'}
+      subtitle={
+        signupEnabled
+          ? 'Create your User workspace to get started.'
+          : 'Ask your administrator to create an account for you.'
+      }
+    >
+      {signupEnabled ? <SignupForm /> : <SignupDisabledNotice />}
     </AuthShell>
   );
 }

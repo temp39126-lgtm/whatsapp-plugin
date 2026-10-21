@@ -65,8 +65,8 @@ export default function TeamPage() {
           <h2 className="text-lg font-semibold">Create user account</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          New users can also sign up at <code className="text-xs">/auth/signup</code>. Use this
-          form when you want to create their account directly.
+          Public sign-up is disabled. Create every user account here and share their login details
+          securely.
         </p>
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Input
