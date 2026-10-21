@@ -161,7 +161,8 @@ On the login screen choose **Admin** or **User** to match the account.
 | `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` | yes | MongoDB auth |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | yes | Media storage (not `minioadmin`) |
 | `S3_BUCKET` | yes | Default `whatsapp-crm-media` |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | yes | First admin user (seed on start) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | yes | Admin user created or updated on backend seed at startup |
+| `ADMIN_NAME` | no | Display name for the admin account (default `Admin`) |
 | `META_VERIFY_TOKEN` | yes | Webhook verify token (≥ 16 chars) |
 | `META_APP_SECRET` | yes in production | Meta app secret (≥ 16 chars) |
 | `CALLING_ENABLED` | no | `true` / `false` |

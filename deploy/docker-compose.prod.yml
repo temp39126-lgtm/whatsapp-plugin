@@ -73,6 +73,7 @@ services:
       RUN_SEED_ON_START: "true"
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME:-}
       PUBLIC_USER_SIGNUP_ENABLED: ${PUBLIC_USER_SIGNUP_ENABLED:-true}
     networks:
       - internal

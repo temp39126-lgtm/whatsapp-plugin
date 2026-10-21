@@ -52,6 +52,7 @@ const envSchema = z.object({
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+  ADMIN_NAME: z.string().optional(),
   /** When false, POST /auth/signup returns 403 (User role only; Admin still via seed/team). */
   PUBLIC_USER_SIGNUP_ENABLED: z.coerce.boolean().default(true),
 });

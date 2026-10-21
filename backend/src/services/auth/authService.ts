@@ -322,40 +322,78 @@ export async function logoutUser(userId: string): Promise<void> {
   await incrementUserTokenVersion(userId);
 }
 
-export async function seedDefaultUsers(tenantId: string): Promise<void> {
-  const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
-
-  if (env.NODE_ENV === 'production' && (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD)) {
-    logger.warn(
-      'Skipping default user seed in production. Set ADMIN_EMAIL and ADMIN_PASSWORD to create the initial admin.'
-    );
+/** Create or update the production admin from ADMIN_EMAIL / ADMIN_PASSWORD (safe on every seed). */
+export async function ensureAdminUserFromEnv(tenantId: string): Promise<void> {
+  const email = env.ADMIN_EMAIL?.toLowerCase().trim();
+  const plainPassword = env.ADMIN_PASSWORD;
+  if (!email || !plainPassword) {
     return;
   }
 
-  const defaults =
-    env.NODE_ENV === 'production' && env.ADMIN_EMAIL && env.ADMIN_PASSWORD
-      ? [
-          {
-            email: env.ADMIN_EMAIL,
-            password: env.ADMIN_PASSWORD,
-            name: 'Admin',
-            role: 'ADMIN' as const,
-          },
-        ]
-      : [
-          {
-            email: 'admin@example.com',
-            password: 'admin123',
-            name: 'Admin User',
-            role: 'ADMIN' as const,
-          },
-          {
-            email: 'user@example.com',
-            password: 'user123',
-            name: 'Support User',
-            role: 'USER' as const,
-          },
-        ];
+  const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
+  const displayName = env.ADMIN_NAME?.trim() || 'Admin';
+  const existing = await User.findOne({ email, tenantId: targetTenant });
+
+  if (existing) {
+    const samePassword = await bcrypt.compare(plainPassword, existing.passwordHash);
+    if (!samePassword) {
+      existing.passwordHash = await bcrypt.hash(plainPassword, 10);
+      existing.tokenVersion = (existing.tokenVersion ?? 0) + 1;
+    }
+    if (existing.role !== 'ADMIN') {
+      existing.role = 'ADMIN';
+    }
+    if (!existing.isActive) {
+      existing.isActive = true;
+    }
+    if (displayName && existing.name !== displayName) {
+      existing.name = displayName;
+    }
+    await existing.save();
+    logger.info({ email, tenantId: targetTenant }, 'Admin account synced from ADMIN_EMAIL');
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(plainPassword, 10);
+  await User.create({
+    email,
+    passwordHash,
+    name: displayName,
+    role: 'ADMIN',
+    tenantId: targetTenant,
+    isActive: true,
+  });
+  logger.info({ email, tenantId: targetTenant }, 'Admin account created from ADMIN_EMAIL');
+}
+
+export async function seedDefaultUsers(tenantId: string): Promise<void> {
+  const targetTenant = tenantId || env.DEFAULT_TENANT_ID;
+
+  if (env.NODE_ENV === 'production') {
+    if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
+      logger.warn(
+        'Skipping default user seed in production. Set ADMIN_EMAIL and ADMIN_PASSWORD to create the initial admin.'
+      );
+      return;
+    }
+    await ensureAdminUserFromEnv(targetTenant);
+    return;
+  }
+
+  const defaults = [
+    {
+      email: 'admin@example.com',
+      password: 'admin123',
+      name: 'Admin User',
+      role: 'ADMIN' as const,
+    },
+    {
+      email: 'user@example.com',
+      password: 'user123',
+      name: 'Support User',
+      role: 'USER' as const,
+    },
+  ];
 
   for (const entry of defaults) {
     const existing = await User.findOne({ email: entry.email, tenantId: targetTenant });
