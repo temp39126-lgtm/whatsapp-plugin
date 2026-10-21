@@ -95,5 +95,11 @@ router.post(
   validateBody(createTeamUserSchema),
   controller.createTeamUserAccount
 );
+router.delete(
+  '/team/users/:id',
+  requireRole('ADMIN'),
+  requirePermission('manage_team'),
+  controller.deleteTeamUserAccount
+);
 
 export default router;

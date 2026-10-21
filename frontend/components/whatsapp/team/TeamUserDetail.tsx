@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Inbox, Mail, Shield, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +10,7 @@ import { buildInboxHref } from '@/lib/inbox-filters';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { useConversations } from '@/hooks/useConversations';
 import type { TeamAgentWorkloadDTO, TeamUserDTO } from '@/types';
+import { DeleteTeamUserButton } from '@/components/whatsapp/team/DeleteTeamUserButton';
 
 interface TeamUserDetailProps {
   userId: string;
@@ -21,6 +23,7 @@ export function TeamUserDetail({
   backHref = '/whatsapp/admin',
   backLabel = 'Back to dashboard',
 }: TeamUserDetailProps) {
+  const router = useRouter();
   const { data: teamUsers = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: ['team-users'],
     queryFn: () => api.get<TeamUserDTO[]>('/team/users'),
@@ -90,13 +93,20 @@ export function TeamUserDetail({
               )}
             </span>
           </div>
-          <Link
-            href={buildInboxHref({ assignedUserId: userId })}
-            className="inline-flex items-center gap-2 rounded-lg bg-whatsapp px-4 py-2 text-sm font-medium text-white hover:bg-whatsapp-dark"
-          >
-            <Inbox className="h-4 w-4" />
-            View assigned chats
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={buildInboxHref({ assignedUserId: userId })}
+              className="inline-flex items-center gap-2 rounded-lg bg-whatsapp px-4 py-2 text-sm font-medium text-white hover:bg-whatsapp-dark"
+            >
+              <Inbox className="h-4 w-4" />
+              View assigned chats
+            </Link>
+            <DeleteTeamUserButton
+              userId={userId}
+              userName={user.name}
+              onDeleted={() => router.replace(backHref)}
+            />
+          </div>
         </div>
       </div>
 

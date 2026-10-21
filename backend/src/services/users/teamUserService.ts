@@ -1,6 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../../models/User';
+import { Contact } from '../../models/Contact';
+import { Conversation } from '../../models/Conversation';
 import { AuthUser, AppError } from '../../types';
+import { logActivity } from '../rbac/activityLog';
 
 export function teamUserAvatarUrl(userId: string, profileImage?: string) {
   return profileImage ? `/api/whatsapp/team/users/${userId}/avatar` : undefined;
@@ -57,6 +60,60 @@ export async function createTeamUser(
     email: user.email,
     role: user.role as 'ADMIN' | 'USER',
   };
+}
+
+export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
+  if (admin.userId === targetUserId) {
+    throw new AppError(400, 'You cannot delete your own account');
+  }
+
+  const user = await User.findOne({
+    _id: targetUserId,
+    tenantId: admin.tenantId,
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  if (user.role === 'ADMIN') {
+    const activeAdminCount = await User.countDocuments({
+      tenantId: admin.tenantId,
+      role: 'ADMIN',
+      isActive: true,
+    });
+    if (activeAdminCount <= 1) {
+      throw new AppError(400, 'Cannot delete the last admin account');
+    }
+  }
+
+  await Promise.all([
+    Conversation.updateMany(
+      { tenantId: admin.tenantId, assignedUserId: targetUserId },
+      { $unset: { assignedUserId: '' } }
+    ),
+    Conversation.updateMany(
+      { tenantId: admin.tenantId, permittedUsers: targetUserId },
+      { $pull: { permittedUsers: targetUserId } }
+    ),
+    Contact.updateMany(
+      { tenantId: admin.tenantId, assignedUserId: targetUserId },
+      { $unset: { assignedUserId: '' } }
+    ),
+  ]);
+
+  user.isActive = false;
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  await user.save();
+
+  await logActivity(admin, 'user.deleted', 'user', targetUserId, {
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  });
+
+  return { deleted: true };
 }
 
 export async function listTeamUsers(user: AuthUser, options?: { agentsOnly?: boolean }) {

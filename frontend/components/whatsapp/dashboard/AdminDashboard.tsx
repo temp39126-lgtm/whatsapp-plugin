@@ -20,6 +20,7 @@ import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { buildInboxHref } from '@/lib/inbox-filters';
 import type { AnalyticsConversations, TeamAgentWorkloadDTO } from '@/types';
 import { getInitials } from '@/lib/utils';
+import { DeleteTeamUserButton } from '@/components/whatsapp/team/DeleteTeamUserButton';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -171,12 +172,14 @@ export function AdminDashboard() {
             ) : (
               <div className="divide-y">
                 {(teamWorkload ?? []).map((teamUser) => (
-                  <Link
+                  <div
                     key={teamUser._id}
-                    href={`/whatsapp/team/${teamUser._id}`}
-                    className="flex items-center justify-between p-4 transition-colors hover:bg-muted/50"
+                    className="flex items-center justify-between gap-3 p-4 transition-colors hover:bg-muted/50"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <Link
+                      href={`/whatsapp/team/${teamUser._id}`}
+                      className="flex min-w-0 flex-1 items-center gap-3"
+                    >
                       <ProfileAvatar
                         name={teamUser.name}
                         imageUrl={teamUser.profileImage}
@@ -186,11 +189,14 @@ export function AdminDashboard() {
                         <p className="truncate font-medium">{teamUser.name}</p>
                         <p className="truncate text-xs text-muted-foreground">{teamUser.email}</p>
                       </div>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{teamUser.total}</span> assigned
+                      </span>
+                      <DeleteTeamUserButton userId={teamUser._id} userName={teamUser.name} />
                     </div>
-                    <div className="shrink-0 text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{teamUser.total}</span> assigned
-                    </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}

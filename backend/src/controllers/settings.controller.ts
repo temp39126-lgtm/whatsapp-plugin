@@ -2,7 +2,11 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as tagService from '../services/tags/tagService';
 import * as analyticsService from '../services/analytics/analyticsService';
-import { createTeamUser, getTeamUserAvatarStorageKey } from '../services/users/teamUserService';
+import {
+  createTeamUser,
+  deleteTeamUser,
+  getTeamUserAvatarStorageKey,
+} from '../services/users/teamUserService';
 import { readAvatar } from '../services/avatars/avatarService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
 import { testWhatsAppConnection } from '../services/whatsapp/connectionTestService';
@@ -116,6 +120,19 @@ export async function createTeamUserAccount(
   try {
     const user = await createTeamUser(req.user!, req.body);
     res.status(201).json(user);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteTeamUserAccount(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await deleteTeamUser(req.user!, getParam(req.params.id));
+    res.json(result);
   } catch (error) {
     next(error);
   }
