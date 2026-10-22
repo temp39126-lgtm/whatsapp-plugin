@@ -77,7 +77,7 @@ describe('Team user service', () => {
     ).rejects.toBeInstanceOf(AppError);
   });
 
-  it('deactivates a team user and unassigns their workload', async () => {
+  it('hard-deletes a team user and unassigns their workload', async () => {
     const admin = await User.findOne({ email: 'admin@example.com' });
     const adminUser = adminAuth(admin!._id.toString());
     const created = await createTeamUser(adminUser, {
@@ -109,7 +109,7 @@ describe('Team user service', () => {
     expect(result.deleted).toBe(true);
 
     const stored = await User.findById(created._id);
-    expect(stored?.isActive).toBe(false);
+    expect(stored).toBeNull();
 
     const conversation = await Conversation.findOne({ assignedUserId: created._id });
     expect(conversation).toBeNull();

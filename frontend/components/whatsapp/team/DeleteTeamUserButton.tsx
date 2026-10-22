@@ -30,7 +30,7 @@ export function DeleteTeamUserButton({
     event.stopPropagation();
 
     const confirmed = window.confirm(
-      `Remove ${userName}? They will lose access immediately. Assigned conversations and contacts will be unassigned.`
+      `Permanently delete ${userName}? This removes their account from the system. Assigned conversations and contacts will be unassigned. This cannot be undone.`
     );
     if (!confirmed) return;
 

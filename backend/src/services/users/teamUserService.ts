@@ -2,6 +2,10 @@ import bcrypt from 'bcryptjs';
 import { User } from '../../models/User';
 import { Contact } from '../../models/Contact';
 import { Conversation } from '../../models/Conversation';
+import { ConversationAssignment } from '../../models/ConversationAssignment';
+import { ConversationRead } from '../../models/ConversationRead';
+import { Notification } from '../../models/Notification';
+import { AuthOtpChallenge } from '../../models/AuthOtpChallenge';
 import { AuthUser, AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 
@@ -70,7 +74,6 @@ export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
   const user = await User.findOne({
     _id: targetUserId,
     tenantId: admin.tenantId,
-    isActive: true,
   });
 
   if (!user) {
@@ -78,15 +81,16 @@ export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
   }
 
   if (user.role === 'ADMIN') {
-    const activeAdminCount = await User.countDocuments({
+    const adminCount = await User.countDocuments({
       tenantId: admin.tenantId,
       role: 'ADMIN',
-      isActive: true,
     });
-    if (activeAdminCount <= 1) {
+    if (adminCount <= 1) {
       throw new AppError(400, 'Cannot delete the last admin account');
     }
   }
+
+  const userEmail = user.email;
 
   await Promise.all([
     Conversation.updateMany(
@@ -101,16 +105,22 @@ export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
       { tenantId: admin.tenantId, assignedUserId: targetUserId },
       { $unset: { assignedUserId: '' } }
     ),
+    ConversationAssignment.deleteMany({
+      tenantId: admin.tenantId,
+      assignedUserId: targetUserId,
+    }),
+    ConversationRead.deleteMany({ tenantId: admin.tenantId, userId: targetUserId }),
+    Notification.deleteMany({ tenantId: admin.tenantId, userId: targetUserId }),
+    AuthOtpChallenge.deleteMany({ email: userEmail.toLowerCase().trim() }),
   ]);
 
-  user.isActive = false;
-  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
-  await user.save();
+  await User.deleteOne({ _id: user._id });
 
   await logActivity(admin, 'user.deleted', 'user', targetUserId, {
-    email: user.email,
+    email: userEmail,
     name: user.name,
     role: user.role,
+    hardDelete: true,
   });
 
   return { deleted: true };
