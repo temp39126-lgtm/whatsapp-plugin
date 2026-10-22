@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
-import { connectSocket } from '@/lib/socket';
+import { connectSocket, onSocketEvent } from '@/lib/socket';
 import { createOutboundCallSession, type OutboundCallSession } from '@/lib/webrtc/outboundCall';
 import { mapMicrophoneError } from '@/lib/webrtc/microphone';
 import { waitForCallSdpAnswer } from '@/lib/webrtc/waitForCallSdpAnswer';
@@ -20,22 +20,41 @@ export function useOutboundCall() {
     setActiveCall(null);
   }, []);
 
+  const endServerCall = useCallback(async (call: CallDTO | null) => {
+    if (!call) return;
+    if (!['INITIATING', 'RINGING', 'CONNECTED'].includes(call.status)) return;
+    await api.post(`/calls/${call._id}/end`).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!activeCall) return;
+    connectSocket();
+    return onSocketEvent('call.ended', (data) => {
+      const payload = data as { callId?: string };
+      if (payload.callId === activeCall._id) {
+        cleanup();
+      }
+    });
+  }, [activeCall, cleanup]);
+
   const startCall = useCallback(
     async (conversationId: string) => {
       setError('');
       setIsStarting(true);
+
+      let startedCall: CallDTO | null = null;
 
       try {
         connectSocket();
         const session = await createOutboundCallSession();
         sessionRef.current = session;
         const offer = await session.createOffer();
-        const answerPromise = waitForCallSdpAnswer(conversationId);
 
         const call = await api.post<CallDTO>('/calls/start', {
           conversationId,
           session: offer,
         });
+        startedCall = call;
 
         if (call.status === 'FAILED') {
           throw new Error(call.failureReason ?? 'Call could not be started.');
@@ -43,13 +62,14 @@ export function useOutboundCall() {
 
         setActiveCall(call);
 
-        const answer = await answerPromise;
+        const answer = await waitForCallSdpAnswer(conversationId, call._id);
         await session.applyAnswer(answer);
         setActiveCall((current) =>
           current ? { ...current, status: 'CONNECTED' } : current
         );
         return call;
       } catch (err) {
+        await endServerCall(startedCall);
         cleanup();
         const message = mapMicrophoneError(err);
         setError(message);
@@ -58,7 +78,7 @@ export function useOutboundCall() {
         setIsStarting(false);
       }
     },
-    [cleanup]
+    [cleanup, endServerCall]
   );
 
   const endCall = useCallback(

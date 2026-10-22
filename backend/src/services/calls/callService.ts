@@ -14,6 +14,43 @@ import { isDuplicateKeyError } from '../../utils/mongo';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
 import { upsertCallTimelineMessage } from './callTimelineService';
 
+/** Ringing/initiating calls older than this are cleared so a new call can start. */
+const STALE_ACTIVE_CALL_MS = 2 * 60 * 1000;
+
+const ACTIVE_CALL_STATUSES = ['INITIATING', 'RINGING', 'CONNECTED'] as const;
+
+export async function releaseStaleActiveCalls(
+  tenantId: string,
+  conversationId?: string
+): Promise<number> {
+  const cutoff = new Date(Date.now() - STALE_ACTIVE_CALL_MS);
+  const filter: Record<string, unknown> = {
+    tenantId,
+    status: { $in: ['INITIATING', 'RINGING'] },
+    startedAt: { $lt: cutoff },
+  };
+  if (conversationId) {
+    filter.conversationId = conversationId;
+  }
+
+  const staleCalls = await Call.find(filter);
+  for (const call of staleCalls) {
+    call.status = 'FAILED';
+    call.failureReason = 'Call timed out (no answer or connection lost)';
+    call.endedAt = new Date();
+    await call.save();
+    await createCallEvent(call, 'call.failed', { reason: call.failureReason, stale: true });
+    await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.ended', {
+      callId: call._id.toString(),
+      status: 'FAILED',
+      reason: call.failureReason,
+    });
+    await upsertCallTimelineMessage(call);
+  }
+
+  return staleCalls.length;
+}
+
 export type ActiveIncomingCall = {
   _id: unknown;
   tenantId: string;
@@ -120,11 +157,23 @@ export async function startCall(
   ]);
   if (!account || !contact) throw new AppError(404, 'Account or contact not found');
 
-  const activeCall = await Call.findOne({
+  await releaseStaleActiveCalls(user.tenantId, conversation._id.toString());
+
+  let activeCall = await Call.findOne({
     tenantId: user.tenantId,
     conversationId: conversation._id,
-    status: { $in: ['INITIATING', 'RINGING', 'CONNECTED'] },
+    status: { $in: [...ACTIVE_CALL_STATUSES] },
   });
+  if (activeCall) {
+    const canReplaceStuckOutbound =
+      activeCall.direction === 'OUTGOING' &&
+      (activeCall.status === 'INITIATING' || activeCall.status === 'RINGING') &&
+      activeCall.initiatedByUserId === user.userId;
+    if (canReplaceStuckOutbound) {
+      await endCall(user, activeCall);
+      activeCall = null;
+    }
+  }
   if (activeCall) {
     throw new AppError(409, 'A call is already in progress for this conversation');
   }
@@ -237,6 +286,10 @@ export async function rejectCall(user: AuthUser, call: ICall) {
 export async function endCall(user: AuthUser, call: ICall) {
   if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
 
+  if (['ENDED', 'FAILED', 'REJECTED', 'MISSED'].includes(call.status)) {
+    return call;
+  }
+
   if (call.metaCallId) {
     const account = await WhatsAppAccount.findById(call.whatsappAccountId);
     if (account) {
@@ -303,7 +356,13 @@ export async function processCallWebhook(
 
   if (data.event === 'terminate') {
     const call = await Call.findOne({ tenantId, metaCallId: data.callId });
-    if (!call || call.status === 'ENDED' || call.status === 'REJECTED' || call.status === 'MISSED') {
+    if (
+      !call ||
+      call.status === 'ENDED' ||
+      call.status === 'FAILED' ||
+      call.status === 'REJECTED' ||
+      call.status === 'MISSED'
+    ) {
       return;
     }
     if (call.status === 'RINGING' && call.direction === 'INCOMING') {
