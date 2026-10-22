@@ -19,8 +19,8 @@ The backend sets `trust proxy` in production so rate limiting and logs use the r
 
 | Layer | Scope | Default limit |
 |-------|--------|---------------|
-| Global API | All `/api/*` routes | 200 requests / 15 min per IP |
-| Auth | Login, signup, forgot/reset password | 20 requests / 15 min per IP |
+| Global API | All `/api/*` routes | 500 requests / 15 min per IP (production compose default) |
+| Auth | Login, signup, forgot/reset password | 60 requests / 15 min per IP (production compose default) |
 | Webhooks | Meta WhatsApp webhook POST | 500 requests / min per IP |
 
 Configure via environment variables:

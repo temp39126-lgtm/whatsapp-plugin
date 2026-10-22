@@ -295,6 +295,7 @@ Same-domain Compose + Caddy is simpler and is what this repo ships.
 | Blank page | `docker compose -f docker-compose.prod.yml logs frontend` |
 | Backend exits on start | `META_APP_SECRET`, `META_VERIFY_TOKEN`, `JWT_SECRET`, `ENCRYPTION_KEY`; MinIO user must not be `minioadmin` |
 | Cannot log in | `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `deploy/.env`; choose **Admin** on the login screen |
+| **Too many requests** (429) on login | Wait 15 min or `docker compose … restart backend`; set `AUTH_RATE_LIMIT_MAX` / `RATE_LIMIT_MAX` in `deploy/.env` (see `.env.production.example`) |
 | Webhook verify 403 | Verify token in Meta must match `META_VERIFY_TOKEN`; callback URL must be `https://YOUR-DOMAIN/api/whatsapp/webhook` |
 | CORS / cookie errors | `APP_URL` / `CORS_ORIGIN` must match the URL in the browser |
 | Phone still **Pending** in Meta | Register via `/register` API + WhatsApp Business two-step PIN |
