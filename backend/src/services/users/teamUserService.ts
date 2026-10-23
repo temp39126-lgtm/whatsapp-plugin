@@ -68,20 +68,29 @@ async function purgeTeamUserReferences(
   ]);
 }
 
-/** Removes soft-deleted (inactive) users left from older deploys. Safe to run on startup. */
+/** Removes every soft-deleted (`isActive: false`) user left from older deploys. Runs on backend startup. */
 export async function purgeInactiveTeamUsers(): Promise<number> {
   const inactiveUsers = await User.find({ isActive: false });
+  let purged = 0;
+
   for (const user of inactiveUsers) {
     const userId = user._id.toString();
     await purgeTeamUserReferences(user.tenantId, userId, user.email);
     await User.deleteOne({ _id: user._id });
+    purged += 1;
   }
 
-  if (inactiveUsers.length > 0) {
-    logger.info({ count: inactiveUsers.length }, 'Purged inactive team user records');
+  const remaining = await User.countDocuments({ isActive: false });
+  if (remaining > 0) {
+    logger.error(
+      { remaining },
+      'Inactive user ghost records still present after purge — manual DB review may be needed'
+    );
+  } else if (purged > 0) {
+    logger.info({ count: purged }, 'Purged inactive team user records (database has none left)');
   }
 
-  return inactiveUsers.length;
+  return purged;
 }
 
 export async function createTeamUser(

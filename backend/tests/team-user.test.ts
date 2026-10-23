@@ -9,7 +9,11 @@ import { User } from '../src/models/User';
 import { Conversation } from '../src/models/Conversation';
 import { Contact } from '../src/models/Contact';
 import { sendTeamUserWelcomeEmail } from '../src/services/email/emailService';
-import { createTeamUser, deleteTeamUser } from '../src/services/users/teamUserService';
+import {
+  createTeamUser,
+  deleteTeamUser,
+  purgeInactiveTeamUsers,
+} from '../src/services/users/teamUserService';
 import { AppError } from '../src/types';
 import bcrypt from 'bcryptjs';
 
@@ -71,6 +75,31 @@ describe('Team user service', () => {
 
     const stored = await User.findOne({ email: 'agent@example.com' });
     expect(stored?.tenantId).toBe('tenant-001');
+  });
+
+  it('purgeInactiveTeamUsers removes every isActive false user from the database', async () => {
+    await User.create({
+      email: 'ghost1@example.com',
+      passwordHash: await bcrypt.hash('x', 10),
+      name: 'Ghost One',
+      role: 'USER',
+      tenantId: 'tenant-001',
+      isActive: false,
+    });
+    await User.create({
+      email: 'ghost2@example.com',
+      passwordHash: await bcrypt.hash('x', 10),
+      name: 'Ghost Two',
+      role: 'USER',
+      tenantId: 'tenant-001',
+      isActive: false,
+    });
+
+    const purged = await purgeInactiveTeamUsers();
+    expect(purged).toBe(2);
+    expect(await User.countDocuments({ isActive: false })).toBe(0);
+    expect(await User.findOne({ email: 'ghost1@example.com' })).toBeNull();
+    expect(await User.findOne({ email: 'ghost2@example.com' })).toBeNull();
   });
 
   it('recreates a user when the email belongs to a soft-deleted inactive record', async () => {
