@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { decrypt } from '../../utils/encryption';
 import { resolveSmtpFromEmail } from '../../utils/smtp';
 import { logger } from '../../config/logger';
+import { env } from '../../config/env';
 import { User } from '../../models/User';
 import { DEFAULT_TENANT_NOTIFICATIONS, ITenantSettings } from '../../models/TenantSettings';
 import { getTenantSettingsDocument } from '../settings/tenantSettingsService';
@@ -181,6 +182,52 @@ export async function sendOtpEmail(params: {
       <p>This code expires in ${params.expiresMinutes} minutes.</p>
       <p>If you did not request this, you can ignore this email.</p>
     `,
+  });
+}
+
+export async function sendTeamUserWelcomeEmail(params: {
+  tenantId: string;
+  to: string;
+  name: string;
+  email: string;
+  temporaryPassword: string;
+}): Promise<boolean> {
+  const settings = await getTenantSettingsDocument(params.tenantId);
+  const loginUrl = `${env.FRONTEND_URL.replace(/\/$/, '')}/auth/login`;
+  const forgotPasswordUrl = `${env.FRONTEND_URL.replace(/\/$/, '')}/auth/forgot-password`;
+  const subject = 'Your WhatsApp CRM account';
+  const text = [
+    `Hi ${params.name},`,
+    '',
+    'An administrator created a WhatsApp CRM account for you.',
+    '',
+    `Login URL: ${loginUrl}`,
+    `Email: ${params.email}`,
+    `Temporary password: ${params.temporaryPassword}`,
+    '',
+    'After you sign in, change your password anytime under Settings → Account.',
+    `If you forget your password, use Forgot password on the login page: ${forgotPasswordUrl}`,
+    '',
+    'Keep this email private and delete it after you choose a new password.',
+  ].join('\n');
+  const html = `
+    <p>Hi ${params.name},</p>
+    <p>An administrator created a <strong>WhatsApp CRM</strong> account for you.</p>
+    <p><a href="${loginUrl}">Sign in to WhatsApp CRM</a></p>
+    <ul>
+      <li><strong>Email:</strong> ${params.email}</li>
+      <li><strong>Temporary password:</strong> ${params.temporaryPassword}</li>
+    </ul>
+    <p>After you sign in, change your password under <strong>Settings → Account</strong>.</p>
+    <p>If you forget your password, use <a href="${forgotPasswordUrl}">Forgot password</a> on the login page.</p>
+    <p>Keep this email private and delete it after you choose a new password.</p>
+  `;
+
+  return sendTenantEmail(settings, {
+    to: params.to,
+    subject,
+    text,
+    html,
   });
 }
 

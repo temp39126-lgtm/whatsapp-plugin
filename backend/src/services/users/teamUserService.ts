@@ -8,6 +8,8 @@ import { Notification } from '../../models/Notification';
 import { AuthOtpChallenge } from '../../models/AuthOtpChallenge';
 import { AuthUser, AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
+import { sendTeamUserWelcomeEmail } from '../email/emailService';
+import { logger } from '../../config/logger';
 
 export function teamUserAvatarUrl(userId: string, profileImage?: string) {
   return profileImage ? `/api/whatsapp/team/users/${userId}/avatar` : undefined;
@@ -58,11 +60,27 @@ export async function createTeamUser(
     isActive: true,
   });
 
+  const welcomeEmailSent = await sendTeamUserWelcomeEmail({
+    tenantId: admin.tenantId,
+    to: user.email,
+    name: user.name,
+    email: user.email,
+    temporaryPassword: input.password,
+  });
+
+  if (!welcomeEmailSent) {
+    logger.warn(
+      { email: user.email, tenantId: admin.tenantId },
+      'Team user welcome email delivery failed'
+    );
+  }
+
   return {
     _id: user._id.toString(),
     name: user.name,
     email: user.email,
     role: user.role as 'ADMIN' | 'USER',
+    welcomeEmailSent,
   };
 }
 

@@ -59,6 +59,8 @@ export interface TeamUserDTO {
   email: string;
   role: 'ADMIN' | 'USER';
   profileImage?: string;
+  /** Present when the user was just created by an admin. */
+  welcomeEmailSent?: boolean;
 }
 
 export interface TeamAgentWorkloadDTO extends TeamUserDTO {

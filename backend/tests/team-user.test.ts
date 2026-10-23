@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+
+vi.mock('../src/services/email/emailService', () => ({
+  sendTeamUserWelcomeEmail: vi.fn().mockResolvedValue(true),
+}));
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { User } from '../src/models/User';
 import { Conversation } from '../src/models/Conversation';
 import { Contact } from '../src/models/Contact';
+import { sendTeamUserWelcomeEmail } from '../src/services/email/emailService';
 import { createTeamUser, deleteTeamUser } from '../src/services/users/teamUserService';
 import { AppError } from '../src/types';
 import bcrypt from 'bcryptjs';
@@ -33,6 +38,7 @@ describe('Team user service', () => {
   });
 
   beforeEach(async () => {
+    vi.mocked(sendTeamUserWelcomeEmail).mockClear();
     await mongoose.connection.db?.dropDatabase();
     await User.create({
       email: 'admin@example.com',
@@ -55,6 +61,13 @@ describe('Team user service', () => {
     expect(user.name).toBe('New Agent');
     expect(user.email).toBe('agent@example.com');
     expect(user.role).toBe('USER');
+    expect(user.welcomeEmailSent).toBe(true);
+    expect(sendTeamUserWelcomeEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'agent@example.com',
+        temporaryPassword: 'password123',
+      })
+    );
 
     const stored = await User.findOne({ email: 'agent@example.com' });
     expect(stored?.tenantId).toBe('tenant-001');

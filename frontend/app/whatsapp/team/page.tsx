@@ -26,7 +26,17 @@ export default function TeamPage() {
       setName('');
       setEmail('');
       setPassword('');
-      setMessage(`Created user account for ${user.name}. Assign chats from the inbox.`);
+      const emailNote =
+        user.welcomeEmailSent === true
+          ? `A welcome email with login details was sent to ${user.email}.`
+          : user.welcomeEmailSent === false
+            ? `User created, but the welcome email could not be sent. Check SMTP in Settings and share login details manually.`
+            : '';
+      setMessage(
+        [`Created user account for ${user.name}. Assign chats from the inbox.`, emailNote]
+          .filter(Boolean)
+          .join(' ')
+      );
     },
     onError: (error) =>
       setMessage(error instanceof Error ? error.message : 'Failed to create user'),
@@ -65,8 +75,8 @@ export default function TeamPage() {
           <h2 className="text-lg font-semibold">Create user account</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Public sign-up is disabled. Create every user account here and share their login details
-          securely.
+          Public sign-up is disabled. Create every user account here. When SMTP notifications are
+          configured, a welcome email is sent with the login link, email, and temporary password.
         </p>
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Input
