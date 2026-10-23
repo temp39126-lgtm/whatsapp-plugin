@@ -73,6 +73,33 @@ describe('Team user service', () => {
     expect(stored?.tenantId).toBe('tenant-001');
   });
 
+  it('recreates a user when the email belongs to a soft-deleted inactive record', async () => {
+    const admin = await User.findOne({ email: 'admin@example.com' });
+    const adminUser = adminAuth(admin!._id.toString());
+
+    await User.create({
+      email: 'ghost@example.com',
+      passwordHash: await bcrypt.hash('oldpass', 10),
+      name: 'Ghost User',
+      role: 'USER',
+      tenantId: 'tenant-001',
+      isActive: false,
+    });
+
+    const user = await createTeamUser(adminUser, {
+      name: 'New Ghost',
+      email: 'ghost@example.com',
+      password: 'password123',
+    });
+
+    expect(user.email).toBe('ghost@example.com');
+    expect(user.name).toBe('New Ghost');
+
+    const stored = await User.findOne({ email: 'ghost@example.com' });
+    expect(stored?.isActive).toBe(true);
+    expect(stored?.name).toBe('New Ghost');
+  });
+
   it('rejects duplicate email in tenant', async () => {
     const admin = await User.findOne({ email: 'admin@example.com' });
     await createTeamUser(adminAuth(admin!._id.toString()), {

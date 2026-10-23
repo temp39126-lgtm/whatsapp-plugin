@@ -5,6 +5,7 @@ import { Call } from '../models/Call';
 import { logger } from '../config/logger';
 import { normalizeWhatsAppId } from './phone';
 import { dedupeContactConversations } from '../services/contacts/contactConversationService';
+import { purgeInactiveTeamUsers } from '../services/users/teamUserService';
 
 export async function prepareDatabaseForIndexSync(): Promise<void> {
   await normalizeContactConversationGroupIds();
@@ -15,6 +16,7 @@ export async function migrateProductionData(): Promise<void> {
   await prepareDatabaseForIndexSync();
   await migrateDuplicateContacts();
   await dedupeAllContactConversations();
+  await purgeInactiveTeamUsers();
 }
 
 async function normalizeCallMetaCallIds(): Promise<void> {

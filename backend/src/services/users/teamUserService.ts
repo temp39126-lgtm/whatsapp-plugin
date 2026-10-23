@@ -40,6 +40,50 @@ export async function getTeamUserAvatarStorageKey(viewer: AuthUser, userId: stri
   return record.profileImage;
 }
 
+async function purgeTeamUserReferences(
+  tenantId: string,
+  targetUserId: string,
+  userEmail: string
+): Promise<void> {
+  await Promise.all([
+    Conversation.updateMany(
+      { tenantId, assignedUserId: targetUserId },
+      { $unset: { assignedUserId: '' } }
+    ),
+    Conversation.updateMany(
+      { tenantId, permittedUsers: targetUserId },
+      { $pull: { permittedUsers: targetUserId } }
+    ),
+    Contact.updateMany(
+      { tenantId, assignedUserId: targetUserId },
+      { $unset: { assignedUserId: '' } }
+    ),
+    ConversationAssignment.deleteMany({
+      tenantId,
+      assignedUserId: targetUserId,
+    }),
+    ConversationRead.deleteMany({ tenantId, userId: targetUserId }),
+    Notification.deleteMany({ tenantId, userId: targetUserId }),
+    AuthOtpChallenge.deleteMany({ email: userEmail.toLowerCase().trim() }),
+  ]);
+}
+
+/** Removes soft-deleted (inactive) users left from older deploys. Safe to run on startup. */
+export async function purgeInactiveTeamUsers(): Promise<number> {
+  const inactiveUsers = await User.find({ isActive: false });
+  for (const user of inactiveUsers) {
+    const userId = user._id.toString();
+    await purgeTeamUserReferences(user.tenantId, userId, user.email);
+    await User.deleteOne({ _id: user._id });
+  }
+
+  if (inactiveUsers.length > 0) {
+    logger.info({ count: inactiveUsers.length }, 'Purged inactive team user records');
+  }
+
+  return inactiveUsers.length;
+}
+
 export async function createTeamUser(
   admin: AuthUser,
   input: { name: string; email: string; password: string }
@@ -47,7 +91,17 @@ export async function createTeamUser(
   const normalizedEmail = input.email.toLowerCase().trim();
   const existing = await User.findOne({ email: normalizedEmail, tenantId: admin.tenantId });
   if (existing) {
-    throw new AppError(409, 'An account with this email already exists');
+    if (existing.isActive) {
+      throw new AppError(409, 'An account with this email already exists');
+    }
+
+    const ghostUserId = existing._id.toString();
+    await purgeTeamUserReferences(admin.tenantId, ghostUserId, existing.email);
+    await User.deleteOne({ _id: existing._id });
+    logger.info(
+      { email: normalizedEmail, tenantId: admin.tenantId },
+      'Removed inactive user record so email can be reused'
+    );
   }
 
   const passwordHash = await bcrypt.hash(input.password, 10);
@@ -110,28 +164,7 @@ export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
 
   const userEmail = user.email;
 
-  await Promise.all([
-    Conversation.updateMany(
-      { tenantId: admin.tenantId, assignedUserId: targetUserId },
-      { $unset: { assignedUserId: '' } }
-    ),
-    Conversation.updateMany(
-      { tenantId: admin.tenantId, permittedUsers: targetUserId },
-      { $pull: { permittedUsers: targetUserId } }
-    ),
-    Contact.updateMany(
-      { tenantId: admin.tenantId, assignedUserId: targetUserId },
-      { $unset: { assignedUserId: '' } }
-    ),
-    ConversationAssignment.deleteMany({
-      tenantId: admin.tenantId,
-      assignedUserId: targetUserId,
-    }),
-    ConversationRead.deleteMany({ tenantId: admin.tenantId, userId: targetUserId }),
-    Notification.deleteMany({ tenantId: admin.tenantId, userId: targetUserId }),
-    AuthOtpChallenge.deleteMany({ email: userEmail.toLowerCase().trim() }),
-  ]);
-
+  await purgeTeamUserReferences(admin.tenantId, targetUserId, userEmail);
   await User.deleteOne({ _id: user._id });
 
   await logActivity(admin, 'user.deleted', 'user', targetUserId, {
