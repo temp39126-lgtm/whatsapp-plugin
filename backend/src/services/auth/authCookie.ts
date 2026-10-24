@@ -5,6 +5,7 @@ export const AUTH_COOKIE_NAME = 'whatsapp_crm_session';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export function parseCookies(header?: string): Record<string, string> {
   if (!header) return {};
@@ -77,9 +78,7 @@ function cookieSecurity(): Pick<CookieOptions, 'httpOnly' | 'secure' | 'sameSite
 export function getAuthCookieOptions(keepSignedIn = true): CookieOptions {
   const options: CookieOptions = cookieSecurity();
 
-  if (keepSignedIn) {
-    options.maxAge = SEVEN_DAYS_MS;
-  }
+  options.maxAge = keepSignedIn ? SEVEN_DAYS_MS : ONE_DAY_MS;
 
   return options;
 }

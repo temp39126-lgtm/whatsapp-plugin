@@ -1,6 +1,6 @@
 const LEGACY_TOKEN_KEY = process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'whatsapp_crm_token';
 const HOST_ORIGIN = process.env.NEXT_PUBLIC_HOST_SAAS_ORIGIN;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { getApiOrigin } from './publicUrl';
 
 export const HOST_AUTH_MESSAGE_TYPE = 'WHATSAPP_CRM_AUTH';
 
@@ -24,7 +24,7 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 export async function establishSessionFromToken(token: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/auth/establish-session`, {
+  const response = await fetch(`${getApiOrigin()}/api/auth/establish-session`, {
     method: 'POST',
     credentials: 'include',
     headers: {

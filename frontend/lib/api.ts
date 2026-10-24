@@ -1,20 +1,19 @@
 import { getAuthHeaders } from './auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { getApiOrigin } from './publicUrl';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
 class ApiClient {
-  private baseUrl: string;
+  constructor(private readonly basePath: string) {}
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  private resolveBaseUrl(): string {
+    return `${getApiOrigin()}${this.basePath}`;
   }
 
   private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-    const url = new URL(`${this.baseUrl}${path}`);
+    const url = new URL(`${this.resolveBaseUrl()}${path}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
@@ -74,18 +73,17 @@ class ApiClient {
   }
 }
 
-export const api = new ApiClient(`${API_URL}/api/whatsapp`);
-export const authApi = new ApiClient(`${API_URL}/api/auth`);
-export const healthApi = new ApiClient(API_URL);
+export const api = new ApiClient('/api/whatsapp');
+export const authApi = new ApiClient('/api/auth');
+export const healthApi = new ApiClient('');
 
 export function getWhatsAppMediaUrl(messageId: string): string {
   return `/api/whatsapp/messages/${messageId}/media`;
 }
 
 export function resolveMediaUrl(pathOrUrl: string): string {
-  if (pathOrUrl.startsWith('http')) return pathOrUrl;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  return `${base}${pathOrUrl}`;
+  if (pathOrUrl.startsWith('http') || pathOrUrl.startsWith('/')) return pathOrUrl;
+  return `${getApiOrigin()}${pathOrUrl}`;
 }
 
 export function getContactAvatarUrl(contactId: string): string {

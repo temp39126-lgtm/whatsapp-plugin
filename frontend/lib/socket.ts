@@ -2,7 +2,7 @@
 
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+import { getSocketOrigin } from './publicUrl';
 
 let socket: Socket | null = null;
 
@@ -11,7 +11,7 @@ export function getSocket(): Socket {
     return socket;
   }
 
-  socket = io(SOCKET_URL, {
+  socket = io(getSocketOrigin(), {
     autoConnect: false,
     withCredentials: true,
   });

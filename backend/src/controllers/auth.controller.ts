@@ -18,7 +18,12 @@ import {
   verifyOtpChallenge,
 } from '../services/auth/otpService';
 import { AuthOtpChallenge } from '../models/AuthOtpChallenge';
-import { clearAuthCookie, refreshAuthCookie, setAuthCookie } from '../services/auth/authCookie';
+import {
+  clearAuthCookie,
+  extractBearerOrCookieToken,
+  refreshAuthCookie,
+  setAuthCookie,
+} from '../services/auth/authCookie';
 import { sendAuthPayload } from '../utils/authResponse';
 
 export async function login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -125,6 +130,10 @@ export async function resendOtp(req: AuthenticatedRequest, res: Response, next: 
 
 export async function getCurrentUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
+    const token = extractBearerOrCookieToken(req.headers.authorization, req.headers.cookie);
+    if (token) {
+      refreshAuthCookie(res, token);
+    }
     const profile = await getUserProfile(req.user!);
     res.json(profile);
   } catch (error) {
