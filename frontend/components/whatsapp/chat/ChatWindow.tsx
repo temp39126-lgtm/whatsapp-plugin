@@ -3,7 +3,7 @@
 import { ArrowLeft, PanelRightOpen, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
-import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
+import { ChatConversationMenu } from '@/components/whatsapp/chat/ChatConversationMenu';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { EditMessageDialog } from './EditMessageDialog';
@@ -218,7 +218,7 @@ export function ChatWindow({
           >
             <Phone className="h-5 w-5" />
           </Button>
-          <WhatsAppOverflowMenu />
+          <ChatConversationMenu conversationId={conversation._id} />
         </div>
       </header>
 

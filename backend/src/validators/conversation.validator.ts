@@ -29,6 +29,10 @@ export const createNoteSchema = z.object({
   content: z.string().min(1).max(5000),
 });
 
+export const exportConversationQuerySchema = z.object({
+  format: z.enum(['txt', 'zip']).default('zip'),
+});
+
 export const conversationQuerySchema = z.object({
   status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
   assignedUserId: z.string().optional(),

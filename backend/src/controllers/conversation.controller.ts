@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as conversationService from '../services/conversations/conversationService';
+import * as conversationExportService from '../services/conversations/conversationExportService';
 import * as analyticsService from '../services/analytics/analyticsService';
 
 export async function listConversations(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -152,6 +153,21 @@ export async function markAllRead(req: AuthenticatedRequest, res: Response, next
   try {
     const result = await conversationService.markAllConversationsRead(req.user!);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportConversation(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const format =
+      (req.query as { format?: 'txt' | 'zip' }).format ?? 'zip';
+    await conversationExportService.exportConversation(
+      req.user!,
+      getParam(req.params.id),
+      format,
+      res
+    );
   } catch (error) {
     next(error);
   }

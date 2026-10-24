@@ -13,6 +13,7 @@ import {
   updatePermittedUsersSchema,
   createNoteSchema,
   conversationQuerySchema,
+  exportConversationQuerySchema,
 } from '../validators/conversation.validator';
 import * as controller from '../controllers/conversation.controller';
 
@@ -63,6 +64,12 @@ router.post(
 );
 router.get('/:id/notes', conversationAccess(), controller.listNotes);
 router.get('/:id/activity', conversationAccess(), controller.getActivity);
+router.get(
+  '/:id/export',
+  conversationAccess(),
+  validateQuery(exportConversationQuerySchema),
+  controller.exportConversation
+);
 router.post('/:id/read', conversationAccess(), controller.markRead);
 
 export default router;

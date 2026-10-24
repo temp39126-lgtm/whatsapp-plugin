@@ -56,7 +56,6 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const updateStatus = useUpdateConversationStatus();
   const updatePriority = useUpdateConversationPriority();
   const updateTags = useUpdateConversationTags();
-  const updatePermittedUsers = useUpdatePermittedUsers();
   const assignConversation = useAssignConversation();
   const deleteContact = useDeleteContact();
   const deleteGroup = useDeleteGroup();
@@ -106,22 +105,6 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
       : [...selectedTagIds, tagId];
 
     updateTags.mutate({ id: conversation!._id, tagIds: nextTagIds, version: conversationVersion });
-  }
-
-  function togglePermittedUser(userId: string) {
-    const current = conversation!.permittedUsers ?? [];
-    const nextUserIds = current.includes(userId)
-      ? current.filter((id) => id !== userId)
-      : [...current, userId];
-
-    updatePermittedUsers.mutate(
-      { id: conversation!._id, userIds: nextUserIds, version: conversationVersion },
-      {
-        onSuccess: () => setActionMessage('Shared access updated'),
-        onError: (error) =>
-          setActionMessage(error instanceof Error ? error.message : 'Failed to update shared access'),
-      }
-    );
   }
 
   function handleDeleteTag(tagId: string, tagName: string) {
@@ -459,43 +442,6 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             <p className="text-sm">{conversation.assignedUser?.name ?? 'Unassigned'}</p>
           )}
         </section>
-
-        {canAssignConversations && !isGroup && (
-          <section>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Shared access
-            </h4>
-            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-              Allow additional users to view and reply in this chat without changing the assignee.
-            </p>
-            <div className="space-y-1">
-              {teamUsers
-                .filter((user) => user._id !== conversation.assignedUserId)
-                .map((user) => {
-                  const selected = (conversation.permittedUsers ?? []).includes(user._id);
-                  return (
-                    <label
-                      key={user._id}
-                      className="flex cursor-pointer items-center gap-2 rounded border px-2 py-1.5 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        disabled={updatePermittedUsers.isPending}
-                        onChange={() => togglePermittedUser(user._id)}
-                      />
-                      <span>
-                        {user.name}{' '}
-                        <span className="text-xs text-muted-foreground">
-                          ({user.role === 'ADMIN' ? 'Admin' : 'User'})
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-            </div>
-          </section>
-        )}
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

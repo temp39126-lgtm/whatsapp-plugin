@@ -71,6 +71,26 @@ class ApiClient {
   upload<T>(path: string, formData: FormData) {
     return this.request<T>(path, { method: 'POST', body: formData });
   }
+
+  async download(path: string, params?: Record<string, string | number | boolean | undefined>) {
+    const url = this.buildUrl(path, params);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Download failed' }));
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="([^"]+)"/i);
+    const filename = match?.[1] ?? 'download';
+    return { blob, filename };
+  }
 }
 
 export const api = new ApiClient('/api/whatsapp');
