@@ -10,7 +10,6 @@ import { User } from '../src/models/User';
 import bcrypt from 'bcryptjs';
 import { listContacts } from '../src/services/contacts/contactService';
 import { buildConversationFilter } from '../src/services/rbac/conversationAccess';
-import { Conversation } from '../src/models/Conversation';
 import { AuthUser } from '../src/types';
 
 describe('view_all_conversations permission scope', () => {
