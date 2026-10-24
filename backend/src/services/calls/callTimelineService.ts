@@ -90,3 +90,51 @@ export async function upsertCallTimelineMessage(call: ICall): Promise<void> {
     lastMessage: label,
   });
 }
+
+function previewFromMessage(message: {
+  type: string;
+  content: unknown;
+}): string {
+  if (message.type === 'CALL' && message.content && typeof message.content === 'object') {
+    const label = (message.content as { label?: string }).label;
+    if (label) return label;
+  }
+  if (message.content && typeof message.content === 'object' && 'text' in message.content) {
+    const text = String((message.content as { text?: string }).text ?? '').trim();
+    if (text) return text.slice(0, 240);
+  }
+  return 'Message';
+}
+
+export async function refreshConversationLastMessage(conversationId: unknown): Promise<void> {
+  const latest = await Message.findOne({ conversationId })
+    .sort({ createdAt: -1 })
+    .select('type content createdAt')
+    .lean();
+
+  if (!latest) {
+    await Conversation.findByIdAndUpdate(conversationId, {
+      $unset: { lastMessage: '', lastMessageAt: '' },
+    });
+    return;
+  }
+
+  await Conversation.findByIdAndUpdate(conversationId, {
+    lastMessage: previewFromMessage(latest),
+    lastMessageAt: latest.createdAt,
+  });
+}
+
+export async function removeCallTimelineMessages(
+  tenantId: string,
+  conversationId: unknown,
+  callId: string
+): Promise<void> {
+  await Message.deleteMany({
+    tenantId,
+    conversationId,
+    type: 'CALL',
+    'content.callId': callId,
+  });
+  await refreshConversationLastMessage(conversationId);
+}

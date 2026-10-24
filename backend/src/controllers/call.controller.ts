@@ -5,7 +5,8 @@ import * as callService from '../services/calls/callService';
 export async function listCalls(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const page = Number(req.query.page) || 1;
-    const result = await callService.listCalls(req.user!, page);
+    const limit = Number(req.query.limit) || 20;
+    const result = await callService.listCalls(req.user!, page, limit);
     res.json(result);
   } catch (error) {
     next(error);
@@ -69,6 +70,28 @@ export async function endCall(req: AuthenticatedRequest, res: Response, next: Ne
   try {
     const call = await callService.endCall(req.user!, req.call!);
     res.json(call);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function clearCallHistory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await callService.clearCallHistory(req.user!);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteCallFromHistory(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    await callService.deleteCallFromHistory(req.user!, getParam(req.params.id));
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

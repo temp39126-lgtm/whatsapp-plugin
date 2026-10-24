@@ -14,7 +14,7 @@ import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { normalizeWhatsAppId } from '../../utils/phone';
 import { isDuplicateKeyError } from '../../utils/mongo';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
-import { upsertCallTimelineMessage } from './callTimelineService';
+import { removeCallTimelineMessages, upsertCallTimelineMessage } from './callTimelineService';
 
 /** Ringing/initiating calls older than this are cleared so a new call can start. */
 const STALE_ACTIVE_CALL_MS = 2 * 60 * 1000;
@@ -100,10 +100,8 @@ export async function listActiveIncomingCalls(user: AuthUser): Promise<ActiveInc
   });
 }
 
-export async function listCalls(user: AuthUser, page = 1, limit = 20) {
-  const { skip, limit: lim } = getPagination({ page, limit });
-
-  let query: Record<string, unknown> = { tenantId: user.tenantId };
+async function buildCallsListQuery(user: AuthUser): Promise<Record<string, unknown>> {
+  const query: Record<string, unknown> = { tenantId: user.tenantId };
 
   if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     const accessibleConversations = await Conversation.find(
@@ -111,6 +109,49 @@ export async function listCalls(user: AuthUser, page = 1, limit = 20) {
     ).select('_id');
     query.conversationId = { $in: accessibleConversations.map((c) => c._id) };
   }
+
+  return query;
+}
+
+const TERMINAL_CALL_STATUSES = ['ENDED', 'FAILED', 'REJECTED', 'MISSED'] as const;
+
+async function purgeCallRecord(call: ICall): Promise<void> {
+  const callId = call._id.toString();
+  await removeCallTimelineMessages(call.tenantId, call.conversationId, callId);
+  await CallEvent.deleteMany({ callId: call._id });
+  await Call.deleteOne({ _id: call._id });
+}
+
+export async function deleteCallFromHistory(user: AuthUser, callId: string) {
+  const call = await Call.findOne({ _id: callId, tenantId: user.tenantId });
+  if (!call) {
+    throw new AppError(404, 'Call not found');
+  }
+
+  if ((ACTIVE_CALL_STATUSES as readonly string[]).includes(call.status)) {
+    throw new AppError(409, 'Cannot delete an active call. End the call first.');
+  }
+
+  await getAccessibleConversation(user, call.conversationId.toString());
+  await purgeCallRecord(call);
+}
+
+export async function clearCallHistory(user: AuthUser) {
+  const query = await buildCallsListQuery(user);
+  query.status = { $in: [...TERMINAL_CALL_STATUSES] };
+
+  const calls = await Call.find(query);
+  for (const call of calls) {
+    await purgeCallRecord(call);
+  }
+
+  return { deleted: calls.length };
+}
+
+export async function listCalls(user: AuthUser, page = 1, limit = 20) {
+  const { skip, limit: lim } = getPagination({ page, limit });
+
+  const query = await buildCallsListQuery(user);
 
   const calls = await Call.find(query)
     .sort({ createdAt: -1 })
