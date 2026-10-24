@@ -6,8 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import {
   MessageSquare,
   BarChart3,
-  Settings,
   Inbox,
+  UserPlus,
   AlertCircle,
   UserCheck,
 } from 'lucide-react';
@@ -146,10 +146,10 @@ export function AdminDashboard() {
               icon={BarChart3}
             />
             <QuickAction
-              href="/whatsapp/settings"
-              label="Settings"
-              description="Meta Cloud API, account, and notifications"
-              icon={Settings}
+              href="/whatsapp/team"
+              label="Create user"
+              description="Add a team member and set permissions"
+              icon={UserPlus}
             />
           </div>
         </section>
