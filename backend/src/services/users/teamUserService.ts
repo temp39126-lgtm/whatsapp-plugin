@@ -268,7 +268,7 @@ export async function enrichAgentStats<T extends AgentStatRow>(
   });
 }
 
-type WorkloadCounts = { open: number; pending: number; total: number };
+type WorkloadCounts = { open: number; pending: number; total: number; assignedByAdmin?: number };
 
 export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
   admin: AuthUser,
@@ -298,6 +298,7 @@ export async function mergeTeamUsersWithWorkload<T extends WorkloadCounts>(
         open: 0,
         pending: 0,
         total: 0,
+        assignedByAdmin: 0,
       } as { _id: string; name: string; email: string; role: 'ADMIN' | 'USER'; profileImage?: string } & T;
     })
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));

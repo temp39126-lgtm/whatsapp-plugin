@@ -5,6 +5,7 @@ import { Call } from '../../models/Call';
 import { InternalNote } from '../../models/InternalNote';
 import { User } from '../../models/User';
 import { ActivityLog } from '../../models/ActivityLog';
+import { getAdminAssignedCountsByUser } from '../conversations/conversationService';
 import { enrichAgentStats, listTeamUsers as listTeamUsersFromService, mergeTeamUsersWithAgentAnalytics, mergeTeamUsersWithWorkload } from '../users/teamUserService';
 import { cache } from '../../utils/cache';
 import { env } from '../../config/env';
@@ -213,17 +214,29 @@ export async function listInternalNotes(
 }
 
 export async function getTeamWorkload(user: AuthUser) {
-  const stats = await Conversation.aggregate([
-    { $match: { tenantId: user.tenantId, assignedUserId: { $exists: true } } },
-    {
-      $group: {
-        _id: '$assignedUserId',
-        open: { $sum: { $cond: [{ $eq: ['$status', 'OPEN'] }, 1, 0] } },
-        pending: { $sum: { $cond: [{ $eq: ['$status', 'PENDING'] }, 1, 0] } },
-        total: { $sum: 1 },
+  const [stats, adminAssignedMap] = await Promise.all([
+    Conversation.aggregate([
+      { $match: { tenantId: user.tenantId, assignedUserId: { $exists: true } } },
+      {
+        $group: {
+          _id: '$assignedUserId',
+          open: { $sum: { $cond: [{ $eq: ['$status', 'OPEN'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'PENDING'] }, 1, 0] } },
+          total: { $sum: 1 },
+        },
       },
-    },
+    ]),
+    getAdminAssignedCountsByUser(user.tenantId),
   ]);
 
-  return mergeTeamUsersWithWorkload(user, stats);
+  const statsWithAdmin = stats.map((row) => ({
+    ...row,
+    assignedByAdmin: adminAssignedMap.get(row._id) ?? 0,
+  }));
+
+  const merged = await mergeTeamUsersWithWorkload(user, statsWithAdmin);
+  return merged.map((row) => ({
+    ...row,
+    assignedByAdmin: row.assignedByAdmin ?? adminAssignedMap.get(row._id) ?? 0,
+  }));
 }

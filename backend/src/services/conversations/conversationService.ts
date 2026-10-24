@@ -106,6 +106,104 @@ function mapPopulatedContact(contactId: unknown) {
   };
 }
 
+async function buildAssignedByAdminClause(tenantId: string, targetUserId: string) {
+  const adminAssignments = await ConversationAssignment.find({
+    tenantId,
+    assignedUserId: targetUserId,
+    $expr: { $ne: ['$assignedBy', '$assignedUserId'] },
+  })
+    .select('conversationId')
+    .lean();
+  const adminAssignedIds = adminAssignments.map((assignment) => assignment.conversationId);
+
+  const ownContacts = await Contact.find({
+    tenantId,
+    assignedUserId: targetUserId,
+  })
+    .select('_id')
+    .lean();
+  const ownContactIds = ownContacts.map((contact) => contact._id);
+
+  return {
+    $or: [
+      { _id: { $in: adminAssignedIds } },
+      {
+        assignedUserId: targetUserId,
+        $or: [
+          { contactId: { $exists: false } },
+          { contactId: null },
+          { contactId: { $nin: ownContactIds } },
+        ],
+      },
+    ],
+  };
+}
+
+/** Count of active conversations assigned to each user by an admin (or team inbox), not self-created contacts. */
+export async function getAdminAssignedCountsByUser(
+  tenantId: string
+): Promise<Map<string, number>> {
+  const conversations = await Conversation.find({
+    tenantId,
+    assignedUserId: { $exists: true, $ne: null },
+  })
+    .select('_id assignedUserId contactId')
+    .lean();
+
+  if (conversations.length === 0) return new Map();
+
+  const assigneeIds = [...new Set(conversations.map((entry) => entry.assignedUserId as string))];
+
+  const ownContacts = await Contact.find({
+    tenantId,
+    assignedUserId: { $in: assigneeIds },
+  })
+    .select('_id assignedUserId')
+    .lean();
+
+  const ownContactIdsByUser = new Map<string, Set<string>>();
+  for (const contact of ownContacts) {
+    const uid = contact.assignedUserId!;
+    const set = ownContactIdsByUser.get(uid) ?? new Set<string>();
+    set.add(contact._id.toString());
+    ownContactIdsByUser.set(uid, set);
+  }
+
+  const adminAssignments = await ConversationAssignment.find({
+    tenantId,
+    assignedUserId: { $in: assigneeIds },
+    $expr: { $ne: ['$assignedBy', '$assignedUserId'] },
+  })
+    .select('conversationId assignedUserId')
+    .lean();
+
+  const adminConvIdsByUser = new Map<string, Set<string>>();
+  for (const row of adminAssignments) {
+    const uid = row.assignedUserId;
+    const set = adminConvIdsByUser.get(uid) ?? new Set<string>();
+    set.add(row.conversationId.toString());
+    adminConvIdsByUser.set(uid, set);
+  }
+
+  const counts = new Map<string, number>();
+  for (const conv of conversations) {
+    const uid = conv.assignedUserId!;
+    const convId = conv._id.toString();
+    const contactId = conv.contactId?.toString();
+    const ownContactSet = ownContactIdsByUser.get(uid);
+    const adminConvSet = adminConvIdsByUser.get(uid);
+
+    const explicitlyByAdmin = adminConvSet?.has(convId) ?? false;
+    const notOwnContact = !contactId || !ownContactSet?.has(contactId);
+
+    if (explicitlyByAdmin || notOwnContact) {
+      counts.set(uid, (counts.get(uid) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
 export async function listConversations(
   user: AuthUser,
   filters: ConversationFilters,
@@ -133,37 +231,11 @@ export async function listConversations(
   if (filters.groups) query.groupId = { $exists: true, $ne: null };
 
   if (filters.assignedByAdmin) {
-    const adminAssignments = await ConversationAssignment.find({
-      tenantId: user.tenantId,
-      assignedUserId: user.userId,
-      $expr: { $ne: ['$assignedBy', '$assignedUserId'] },
-    })
-      .select('conversationId')
-      .lean();
-    const adminAssignedIds = adminAssignments.map((assignment) => assignment.conversationId);
-
-    const ownContacts = await Contact.find({
-      tenantId: user.tenantId,
-      assignedUserId: user.userId,
-    })
-      .select('_id')
-      .lean();
-    const ownContactIds = ownContacts.map((contact) => contact._id);
-
-    const assignedByAdminClause = {
-      $or: [
-        { _id: { $in: adminAssignedIds } },
-        {
-          assignedUserId: user.userId,
-          $or: [
-            { contactId: { $exists: false } },
-            { contactId: null },
-            { contactId: { $nin: ownContactIds } },
-          ],
-        },
-      ],
-    };
-
+    const targetUserId =
+      filters.assignedUserId && user.role === 'ADMIN'
+        ? filters.assignedUserId
+        : user.userId;
+    const assignedByAdminClause = await buildAssignedByAdminClause(user.tenantId, targetUserId);
     query.$and = [...((query.$and as unknown[]) ?? []), assignedByAdminClause];
   }
 

@@ -159,7 +159,8 @@ export function AdminDashboard() {
             <div>
               <h2 className="text-lg font-semibold">Users</h2>
               <p className="text-xs text-muted-foreground">
-                Team users — click to view profile and assigned conversations
+                Assigned by admin = chats you assigned from the inbox (not contacts they created
+                themselves). Click a user for details.
               </p>
             </div>
             <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
@@ -191,9 +192,15 @@ export function AdminDashboard() {
                       </div>
                     </Link>
                     <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{teamUser.total}</span> assigned
-                      </span>
+                      <div className="text-right text-sm text-muted-foreground">
+                        <p>
+                          <span className="font-medium text-foreground">{teamUser.assignedByAdmin}</span>{' '}
+                          by admin
+                        </p>
+                        <p className="text-xs">
+                          {teamUser.total} total assigned
+                        </p>
+                      </div>
                       <DeleteTeamUserButton userId={teamUser._id} userName={teamUser.name} />
                     </div>
                   </div>

@@ -68,6 +68,8 @@ export interface TeamAgentWorkloadDTO extends TeamUserDTO {
   open: number;
   pending: number;
   total: number;
+  /** Chats assigned by an admin or from team inbox, excluding the user's own contacts. */
+  assignedByAdmin: number;
 }
 
 export interface AgentAnalyticsDTO extends TeamUserDTO {

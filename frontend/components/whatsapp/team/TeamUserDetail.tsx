@@ -161,7 +161,17 @@ export function TeamUserDetail({
 
       <section className="mt-6">
         <h2 className="mb-4 text-lg font-semibold">Workload</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Assigned by admin</p>
+            <p className="mt-2 text-3xl font-bold">{stats?.assignedByAdmin ?? 0}</p>
+            <Link
+              href={buildInboxHref({ assignedUserId: userId, assignedByAdmin: true })}
+              className="mt-2 inline-block text-xs font-medium text-whatsapp-dark hover:underline"
+            >
+              View in inbox
+            </Link>
+          </div>
           <div className="rounded-xl border bg-card p-4">
             <p className="text-sm text-muted-foreground">Total assigned</p>
             <p className="mt-2 text-3xl font-bold">{stats?.total ?? 0}</p>
