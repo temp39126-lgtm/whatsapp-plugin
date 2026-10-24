@@ -13,6 +13,8 @@ export interface IUser extends Document {
   profileImage?: string;
   about?: string;
   tokenVersion: number;
+  /** Set after the user completes email OTP at least once; later logins skip login OTP when SMTP is on. */
+  loginEmailOtpVerifiedAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   preferences?: {
@@ -43,6 +45,7 @@ const userSchema = new Schema<IUser>(
     tenantId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },
     tokenVersion: { type: Number, default: 0 },
+    loginEmailOtpVerifiedAt: { type: Date },
     profileImage: { type: String },
     about: { type: String, default: '', maxlength: 139 },
     passwordResetToken: { type: String, select: false },

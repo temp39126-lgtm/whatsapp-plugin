@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { AUTH_ROUTES, getDashboardPath } from '@/lib/auth-routes';
 import { clearLegacyAuthStorage, initHostAuthListener, requestHostAuth } from '@/lib/auth';
+import { clearOtpChallenge } from '@/lib/auth-otp';
 import { resetSocket } from '@/lib/socket';
 import type { AuthUser } from '@/types';
 import type { AuthOtpChallengeResponse, AuthSuccessResponse } from '@/lib/auth-otp';
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .get<AuthUser>('/me')
           .then(setUser)
           .catch(() => {
+            clearOtpChallenge();
             setUser(null);
           })
       )

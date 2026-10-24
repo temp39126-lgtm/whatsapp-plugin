@@ -95,6 +95,23 @@ describe('Email OTP auth', () => {
     const result = await completeLoginAfterOtp(verified);
     expect(result.token).toBeTruthy();
     expect(result.user.email).toBe('user@example.com');
+
+    const updated = await User.findOne({ email: 'user@example.com' });
+    expect(updated?.loginEmailOtpVerifiedAt).toBeInstanceOf(Date);
+  });
+
+  it('skips login OTP on later sign-ins after email was verified once', async () => {
+    await User.updateOne(
+      { email: 'user@example.com' },
+      { $set: { loginEmailOtpVerifiedAt: new Date() } }
+    );
+
+    const result = await loginWithPassword('user@example.com', 'user123');
+    expect('requiresOtp' in result).toBe(false);
+    if (!('requiresOtp' in result)) {
+      expect(result.token).toBeTruthy();
+      expect(result.user.email).toBe('user@example.com');
+    }
   });
 
   it('requires OTP during signup when SMTP is configured', async () => {

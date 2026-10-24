@@ -161,6 +161,7 @@ export async function completeSignupAfterOtp(challenge: {
     role: 'USER',
     tenantId: challenge.tenantId,
     isActive: true,
+    loginEmailOtpVerifiedAt: new Date(),
   });
 
   return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
@@ -185,13 +186,15 @@ export async function loginWithPassword(
   }
 
   if (await isTenantEmailConfigured(user.tenantId)) {
-    return startEmailOtpChallenge({
-      email: user.email,
-      tenantId: user.tenantId,
-      purpose: 'login',
-      payload: { userId: user._id.toString() },
-      name: user.name,
-    });
+    if (!user.loginEmailOtpVerifiedAt) {
+      return startEmailOtpChallenge({
+        email: user.email,
+        tenantId: user.tenantId,
+        purpose: 'login',
+        payload: { userId: user._id.toString() },
+        name: user.name,
+      });
+    }
   }
 
   return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
@@ -209,6 +212,11 @@ export async function completeLoginAfterOtp(challenge: {
 
   if (!user) {
     throw new AppError(401, 'Invalid verification session. Please sign in again.');
+  }
+
+  if (!user.loginEmailOtpVerifiedAt) {
+    user.loginEmailOtpVerifiedAt = new Date();
+    await user.save();
   }
 
   return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
@@ -313,6 +321,7 @@ export async function resetPasswordWithToken(
   user.passwordHash = await bcrypt.hash(password, 10);
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  user.loginEmailOtpVerifiedAt = undefined;
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
 
