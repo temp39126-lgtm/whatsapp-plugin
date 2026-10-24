@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { hasPermission } from '@/lib/permissions';
+import type { Permission } from '@shared/constants/permissions';
 
 function LoadingSpinner() {
   return (
@@ -12,39 +14,54 @@ function LoadingSpinner() {
   );
 }
 
+type DashboardRoleGuardProps = {
+  children: React.ReactNode;
+  allowedRole?: 'ADMIN' | 'USER';
+  /** User must have this permission (admins always pass). */
+  requiredPermission?: Permission;
+  /** When guarding admin workspace, also allow users with this permission. */
+  alsoAllowPermission?: Permission;
+  redirectTo?: string;
+};
+
 export function DashboardRoleGuard({
   allowedRole,
+  requiredPermission,
+  alsoAllowPermission,
+  redirectTo = '/whatsapp/user',
   children,
-}: {
-  allowedRole: 'ADMIN' | 'USER';
-  children: React.ReactNode;
-}) {
+}: DashboardRoleGuardProps) {
   const { user, isLoading, isAdmin } = useAuth();
   const router = useRouter();
 
+  const allowedByPermission = requiredPermission
+    ? hasPermission(user, requiredPermission)
+    : false;
+
+  const allowedAdminWorkspace =
+    isAdmin || (alsoAllowPermission ? hasPermission(user, alsoAllowPermission) : false);
+
+  const allowedByRole =
+    allowedRole === 'ADMIN'
+      ? allowedAdminWorkspace
+      : allowedRole === 'USER'
+        ? !isAdmin
+        : true;
+
+  const canAccess = requiredPermission ? allowedByPermission : allowedByRole;
+
   useEffect(() => {
     if (isLoading || !user) return;
-
-    if (allowedRole === 'ADMIN' && !isAdmin) {
-      router.replace('/whatsapp/user');
-    } else if (allowedRole === 'USER' && isAdmin) {
-      router.replace('/whatsapp/admin');
+    if (!canAccess) {
+      router.replace(redirectTo);
     }
-  }, [allowedRole, isAdmin, isLoading, router, user]);
+  }, [canAccess, isLoading, redirectTo, router, user]);
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  if (!user) {
-    return null;
-  }
-
-  if (allowedRole === 'ADMIN' && !isAdmin) {
-    return null;
-  }
-
-  if (allowedRole === 'USER' && isAdmin) {
+  if (!user || !canAccess) {
     return null;
   }
 

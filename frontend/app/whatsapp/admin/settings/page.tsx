@@ -5,7 +5,7 @@ import { AdminSettingsPage } from '@/components/whatsapp/admin/AdminSettingsPage
 
 export default function AdminSettingsRoutePage() {
   return (
-    <DashboardRoleGuard allowedRole="ADMIN">
+    <DashboardRoleGuard requiredPermission="manage_settings">
       <AdminSettingsPage />
     </DashboardRoleGuard>
   );

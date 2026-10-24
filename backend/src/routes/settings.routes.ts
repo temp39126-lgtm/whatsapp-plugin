@@ -12,7 +12,13 @@ import {
   testNotificationEmailSchema,
   testWhatsAppConnectionSchema,
 } from '../validators/settings.validator';
-import { createTeamUserSchema, changePasswordSchema, changeEmailSchema } from '../validators/auth.validator';
+import {
+  createTeamUserSchema,
+  changePasswordSchema,
+  changeEmailSchema,
+  updateTeamUserPermissionsSchema,
+} from '../validators/auth.validator';
+import { requireAnyPermission } from '../middleware/requireAnyPermission';
 import { avatarUploadMiddleware } from '../middleware/upload';
 import * as controller from '../controllers/settings.controller';
 import * as profileController from '../controllers/profile.controller';
@@ -43,61 +49,63 @@ router.put(
 );
 router.put('/profile/email', validateBody(changeEmailSchema), profileController.changeEmail);
 router.get('/settings/connection', controller.getConnectionStatus);
-router.get('/settings/account', requireRole('ADMIN'), requirePermission('manage_settings'), controller.getAccountSettings);
+router.get('/settings/account', requirePermission('manage_settings'), controller.getAccountSettings);
 router.put(
   '/settings/account',
-  requireRole('ADMIN'),
   requirePermission('manage_settings'),
   validateBody(updateWhatsAppAccountSchema),
   controller.updateAccountSettings
 );
 router.post(
   '/settings/account/test-connection',
-  requireRole('ADMIN'),
   requirePermission('manage_settings'),
   validateBody(testWhatsAppConnectionSchema),
   controller.testAccountConnection
 );
 router.get(
   '/settings/notifications',
-  requireRole('ADMIN'),
   requirePermission('manage_settings'),
   controller.getNotificationSettings
 );
 router.put(
   '/settings/notifications',
-  requireRole('ADMIN'),
   requirePermission('manage_settings'),
   validateBody(updateTenantNotificationSettingsSchema),
   controller.updateNotificationSettings
 );
 router.post(
   '/settings/notifications/test',
-  requireRole('ADMIN'),
   requirePermission('manage_settings'),
   adminEmailRateLimiter,
   validateBody(testNotificationEmailSchema),
   controller.sendNotificationTestEmail
 );
-router.get('/settings/webhook', requireRole('ADMIN'), controller.getWebhookInfo);
-router.get('/team/workload', requireRole('ADMIN'), requirePermission('manage_team'), controller.getTeamWorkload);
-router.get('/team/users', requireRole('ADMIN'), requirePermission('manage_team'), controller.listTeamUsers);
+router.get('/settings/webhook', requirePermission('manage_settings'), controller.getWebhookInfo);
+router.get('/team/workload', requirePermission('manage_team'), controller.getTeamWorkload);
+router.get(
+  '/team/users',
+  requireAnyPermission('manage_team', 'assign_conversations'),
+  controller.listTeamUsers
+);
 router.get(
   '/team/users/:id/avatar',
-  requireRole('ADMIN'),
-  requirePermission('manage_team'),
+  requireAnyPermission('manage_team', 'assign_conversations'),
   controller.getTeamUserAvatar
 );
 router.post(
   '/team/users',
-  requireRole('ADMIN'),
   requirePermission('manage_team'),
   validateBody(createTeamUserSchema),
   controller.createTeamUserAccount
 );
+router.put(
+  '/team/users/:id/permissions',
+  requirePermission('manage_team'),
+  validateBody(updateTeamUserPermissionsSchema),
+  controller.updateTeamUserPermissionsAccount
+);
 router.delete(
   '/team/users/:id',
-  requireRole('ADMIN'),
   requirePermission('manage_team'),
   controller.deleteTeamUserAccount
 );

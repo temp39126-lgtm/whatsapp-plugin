@@ -6,6 +6,7 @@ import {
   createTeamUser,
   deleteTeamUser,
   getTeamUserAvatarStorageKey,
+  updateTeamUserPermissions,
 } from '../services/users/teamUserService';
 import { readAvatar } from '../services/avatars/avatarService';
 import { saveWhatsAppAccount } from '../services/whatsapp/whatsappService';
@@ -120,6 +121,23 @@ export async function createTeamUserAccount(
   try {
     const user = await createTeamUser(req.user!, req.body);
     res.status(201).json(user);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateTeamUserPermissionsAccount(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const user = await updateTeamUserPermissions(
+      req.user!,
+      getParam(req.params.id),
+      req.body.permissions
+    );
+    res.json(user);
   } catch (error) {
     next(error);
   }

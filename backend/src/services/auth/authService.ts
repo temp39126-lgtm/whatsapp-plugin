@@ -5,7 +5,7 @@ import { User } from '../../models/User';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { AuthUser, AppError } from '../../types';
-import { ADMIN_PERMISSIONS } from '../../constants/permissions';
+import { sanitizeStoredPermissions } from '../../utils/userPermissions';
 import { isTenantEmailConfigured, sendPasswordResetEmail } from '../email/emailService';
 import {
   buildOtpChallengeResponse,
@@ -17,6 +17,7 @@ export function userToAuthUser(user: {
   _id: { toString(): string };
   tenantId: string;
   role: 'ADMIN' | 'USER';
+  permissions?: string[];
   email: string;
   name: string;
   profileImage?: string;
@@ -25,7 +26,7 @@ export function userToAuthUser(user: {
     userId: user._id.toString(),
     tenantId: user.tenantId,
     role: user.role,
-    permissions: user.role === 'ADMIN' ? [...ADMIN_PERMISSIONS] : [],
+    permissions: sanitizeStoredPermissions(user.role, user.permissions),
     email: user.email,
     name: user.name,
     profileImage: user.profileImage ? '/api/whatsapp/profile/avatar' : undefined,

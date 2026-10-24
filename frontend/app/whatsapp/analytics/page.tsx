@@ -43,7 +43,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <DashboardRoleGuard allowedRole="ADMIN">
+    <DashboardRoleGuard requiredPermission="view_analytics">
       <div className="h-full min-w-0 overflow-y-auto p-4 sm:p-6">
       <h1 className="mb-4 text-xl font-semibold sm:mb-6 sm:text-2xl">Analytics</h1>
 

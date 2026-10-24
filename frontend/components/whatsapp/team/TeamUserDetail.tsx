@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Inbox, Mail, Shield, User } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import type { Permission } from '@shared/constants/permissions';
+import { TeamUserPermissionPicker } from '@/components/whatsapp/team/TeamUserPermissionPicker';
+import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { buildInboxHref } from '@/lib/inbox-filters';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
@@ -24,6 +28,20 @@ export function TeamUserDetail({
   backLabel = 'Back to dashboard',
 }: TeamUserDetailProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [permMessage, setPermMessage] = useState('');
+
+  const savePermissions = useMutation({
+    mutationFn: (next: Permission[]) =>
+      api.put<TeamUserDTO>(`/team/users/${userId}/permissions`, { permissions: next }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-users'] });
+      setPermMessage('Permissions updated. The user must sign in again for changes to apply.');
+    },
+    onError: (error) =>
+      setPermMessage(error instanceof Error ? error.message : 'Failed to update permissions'),
+  });
   const { data: teamUsers = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: ['team-users'],
     queryFn: () => api.get<TeamUserDTO[]>('/team/users'),
@@ -42,6 +60,12 @@ export function TeamUserDetail({
   const user = teamUsers.find((member) => member._id === userId);
   const stats = workload.find((entry) => entry._id === userId);
   const conversations = assignedConversations?.data ?? [];
+
+  useEffect(() => {
+    if (user?.permissions) {
+      setPermissions(user.permissions as Permission[]);
+    }
+  }, [user?._id, user?.permissions]);
 
   if (isLoadingUsers || isLoadingWorkload) {
     return (
@@ -109,6 +133,31 @@ export function TeamUserDetail({
           </div>
         </div>
       </div>
+
+      {user.role === 'USER' && (
+        <section className="mt-6 max-w-3xl">
+          <h2 className="mb-3 text-lg font-semibold">Permissions</h2>
+          <TeamUserPermissionPicker
+            value={permissions}
+            onChange={setPermissions}
+            disabled={savePermissions.isPending}
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="whatsapp"
+              disabled={savePermissions.isPending}
+              onClick={() => {
+                setPermMessage('');
+                savePermissions.mutate(permissions);
+              }}
+            >
+              {savePermissions.isPending ? 'Saving...' : 'Save permissions'}
+            </Button>
+            {permMessage && <p className="text-sm text-muted-foreground">{permMessage}</p>}
+          </div>
+        </section>
+      )}
 
       <section className="mt-6">
         <h2 className="mb-4 text-lg font-semibold">Workload</h2>

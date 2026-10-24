@@ -1,10 +1,10 @@
-import { AuthUser } from '../../types';
+import { AuthUser, AppError, hasPermission } from '../../types';
 import { Conversation, IConversation } from '../../models/Conversation';
-import { AppError } from '../../types';
+import { PERMISSIONS } from '../../constants/permissions';
 
 export function canAccessConversation(user: AuthUser, conversation: IConversation): boolean {
   if (conversation.tenantId !== user.tenantId) return false;
-  if (user.role === 'ADMIN') return true;
+  if (hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) return true;
   if (conversation.assignedUserId === user.userId) return true;
   if (conversation.permittedUsers.includes(user.userId)) return true;
   return false;
@@ -54,7 +54,7 @@ export function buildConversationFilter(user: AuthUser, filters: Record<string, 
   const { $or: filterOr, $and: filterAnd, ...rest } = filters;
   const base: Record<string, unknown> = { tenantId: user.tenantId, ...rest };
 
-  if (user.role === 'ADMIN') {
+  if (hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     if (filterOr) base.$or = filterOr;
     if (filterAnd) base.$and = filterAnd;
     return base;

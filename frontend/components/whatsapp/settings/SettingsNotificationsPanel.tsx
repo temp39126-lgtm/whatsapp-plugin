@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { UserProfile } from '@/types';
-import { useAuth } from '@/components/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SettingsToggle } from './SettingsToggle';
 import { TenantEmailSettingsSection } from './TenantEmailSettingsSection';
 import { useUpdatePreferences } from '@/hooks/useProfile';
@@ -13,7 +13,7 @@ interface SettingsNotificationsPanelProps {
 }
 
 export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPanelProps) {
-  const { isAdmin } = useAuth();
+  const { canManageSettings } = usePermissions();
   const [message, setMessage] = useState('');
   const updatePreferences = useUpdatePreferences(() => setMessage('Notification settings saved'));
   const notifications = profile.preferences.notifications;
@@ -89,7 +89,7 @@ export function SettingsNotificationsPanel({ profile }: SettingsNotificationsPan
         {message && <p className="py-3 text-sm text-whatsapp-dark">{message}</p>}
       </div>
 
-      {isAdmin && (
+      {canManageSettings && (
         <div className="mt-2 border-t">
           <TenantEmailSettingsSection compact />
         </div>

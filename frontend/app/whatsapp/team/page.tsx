@@ -9,23 +9,31 @@ import { DashboardRoleGuard } from '@/components/whatsapp/dashboard/DashboardRol
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { TeamUserDTO } from '@/types';
+import type { Permission } from '@shared/constants/permissions';
+import { TeamUserPermissionPicker } from '@/components/whatsapp/team/TeamUserPermissionPicker';
 
 export default function TeamPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [message, setMessage] = useState('');
 
   const createUser = useMutation({
-    mutationFn: (payload: { name: string; email: string; password: string }) =>
-      api.post<TeamUserDTO>('/team/users', payload),
+    mutationFn: (payload: {
+      name: string;
+      email: string;
+      password: string;
+      permissions: Permission[];
+    }) => api.post<TeamUserDTO>('/team/users', payload),
     onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ['team-users'] });
       queryClient.invalidateQueries({ queryKey: ['team-workload'] });
       setName('');
       setEmail('');
       setPassword('');
+      setPermissions([]);
       const emailNote =
         user.welcomeEmailSent === true
           ? `A welcome email with login details was sent to ${user.email}.`
@@ -45,11 +53,16 @@ export default function TeamPage() {
   function handleCreateUser(event: React.FormEvent) {
     event.preventDefault();
     setMessage('');
-    createUser.mutate({ name: name.trim(), email: email.trim(), password });
+    createUser.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      permissions,
+    });
   }
 
   return (
-    <DashboardRoleGuard allowedRole="ADMIN">
+    <DashboardRoleGuard requiredPermission="manage_team">
       <div className="overflow-y-auto p-4 sm:p-6">
       <div className="mb-6">
         <Link
@@ -110,6 +123,9 @@ export default function TeamPage() {
             {createUser.isPending ? 'Creating...' : 'Create user'}
           </Button>
         </form>
+        <div className="mt-4">
+          <TeamUserPermissionPicker value={permissions} onChange={setPermissions} />
+        </div>
         {message && (
           <p
             className={`mt-3 text-sm ${

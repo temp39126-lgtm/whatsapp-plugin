@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/components/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ function selectionChipClass(selected: boolean, selectedClass?: string) {
 }
 
 export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, canAssignConversations, canManageTags } = usePermissions();
   const queryClient = useQueryClient();
   const [showMembers, setShowMembers] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
@@ -66,7 +66,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
-  const { data: teamUsers = [] } = useTeamUsers(isAdmin);
+  const { data: teamUsers = [] } = useTeamUsers(canAssignConversations);
 
   const { data: notes } = useQuery({
     queryKey: ['notes', conversation?._id],
@@ -243,17 +243,19 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             </>
           )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4 text-red-600 hover:bg-red-50 hover:text-red-700"
-            disabled={isDeleting || (!isGroup && !contact?._id)}
-            onClick={handleDelete}
-          >
-            <Trash2 className="mr-1 h-4 w-4" />
-            {isDeleting ? 'Deleting...' : isGroup ? 'Delete group' : 'Delete contact'}
-          </Button>
+          {isAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4 text-red-600 hover:bg-red-50 hover:text-red-700"
+              disabled={isDeleting || (!isGroup && !contact?._id)}
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              {isDeleting ? 'Deleting...' : isGroup ? 'Delete group' : 'Delete contact'}
+            </Button>
+          )}
 
           {actionMessage && (
             <p className="mt-2 text-xs text-muted-foreground">{actionMessage}</p>
@@ -349,7 +351,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
             Tags
           </h4>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            {isAdmin ? (
+            {canManageTags ? (
               <>
                 Click a tag to assign it to this chat. Use × to delete a tag from the workspace.{' '}
                 <Link href="/whatsapp/tags" className="text-whatsapp underline">
@@ -360,7 +362,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
               'Click a tag to assign it to this chat.'
             )}
           </p>
-          {isAdmin && (
+          {canManageTags && (
             <form onSubmit={handleCreateTag} className="mb-2 flex gap-2">
               <Input
                 value={newTagName}
@@ -393,7 +395,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
                   >
                     {tag.name}
                   </button>
-                  {isAdmin && (
+                  {canManageTags && (
                     <button
                       type="button"
                       aria-label={`Delete tag ${tag.name}`}
@@ -414,7 +416,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Assigned User
           </h4>
-          {isAdmin ? (
+          {canAssignConversations ? (
             <>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                 Choose a user to own this chat, or select Unassigned to handle it as admin only.
@@ -459,7 +461,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           )}
         </section>
 
-        {isAdmin && !isGroup && (
+        {canAssignConversations && !isGroup && (
           <section>
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Shared access

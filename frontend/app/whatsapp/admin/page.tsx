@@ -5,7 +5,7 @@ import { DashboardRoleGuard } from '@/components/whatsapp/dashboard/DashboardRol
 
 export default function AdminDashboardPage() {
   return (
-    <DashboardRoleGuard allowedRole="ADMIN">
+    <DashboardRoleGuard allowedRole="ADMIN" alsoAllowPermission="manage_team">
       <AdminDashboard />
     </DashboardRoleGuard>
   );

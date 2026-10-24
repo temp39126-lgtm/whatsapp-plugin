@@ -58,6 +58,7 @@ export interface TeamUserDTO {
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
+  permissions?: string[];
   profileImage?: string;
   /** Present when the user was just created by an admin. */
   welcomeEmailSent?: boolean;

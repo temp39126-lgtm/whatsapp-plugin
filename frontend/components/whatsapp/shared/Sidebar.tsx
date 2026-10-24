@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
+import { hasPermission } from '@/lib/permissions';
+import type { Permission } from '@shared/constants/permissions';
 import {
   Tooltip,
   TooltipContent,
@@ -22,13 +24,31 @@ import {
 } from '@/components/ui/tooltip';
 import { SidebarNotifications } from '@/components/whatsapp/shared/SidebarNotifications';
 
-const navItems = [
-  { href: '/whatsapp/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
+const navItems: Array<{
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: Array<'ADMIN' | 'USER'>;
+  permission?: Permission;
+}> = [
+  {
+    href: '/whatsapp/admin',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    roles: ['ADMIN'],
+    permission: 'manage_team',
+  },
   { href: '/whatsapp/user', label: 'Dashboard', icon: LayoutDashboard, roles: ['USER'] },
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'USER'] },
-  { href: '/whatsapp/analytics', label: 'Analytics', icon: BarChart3, roles: ['ADMIN'] },
+  {
+    href: '/whatsapp/analytics',
+    label: 'Analytics',
+    icon: BarChart3,
+    roles: ['ADMIN', 'USER'],
+    permission: 'view_analytics',
+  },
   { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'USER'] },
 ];
 
@@ -88,9 +108,19 @@ export function Sidebar() {
   const { user, isAdmin, logout } = useAuth();
   const showTooltips = useCollapsedSidebar();
 
-  const filteredItems = navItems.filter(
-    (item) => user && item.roles.includes(user.role)
-  );
+  const filteredItems = navItems.filter((item) => {
+    if (!user) return false;
+    if (item.href === '/whatsapp/admin') {
+      return isAdmin || hasPermission(user, 'manage_team');
+    }
+    if (item.href === '/whatsapp/user') {
+      return user.role === 'USER';
+    }
+    if (item.permission) {
+      return item.roles.includes(user.role) && hasPermission(user, item.permission);
+    }
+    return item.roles.includes(user.role);
+  });
 
   const logoutButton = (
     <button
@@ -104,35 +134,24 @@ export function Sidebar() {
   );
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <aside className="flex h-full w-16 shrink-0 flex-col items-center border-r bg-whatsapp-dark py-4 lg:w-56 lg:items-stretch lg:px-3">
-        <div className="mb-6 flex items-center justify-center lg:justify-start lg:px-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-            <MessageSquare className="h-5 w-5 text-white" />
-          </div>
-          <span className="ml-3 hidden text-lg font-semibold text-white lg:block">
-            WhatsApp CRM
-          </span>
+    <TooltipProvider delayDuration={0}>
+      <aside className="flex h-full w-16 flex-col bg-whatsapp p-2 lg:w-56">
+        <div className="flex items-center justify-center gap-2 px-3 py-5 lg:justify-start">
+          <MessageSquare className="h-6 w-6 shrink-0 text-white" />
+          <span className="hidden text-sm font-semibold text-white lg:block">WhatsApp CRM</span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1">
-          {filteredItems.map((item) => {
-            const isActive =
-              item.href === '/whatsapp/admin' || item.href === '/whatsapp/user'
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
-
-            return (
-              <SidebarNavLink
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                isActive={isActive}
-                showTooltip={showTooltips}
-              />
-            );
-          })}
+        <nav className="flex flex-1 flex-col gap-1 px-2">
+          {filteredItems.map((item) => (
+            <SidebarNavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+              showTooltip={showTooltips}
+            />
+          ))}
         </nav>
 
         <SidebarNotifications collapsed={showTooltips} />

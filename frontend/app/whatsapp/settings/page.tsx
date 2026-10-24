@@ -12,7 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { WhatsAppConnectionStatus } from '@/types';
-import { useAuth } from '@/components/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUserProfile } from '@/hooks/useProfile';
 import { SettingsMenuItem } from '@/components/whatsapp/settings/SettingsMenuItem';
 import { SettingsProfileHeader } from '@/components/whatsapp/settings/SettingsProfileHeader';
@@ -34,7 +34,7 @@ const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
 };
 
 export default function SettingsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, canManageSettings } = usePermissions();
   const [panel, setPanel] = useState<SettingsPanel>('home');
   const [avatarVersion, setAvatarVersion] = useState(0);
 
@@ -97,7 +97,7 @@ export default function SettingsPage() {
 
         {panel === 'account' && <SettingsAccountPanel profile={profile} />}
         {panel === 'notifications' && <SettingsNotificationsPanel profile={profile} />}
-        {isAdmin && panel === 'metaCloudApi' && <SettingsMetaCloudPanel />}
+        {canManageSettings && panel === 'metaCloudApi' && <SettingsMetaCloudPanel />}
         {!isAdmin && panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
         {!isAdmin && panel === 'whatsapp' && (
           <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
@@ -138,7 +138,7 @@ export default function SettingsPage() {
           }
           onClick={() => setPanel('notifications')}
         />
-        {isAdmin && (
+        {canManageSettings && (
           <SettingsMenuItem
             icon={Cloud}
             title="Meta Cloud API"

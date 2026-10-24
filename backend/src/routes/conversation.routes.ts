@@ -25,7 +25,6 @@ router.post('/read-all', controller.markAllRead);
 router.get('/:id', conversationAccess(), controller.getConversation);
 router.post(
   '/:id/assign',
-  requireRole('ADMIN'),
   requirePermission('assign_conversations'),
   conversationAccess(),
   validateBody(assignConversationSchema),
@@ -51,7 +50,6 @@ router.put(
 );
 router.put(
   '/:id/permitted-users',
-  requireRole('ADMIN'),
   requirePermission('assign_conversations'),
   conversationAccess(),
   validateBody(updatePermittedUsersSchema),

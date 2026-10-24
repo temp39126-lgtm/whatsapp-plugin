@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import { ADMIN_PERMISSIONS } from '../constants/permissions';
+
+const permissionEnum = z.enum(ADMIN_PERMISSIONS as unknown as [string, ...string[]]);
+
+export const teamUserPermissionsSchema = z
+  .array(permissionEnum)
+  .optional()
+  .default([]);
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -48,4 +56,10 @@ export const changeEmailSchema = z.object({
   currentPassword: z.string().min(1, 'Password is required to change email'),
 });
 
-export const createTeamUserSchema = signupSchema;
+export const createTeamUserSchema = signupSchema.extend({
+  permissions: teamUserPermissionsSchema,
+});
+
+export const updateTeamUserPermissionsSchema = z.object({
+  permissions: teamUserPermissionsSchema,
+});

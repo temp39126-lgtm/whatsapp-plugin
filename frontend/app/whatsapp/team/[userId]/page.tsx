@@ -9,7 +9,7 @@ export default function TeamUserPage() {
   const userId = params.userId as string;
 
   return (
-    <DashboardRoleGuard allowedRole="ADMIN">
+    <DashboardRoleGuard requiredPermission="manage_team">
       <TeamUserDetail userId={userId} />
     </DashboardRoleGuard>
   );

@@ -10,6 +10,8 @@ import { AuthUser, AppError } from '../../types';
 import { logActivity } from '../rbac/activityLog';
 import { sendTeamUserWelcomeEmail } from '../email/emailService';
 import { logger } from '../../config/logger';
+import { sanitizeStoredPermissions } from '../../utils/userPermissions';
+import { incrementUserTokenVersion } from '../auth/authService';
 
 export function teamUserAvatarUrl(userId: string, profileImage?: string) {
   return profileImage ? `/api/whatsapp/team/users/${userId}/avatar` : undefined;
@@ -20,6 +22,7 @@ function mapTeamUser(entry: {
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
+  permissions?: string[];
   profileImage?: string;
 }) {
   const id = entry._id.toString();
@@ -28,6 +31,7 @@ function mapTeamUser(entry: {
     name: entry.name,
     email: entry.email,
     role: entry.role,
+    permissions: sanitizeStoredPermissions(entry.role, entry.permissions),
     profileImage: teamUserAvatarUrl(id, entry.profileImage),
   };
 }
@@ -95,7 +99,7 @@ export async function purgeInactiveTeamUsers(): Promise<number> {
 
 export async function createTeamUser(
   admin: AuthUser,
-  input: { name: string; email: string; password: string }
+  input: { name: string; email: string; password: string; permissions?: string[] }
 ) {
   const normalizedEmail = input.email.toLowerCase().trim();
   const existing = await User.findOne({ email: normalizedEmail, tenantId: admin.tenantId });
@@ -113,12 +117,15 @@ export async function createTeamUser(
     );
   }
 
+  const permissions = sanitizeStoredPermissions('USER', input.permissions);
+
   const passwordHash = await bcrypt.hash(input.password, 10);
   const user = await User.create({
     email: normalizedEmail,
     passwordHash,
     name: input.name.trim(),
     role: 'USER',
+    permissions,
     tenantId: admin.tenantId,
     isActive: true,
   });
@@ -143,8 +150,40 @@ export async function createTeamUser(
     name: user.name,
     email: user.email,
     role: user.role as 'ADMIN' | 'USER',
+    permissions: sanitizeStoredPermissions(user.role, user.permissions),
     welcomeEmailSent,
   };
+}
+
+export async function updateTeamUserPermissions(
+  admin: AuthUser,
+  targetUserId: string,
+  permissions: string[]
+) {
+  const user = await User.findOne({
+    _id: targetUserId,
+    tenantId: admin.tenantId,
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  if (user.role === 'ADMIN') {
+    throw new AppError(400, 'Admin permissions cannot be edited here');
+  }
+
+  user.permissions = sanitizeStoredPermissions('USER', permissions);
+  await user.save();
+  await incrementUserTokenVersion(targetUserId);
+
+  await logActivity(admin, 'user.permissions_updated', 'user', targetUserId, {
+    email: user.email,
+    permissions: user.permissions,
+  });
+
+  return mapTeamUser(user);
 }
 
 export async function deleteTeamUser(admin: AuthUser, targetUserId: string) {
@@ -190,7 +229,9 @@ export async function listTeamUsers(user: AuthUser, options?: { agentsOnly?: boo
   const query: Record<string, unknown> = { tenantId: user.tenantId, isActive: true };
   if (options?.agentsOnly) query.role = 'USER';
 
-  const users = await User.find(query, 'name email role profileImage').sort({ name: 1 }).lean();
+  const users = await User.find(query, 'name email role permissions profileImage')
+    .sort({ name: 1 })
+    .lean();
 
   return users.map((entry) => mapTeamUser(entry));
 }

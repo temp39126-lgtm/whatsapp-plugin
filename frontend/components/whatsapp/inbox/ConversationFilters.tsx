@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/components/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +40,7 @@ function clearAssignmentFilters(filters: Record<string, string | boolean | undef
 }
 
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
-  const { isAdmin } = useAuth();
+  const { canViewAllConversations } = usePermissions();
   const allActive = isAllFiltersActive(filters);
 
   function showAllConversations() {
@@ -107,7 +107,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         </button>
       </div>
 
-      {isAdmin && (
+      {canViewAllConversations && (
         <div className="flex flex-wrap gap-1">
           <button
             type="button"

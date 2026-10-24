@@ -7,6 +7,7 @@ export interface IUser extends Document {
   passwordHash: string;
   name: string;
   role: UserRole;
+  permissions: string[];
   tenantId: string;
   isActive: boolean;
   profileImage?: string;
@@ -38,6 +39,7 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     name: { type: String, required: true },
     role: { type: String, enum: ['ADMIN', 'USER'], required: true },
+    permissions: { type: [String], default: [] },
     tenantId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },
     tokenVersion: { type: Number, default: 0 },

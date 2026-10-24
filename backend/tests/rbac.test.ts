@@ -59,6 +59,16 @@ describe('RBAC conversation access', () => {
     expect(canAccessConversation(otherAgent, conversation)).toBe(false);
   });
 
+  it('allows user with view_all_conversations on unassigned chats', () => {
+    const powerUser: AuthUser = {
+      userId: 'agent-9',
+      tenantId: 'tenant-a',
+      role: 'USER',
+      permissions: ['view_all_conversations'],
+    };
+    expect(canAccessConversation(powerUser, conversation)).toBe(true);
+  });
+
   it('filters contact deletion events to conversations a user could access', () => {
     const conversations = [
       {
