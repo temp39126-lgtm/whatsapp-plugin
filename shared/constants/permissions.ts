@@ -51,7 +51,8 @@ export const PERMISSION_LABELS: Record<
 > = {
   [PERMISSIONS.VIEW_ALL_CONVERSATIONS]: {
     label: 'View all conversations',
-    description: 'See every chat in the inbox, not only assigned or shared chats.',
+    description:
+      'See every chat in the inbox, plus all contacts and call history. When off, only assigned and shared-access chats (and your assigned contacts) are visible.',
   },
   [PERMISSIONS.ASSIGN_CONVERSATIONS]: {
     label: 'Assign conversations',

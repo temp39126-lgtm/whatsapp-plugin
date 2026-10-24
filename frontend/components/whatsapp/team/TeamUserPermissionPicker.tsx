@@ -35,8 +35,9 @@ export function TeamUserPermissionPicker({
       <div>
         <p className="text-sm font-medium">Permissions</p>
         <p className="text-xs text-muted-foreground">
-          All users can use the inbox (assigned/shared chats), calls, and contacts. Select extra
-          access below.
+          By default, users see only chats assigned to them or shared with them, and their assigned
+          contacts. Tick permissions below for extra access. After saving, the user must sign in
+          again for changes to apply.
         </p>
       </div>
       {PERMISSION_GROUPS.map((group) => (

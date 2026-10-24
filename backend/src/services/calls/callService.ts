@@ -5,6 +5,8 @@ import { Conversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { buildConversationFilter, getAccessibleConversation } from '../rbac/conversationAccess';
+import { hasPermission } from '../../types';
+import { PERMISSIONS } from '../../constants/permissions';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { env } from '../../config/env';
 import { AppError } from '../../types';
@@ -70,7 +72,7 @@ export async function listActiveIncomingCalls(user: AuthUser): Promise<ActiveInc
     status: 'RINGING',
   };
 
-  if (user.role !== 'ADMIN') {
+  if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     const accessibleConversations = await Conversation.find(
       buildConversationFilter(user)
     ).select('_id');
@@ -103,7 +105,7 @@ export async function listCalls(user: AuthUser, page = 1, limit = 20) {
 
   let query: Record<string, unknown> = { tenantId: user.tenantId };
 
-  if (user.role !== 'ADMIN') {
+  if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     const accessibleConversations = await Conversation.find(
       buildConversationFilter(user)
     ).select('_id');

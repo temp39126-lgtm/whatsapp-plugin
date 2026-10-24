@@ -1,4 +1,5 @@
-import { AuthUser } from '../../types';
+import { AuthUser, hasPermission } from '../../types';
+import { PERMISSIONS } from '../../constants/permissions';
 import { Group } from '../../models/Group';
 import { Contact } from '../../models/Contact';
 import { Conversation } from '../../models/Conversation';
@@ -14,7 +15,7 @@ const memberFields = 'name phone whatsappId profileImage';
 export async function listGroups(user: AuthUser) {
   const query: Record<string, unknown> = { tenantId: user.tenantId };
 
-  if (user.role !== 'ADMIN') {
+  if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     const assignedContacts = await Contact.find({
       tenantId: user.tenantId,
       assignedUserId: user.userId,
@@ -39,7 +40,7 @@ export async function getGroup(user: AuthUser, groupId: string) {
 
   if (!group) throw new AppError(404, 'Group not found');
 
-  if (user.role !== 'ADMIN') {
+  if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     const contactIds = (group.contactIds as Array<{ _id?: unknown } | string>).map((contact) =>
       typeof contact === 'object' && contact && '_id' in contact ? contact._id : contact
     );

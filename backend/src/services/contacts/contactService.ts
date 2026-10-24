@@ -1,4 +1,5 @@
-import { AuthUser } from '../../types';
+import { AuthUser, hasPermission } from '../../types';
+import { PERMISSIONS } from '../../constants/permissions';
 import { Contact, IContact } from '../../models/Contact';
 import { Conversation, IConversation } from '../../models/Conversation';
 import { Call } from '../../models/Call';
@@ -121,7 +122,7 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
   const query: Record<string, unknown> = { tenantId: user.tenantId };
   const andClauses: Record<string, unknown>[] = [];
 
-  if (user.role !== 'ADMIN') {
+  if (!hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) {
     andClauses.push({ assignedUserId: user.userId });
   }
 
@@ -146,7 +147,7 @@ export async function listContacts(user: AuthUser, page = 1, limit = 20, search?
 }
 
 function canUserAccessContact(user: AuthUser, contact: IContact): boolean {
-  if (user.role === 'ADMIN') return true;
+  if (hasPermission(user, PERMISSIONS.VIEW_ALL_CONVERSATIONS)) return true;
   return contact.assignedUserId === user.userId;
 }
 
