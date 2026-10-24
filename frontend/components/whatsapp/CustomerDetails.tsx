@@ -18,7 +18,6 @@ import {
   useUpdateConversationPriority,
   useUpdateConversationStatus,
   useUpdateConversationTags,
-  useUpdatePermittedUsers,
 } from '@/hooks/useConversations';
 import { useDeleteContact, useUploadContactAvatar } from '@/hooks/useContacts';
 import { useDeleteGroup, useUploadGroupAvatar } from '@/hooks/useGroups';
