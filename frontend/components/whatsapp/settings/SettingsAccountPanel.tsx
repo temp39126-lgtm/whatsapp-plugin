@@ -14,6 +14,7 @@ import {
   useUpdateProfile,
   useUploadProfileAvatar,
 } from '@/hooks/useProfile';
+import { toastError, toastSuccess } from '@/lib/toast';
 import type { UserProfile } from '@/types';
 
 interface SettingsAccountPanelProps {
@@ -40,13 +41,15 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
 
   const updateProfile = useUpdateProfile((updated) => {
     refreshUser(profileToAuthUser(updated));
-    setMessage('Profile updated');
+    setMessage('');
+    toastSuccess('Your profile has been updated.');
   });
 
   const uploadAvatar = useUploadProfileAvatar((updated) => {
     refreshUser(profileToAuthUser(updated));
     setAvatarVersion((current) => current + 1);
-    setMessage('Profile photo updated');
+    setMessage('');
+    toastSuccess('Your profile photo has been updated.');
   });
 
   const changePassword = useChangePassword((result) => {
@@ -55,14 +58,16 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setMessage(result.message);
+    setMessage('');
+    toastSuccess(result.message);
   });
 
   const changeEmail = useChangeEmail((result) => {
     refreshUser(profileToAuthUser(result.profile));
     resetSocket();
     setEmailPassword('');
-    setMessage(result.message);
+    setMessage('');
+    toastSuccess(result.message);
   });
 
   function handleSave(event: React.FormEvent) {
@@ -70,8 +75,11 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     updateProfile.mutate(
       { name: name.trim(), about: about.trim() },
       {
-        onError: (error) =>
-          setMessage(error instanceof Error ? error.message : 'Failed to update profile'),
+        onError: (error) => {
+          const text = error instanceof Error ? error.message : 'Failed to update profile';
+          setMessage(text);
+          toastError(text);
+        },
       }
     );
   }
@@ -94,7 +102,9 @@ export function SettingsAccountPanel({ profile }: SettingsAccountPanelProps) {
     event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setMessage('New passwords do not match');
+      const text = 'New passwords do not match';
+      setMessage(text);
+      toastError(text);
       return;
     }
 
