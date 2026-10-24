@@ -11,7 +11,7 @@ export async function enforceActiveSession(
   const record = await User.findOne({
     _id: fallbackUser.userId,
     tenantId: fallbackUser.tenantId,
-  }).select('isActive tokenVersion role email name profileImage tenantId');
+  }).select('isActive tokenVersion role permissions email name profileImage tenantId');
 
   if (!record?.isActive) {
     throw new AppError(401, 'Account is inactive');
