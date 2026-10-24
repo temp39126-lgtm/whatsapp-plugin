@@ -110,7 +110,7 @@ export default function ContactsPage() {
               minLength={1}
             />
             <Input
-              placeholder="Phone number (e.g. +15551234567)"
+              placeholder="Phone number (e.g. 15551234567)"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               required
