@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import type { ConversationDTO } from '@/types';
 
@@ -18,6 +19,8 @@ export function ConversationList({
   onSelect,
   isLoading,
 }: ConversationListProps) {
+  const { canViewAllConversations } = usePermissions();
+
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center p-4">
@@ -80,6 +83,11 @@ export function ConversationList({
                 )}
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1">
+                {canViewAllConversations && conversation.assignedUser?.name ? (
+                  <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-800">
+                    {conversation.assignedUser.name}
+                  </span>
+                ) : null}
                 {isGroup && (
                   <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
                     Group

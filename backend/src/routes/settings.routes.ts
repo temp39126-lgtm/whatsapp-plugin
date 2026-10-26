@@ -81,10 +81,14 @@ router.post(
   controller.sendNotificationTestEmail
 );
 router.get('/settings/webhook', requirePermission('manage_settings'), controller.getWebhookInfo);
-router.get('/team/workload', requirePermission('manage_team'), controller.getTeamWorkload);
+router.get(
+  '/team/workload',
+  requireAnyPermission('manage_team', 'view_all_conversations'),
+  controller.getTeamWorkload
+);
 router.get(
   '/team/users',
-  requireAnyPermission('manage_team', 'assign_conversations'),
+  requireAnyPermission('manage_team', 'assign_conversations', 'view_all_conversations'),
   controller.listTeamUsers
 );
 router.get(

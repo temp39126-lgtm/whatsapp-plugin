@@ -6,22 +6,35 @@ import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/AuthProvider';
 import { useMarkAllRead } from '@/hooks/useConversations';
+import { usePermissions } from '@/hooks/usePermissions';
+import { applyAssigneeFilterChoice } from '@/lib/assignee-inbox-filter';
 import { NewCommunityModal } from './NewCommunityModal';
 import { NewGroupModal } from './NewGroupModal';
+import { AssigneeFilterDialog } from './AssigneeFilterDialog';
 
 type ActiveModal = 'group' | 'community' | null;
 
 const menuItems = [
   { id: 'new-group', label: 'New group' },
   { id: 'new-community', label: 'New community' },
+  { id: 'filter-assignee', label: 'Filter by assignee' },
   { id: 'read-all', label: 'Read all' },
   { id: 'settings', label: 'Settings' },
 ] as const;
 
-export function WhatsAppOverflowMenu() {
+type MenuItemId = (typeof menuItems)[number]['id'];
+
+interface WhatsAppOverflowMenuProps {
+  filters?: Record<string, string | boolean | undefined>;
+  onFiltersChange?: (filters: Record<string, string | boolean | undefined>) => void;
+}
+
+export function WhatsAppOverflowMenu({ filters, onFiltersChange }: WhatsAppOverflowMenuProps) {
   const router = useRouter();
   const { isAdmin } = useAuth();
+  const { canViewAllConversations } = usePermissions();
   const [open, setOpen] = useState(false);
+  const [assigneeDialogOpen, setAssigneeDialogOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [feedback, setFeedback] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -54,11 +67,15 @@ export function WhatsAppOverflowMenu() {
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
-  const visibleMenuItems = menuItems.filter(
-    (item) => item.id !== 'settings' || isAdmin
-  );
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.id === 'settings') return isAdmin;
+    if (item.id === 'filter-assignee') {
+      return canViewAllConversations && Boolean(onFiltersChange);
+    }
+    return true;
+  });
 
-  function handleMenuAction(actionId: (typeof menuItems)[number]['id']) {
+  function handleMenuAction(actionId: MenuItemId) {
     switch (actionId) {
       case 'new-group':
         setOpen(false);
@@ -67,6 +84,10 @@ export function WhatsAppOverflowMenu() {
       case 'new-community':
         setOpen(false);
         setActiveModal('community');
+        break;
+      case 'filter-assignee':
+        setOpen(false);
+        setAssigneeDialogOpen(true);
         break;
       case 'read-all':
         markAllRead.mutate(undefined, {
@@ -90,6 +111,9 @@ export function WhatsAppOverflowMenu() {
     }
   }
 
+  const assignedUserId = filters?.assignedUserId as string | undefined;
+  const unassignedActive = Boolean(filters?.unassigned);
+
   return (
     <>
       <div className="relative" ref={menuRef}>
@@ -104,7 +128,7 @@ export function WhatsAppOverflowMenu() {
         </Button>
 
         {open && (
-          <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] overflow-hidden rounded-lg border bg-background py-1 shadow-lg">
+          <div className="absolute right-0 top-full z-30 mt-1 min-w-[200px] overflow-hidden rounded-lg border bg-background py-1 shadow-lg">
             {visibleMenuItems.map((item) => (
               <button
                 key={item.id}
@@ -125,6 +149,19 @@ export function WhatsAppOverflowMenu() {
           </div>
         )}
       </div>
+
+      <AssigneeFilterDialog
+        open={assigneeDialogOpen}
+        activeUserId={assignedUserId}
+        unassignedActive={unassignedActive}
+        onClose={() => setAssigneeDialogOpen(false)}
+        onSelect={(choice) => {
+          if (onFiltersChange && filters) {
+            onFiltersChange(applyAssigneeFilterChoice(filters, choice));
+          }
+          setAssigneeDialogOpen(false);
+        }}
+      />
 
       <NewGroupModal
         open={activeModal === 'group'}

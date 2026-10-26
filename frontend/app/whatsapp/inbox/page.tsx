@@ -80,7 +80,7 @@ function InboxPageContent() {
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
-          <WhatsAppOverflowMenu />
+          <WhatsAppOverflowMenu filters={filters} onFiltersChange={setFilters} />
         </div>
         <ConversationFilters filters={filters} onChange={setFilters} />
         <ConversationList

@@ -1,8 +1,12 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { X } from 'lucide-react';
+import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import type { TeamAgentWorkloadDTO } from '@/types';
 
 interface ConversationFiltersProps {
   filters: Record<string, string | boolean | undefined>;
@@ -42,6 +46,20 @@ function clearAssignmentFilters(filters: Record<string, string | boolean | undef
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
   const { canViewAllConversations } = usePermissions();
   const allActive = isAllFiltersActive(filters);
+  const assignedUserId = filters.assignedUserId as string | undefined;
+  const unassignedActive = Boolean(filters.unassigned);
+
+  const { data: workload = [] } = useQuery({
+    queryKey: ['team-workload'],
+    queryFn: () => api.get<TeamAgentWorkloadDTO[]>('/team/workload'),
+    enabled: canViewAllConversations && (Boolean(assignedUserId) || unassignedActive),
+  });
+
+  const assigneeLabel = unassignedActive
+    ? 'Unassigned'
+    : assignedUserId
+      ? (workload.find((row) => row._id === assignedUserId)?.name ?? 'Selected user')
+      : undefined;
 
   function showAllConversations() {
     onChange({ search: filters.search });
@@ -55,6 +73,29 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         onChange={(e) => onChange({ ...filters, search: e.target.value })}
         className="h-9"
       />
+
+      {assigneeLabel ? (
+        <div className="flex items-center gap-2 rounded-lg border border-whatsapp/30 bg-whatsapp-light/40 px-3 py-2 text-sm">
+          <span className="min-w-0 flex-1 truncate">
+            Assignee: <span className="font-medium">{assigneeLabel}</span>
+          </span>
+          <button
+            type="button"
+            aria-label="Clear assignee filter"
+            onClick={() =>
+              onChange({
+                ...filters,
+                assignedUserId: undefined,
+                unassigned: undefined,
+                assigned: undefined,
+              })
+            }
+            className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-1">
         <button
