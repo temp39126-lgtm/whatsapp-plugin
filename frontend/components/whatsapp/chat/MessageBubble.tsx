@@ -2,7 +2,8 @@
 
 import { format } from 'date-fns';
 import { ChevronDown, Pin, Star, RotateCcw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { DeliveryStatus } from './DeliveryStatus';
 import { MessageMediaContent } from './MessageMediaContent';
@@ -22,6 +23,35 @@ interface MessageBubbleProps {
 }
 
 const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
+const MENU_MIN_WIDTH = 180;
+const VIEWPORT_PADDING = 8;
+
+type MenuPosition = { top: number; left: number };
+
+function computeMenuPosition(
+  anchor: DOMRect,
+  menuSize: { width: number; height: number },
+  alignEnd: boolean
+): MenuPosition {
+  const { width: menuWidth, height: menuHeight } = menuSize;
+
+  let top = anchor.bottom + VIEWPORT_PADDING;
+  if (top + menuHeight > window.innerHeight - VIEWPORT_PADDING) {
+    top = anchor.top - menuHeight - VIEWPORT_PADDING;
+  }
+  top = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(top, window.innerHeight - menuHeight - VIEWPORT_PADDING)
+  );
+
+  let left = alignEnd ? anchor.right - menuWidth : anchor.left;
+  left = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(left, window.innerWidth - menuWidth - VIEWPORT_PADDING)
+  );
+
+  return { top, left };
+}
 
 export function MessageBubble({
   message,
@@ -35,7 +65,9 @@ export function MessageBubble({
   onRetry,
 }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
   const isCallTimeline = message.type === 'CALL';
   const isOutgoing = message.direction === 'OUTGOING';
   const isDeletedForEveryone = Boolean(message.deletedForEveryone);
@@ -44,26 +76,90 @@ export function MessageBubble({
     !isDeletedForEveryone &&
     Date.now() - new Date(message.createdAt).getTime() <= DELETE_FOR_EVERYONE_WINDOW_MS;
 
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMenuPosition(null);
+  }, []);
+
+  const openMenuAtAnchor = useCallback(
+    (anchor: DOMRect) => {
+      const estimatedHeight = 280;
+      setMenuPosition(
+        computeMenuPosition(
+          anchor,
+          { width: MENU_MIN_WIDTH, height: estimatedHeight },
+          isOutgoing
+        )
+      );
+      setMenuOpen(true);
+    },
+    [isOutgoing]
+  );
+
+  const openMenuFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      openMenuAtAnchor(new DOMRect(clientX, clientY, 1, 1));
+    },
+    [openMenuAtAnchor]
+  );
+
+  const toggleMenuFromChevron = useCallback(() => {
+    if (menuOpen) {
+      closeMenu();
+      return;
+    }
+    const bubble = bubbleRef.current;
+    if (!bubble) return;
+    openMenuAtAnchor(bubble.getBoundingClientRect());
+  }, [closeMenu, menuOpen, openMenuAtAnchor]);
+
+  useLayoutEffect(() => {
+    if (!menuOpen || !menuPanelRef.current || !bubbleRef.current) return;
+    const panel = menuPanelRef.current.getBoundingClientRect();
+    const anchor = bubbleRef.current.getBoundingClientRect();
+    setMenuPosition(
+      computeMenuPosition(anchor, { width: panel.width, height: panel.height }, isOutgoing)
+    );
+  }, [menuOpen, isOutgoing]);
+
   useEffect(() => {
     if (!menuOpen) return;
 
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
+      const target = event.target as Node;
+      if (bubbleRef.current?.contains(target)) return;
+      if (menuPanelRef.current?.contains(target)) return;
+      closeMenu();
     }
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') closeMenu();
+    }
+
+    function handleDismissOnScroll() {
+      closeMenu();
     }
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
+    window.addEventListener('scroll', handleDismissOnScroll, true);
+    window.addEventListener('resize', handleDismissOnScroll);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('scroll', handleDismissOnScroll, true);
+      window.removeEventListener('resize', handleDismissOnScroll);
     };
-  }, [menuOpen]);
+  }, [menuOpen, closeMenu]);
+
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isDeletedForEveryone) return;
+      event.preventDefault();
+      openMenuFromPointer(event.clientX, event.clientY);
+    },
+    [isDeletedForEveryone, openMenuFromPointer]
+  );
 
   if (isCallTimeline) {
     return (
@@ -75,14 +171,109 @@ export function MessageBubble({
     );
   }
 
+  const menuContent =
+    menuOpen && menuPosition && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={menuPanelRef}
+            role="menu"
+            className="fixed z-[200] min-w-[180px] overflow-hidden rounded-lg border bg-background py-1 shadow-lg"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            {onReply && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onReply(message);
+                  closeMenu();
+                }}
+              >
+                Reply
+              </button>
+            )}
+            {canEdit && onEdit && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onEdit(message);
+                  closeMenu();
+                }}
+              >
+                Edit
+              </button>
+            )}
+            {onPin && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onPin(message._id);
+                  closeMenu();
+                }}
+              >
+                {message.isPinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
+            {onStar && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onStar(message._id);
+                  closeMenu();
+                }}
+              >
+                {message.isStarred ? 'Unstar' : 'Star'}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onDelete(message._id);
+                  closeMenu();
+                }}
+              >
+                Delete message
+              </button>
+            )}
+            {canDeleteForEveryone && onDeleteForEveryone && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  onDeleteForEveryone(message._id);
+                  closeMenu();
+                }}
+              >
+                Delete for everyone
+              </button>
+            )}
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <div className={cn('group flex w-full', isOutgoing ? 'justify-end' : 'justify-start')}>
-      <div className="relative max-w-[min(75%,32rem)]" ref={menuRef}>
+      <div className="relative max-w-[min(75%,32rem)]">
         <div
+          ref={bubbleRef}
+          onContextMenu={handleContextMenu}
           className={cn(
             'relative rounded-lg px-3 py-2 shadow-sm',
             isOutgoing ? 'bg-chat-outgoing rounded-tr-none' : 'bg-chat-incoming rounded-tl-none',
-            isDeletedForEveryone && 'bg-muted/60 italic text-muted-foreground'
+            isDeletedForEveryone && 'bg-muted/60 italic text-muted-foreground',
+            !isDeletedForEveryone && 'cursor-default'
           )}
         >
           {message.isPinned && !isDeletedForEveryone && (
@@ -123,7 +314,11 @@ export function MessageBubble({
             type="button"
             aria-label="Message actions"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((current) => !current)}
+            aria-haspopup="menu"
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleMenuFromChevron();
+            }}
             className={cn(
               'absolute top-1 rounded-full p-1 text-muted-foreground hover:bg-muted/80 hover:text-foreground',
               isOutgoing ? 'left-1 lg:-left-7' : 'right-1 lg:-right-7',
@@ -134,87 +329,7 @@ export function MessageBubble({
           </button>
         )}
 
-        {menuOpen && (
-          <div
-            className={cn(
-              'absolute z-20 min-w-[180px] overflow-hidden rounded-lg border bg-background py-1 shadow-lg',
-              isOutgoing ? 'right-0 bottom-full mb-1' : 'left-0 bottom-full mb-1'
-            )}
-          >
-            {onReply && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onReply(message);
-                  setMenuOpen(false);
-                }}
-              >
-                Reply
-              </button>
-            )}
-            {canEdit && onEdit && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onEdit(message);
-                  setMenuOpen(false);
-                }}
-              >
-                Edit
-              </button>
-            )}
-            {onPin && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onPin(message._id);
-                  setMenuOpen(false);
-                }}
-              >
-                {message.isPinned ? 'Unpin' : 'Pin'}
-              </button>
-            )}
-            {onStar && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onStar(message._id);
-                  setMenuOpen(false);
-                }}
-              >
-                {message.isStarred ? 'Unstar' : 'Star'}
-              </button>
-            )}
-            {onDelete && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onDelete(message._id);
-                  setMenuOpen(false);
-                }}
-              >
-                Delete message
-              </button>
-            )}
-            {canDeleteForEveryone && onDeleteForEveryone && (
-              <button
-                type="button"
-                className="flex w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                onClick={() => {
-                  onDeleteForEveryone(message._id);
-                  setMenuOpen(false);
-                }}
-              >
-                Delete for everyone
-              </button>
-            )}
-          </div>
-        )}
+        {menuContent}
       </div>
     </div>
   );
