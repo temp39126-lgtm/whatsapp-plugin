@@ -71,10 +71,10 @@ function InboxPageContent() {
   const selected = selectedConversation ?? conversations.find((c) => c._id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-w-0 overflow-hidden xl:grid xl:grid-cols-[minmax(17.5rem,20rem)_minmax(0,1fr)_minmax(17.5rem,20rem)]">
+    <div className="flex h-full min-h-0 min-w-0 overflow-hidden xl:grid xl:grid-cols-[minmax(17.5rem,20rem)_minmax(0,1fr)_minmax(17.5rem,20rem)] xl:grid-rows-1">
       <div
         className={cn(
-          'flex min-w-0 flex-col overflow-hidden border-r bg-background lg:w-80 lg:shrink-0 xl:w-auto xl:min-w-0',
+          'flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r bg-background lg:w-80 lg:shrink-0 xl:w-auto',
           selectedId ? 'hidden lg:flex' : 'flex flex-1 lg:flex-none'
         )}
       >
@@ -93,8 +93,8 @@ function InboxPageContent() {
 
       <div
         className={cn(
-          'flex min-w-0 flex-1 flex-col overflow-hidden',
-          selectedId ? 'flex' : 'hidden lg:flex'
+          'flex h-full min-h-0 min-w-0 flex-col overflow-hidden',
+          selectedId ? 'flex flex-1' : 'hidden lg:flex lg:flex-1'
         )}
       >
         {outboundCall.activeCall && selected && (
@@ -134,7 +134,7 @@ function InboxPageContent() {
         onDeleted={() => setSelectedId(null)}
       />
 
-      <div className="hidden min-w-0 overflow-hidden border-l bg-background xl:block">
+      <div className="hidden h-full min-h-0 min-w-0 overflow-hidden border-l bg-background xl:block">
         <CustomerDetails
           conversation={selected}
           onDeleted={() => setSelectedId(null)}
