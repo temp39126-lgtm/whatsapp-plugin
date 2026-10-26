@@ -29,7 +29,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     title: 'Inbox',
     description: 'WhatsApp conversations and assignment',
-    permissions: [PERMISSIONS.VIEW_ALL_CONVERSATIONS, PERMISSIONS.ASSIGN_CONVERSATIONS],
+    permissions: [PERMISSIONS.VIEW_ALL_CONVERSATIONS],
   },
   {
     title: 'Contacts & tags',
@@ -56,7 +56,8 @@ export const PERMISSION_LABELS: Record<
   },
   [PERMISSIONS.ASSIGN_CONVERSATIONS]: {
     label: 'Assign conversations',
-    description: 'Assign chats to users and manage shared access on conversations.',
+    description:
+      'Reserved for future use. Only admins can assign or reassign chats in the inbox today.',
   },
   [PERMISSIONS.MANAGE_TAGS]: {
     label: 'Manage tags',

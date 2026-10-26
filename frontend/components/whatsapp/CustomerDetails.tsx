@@ -47,7 +47,7 @@ function selectionChipClass(selected: boolean, selectedClass?: string) {
 }
 
 export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProps) {
-  const { isAdmin, canAssignConversations, canManageTags } = usePermissions();
+  const { isAdmin, canManageTags } = usePermissions();
   const queryClient = useQueryClient();
   const [showMembers, setShowMembers] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
@@ -64,7 +64,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
-  const { data: teamUsers = [] } = useTeamUsers(canAssignConversations);
+  const { data: teamUsers = [] } = useTeamUsers(isAdmin);
 
   const { data: notes } = useQuery({
     queryKey: ['notes', conversation?._id],
@@ -398,7 +398,7 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Assigned User
           </h4>
-          {canAssignConversations ? (
+          {isAdmin ? (
             <>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                 Choose a user to own this chat, or select Unassigned to handle it as admin only.
