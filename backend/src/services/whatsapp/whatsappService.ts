@@ -15,10 +15,10 @@ import {
   markMessageAsRead,
 } from './metaApi';
 
-export const HELLO_WORLD_TEMPLATE_NAME = 'hello_world';
-export const HELLO_WORLD_TEMPLATE_LANGUAGE = 'en_US';
+export const HELLO_WORLD_TEMPLATE_NAME = 'tech2globe_whatsapp';
+export const HELLO_WORLD_TEMPLATE_LANGUAGE = 'en';
 export const HELLO_WORLD_TEMPLATE_PREVIEW =
-  'Hello World\nWelcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta.';
+  'Hello There, greetings from Tech2Globe! We help businesses grow through E-commerce, Digital Marketing, Web Development & AI Solutions. As discussed please let us know when we can connect.';
 import {
   uploadToS3,
   downloadFromUrl,
