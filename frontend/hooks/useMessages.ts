@@ -71,16 +71,19 @@ export function useSendMediaMessage() {
       file,
       caption,
       replyToMessageId,
+      voiceNote,
     }: {
       conversationId: string;
       file: File;
       caption?: string;
       replyToMessageId?: string;
+      voiceNote?: boolean;
     }) => {
       const formData = new FormData();
       formData.append('file', file);
       if (caption) formData.append('caption', caption);
       if (replyToMessageId) formData.append('replyToMessageId', replyToMessageId);
+      if (voiceNote) formData.append('voiceNote', 'true');
       return api.upload<MessageDTO>(`/conversations/${conversationId}/messages/media`, formData);
     },
     onSuccess: (_data, variables) => {

@@ -29,6 +29,7 @@ function MediaIcon({ type }: { type: string }) {
 
 export function MessageMediaContent({ message }: { message: MessageDTO }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [mediaLoadState, setMediaLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [downloaded, setDownloaded] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -55,17 +56,35 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
     let cancelled = false;
 
     async function loadMedia() {
+      if (message.type === 'VOICE' || message.type === 'AUDIO') {
+        if (!cancelled) setMediaLoadState('loading');
+      }
       try {
         const response = await fetch(resolveMediaUrl(mediaPath), {
           headers: getAuthHeaders(),
           credentials: 'include',
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (!cancelled && (message.type === 'VOICE' || message.type === 'AUDIO')) {
+            setMediaLoadState('error');
+          }
+          return;
+        }
         const blob = await response.blob();
         objectUrl = URL.createObjectURL(blob);
-        if (!cancelled) setBlobUrl(objectUrl);
+        if (!cancelled) {
+          setBlobUrl(objectUrl);
+          if (message.type === 'VOICE' || message.type === 'AUDIO') {
+            setMediaLoadState('ready');
+          }
+        }
       } catch {
-        if (!cancelled) setBlobUrl(null);
+        if (!cancelled) {
+          setBlobUrl(null);
+          if (message.type === 'VOICE' || message.type === 'AUDIO') {
+            setMediaLoadState('error');
+          }
+        }
       }
     }
 
@@ -109,15 +128,23 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
     );
   }
 
-  if ((message.type === 'VOICE' || message.type === 'AUDIO') && blobUrl) {
-    return (
-      <div className="space-y-2">
-        <audio controls src={blobUrl} className="max-w-full" preload="metadata">
-          <track kind="captions" />
-        </audio>
-        {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
-      </div>
-    );
+  if (message.type === 'VOICE' || message.type === 'AUDIO') {
+    if (mediaLoadState === 'loading') {
+      return <p className="text-sm text-muted-foreground">Loading voice message…</p>;
+    }
+    if (blobUrl) {
+      return (
+        <div className="space-y-2">
+          <audio controls src={blobUrl} className="max-w-full" preload="metadata">
+            <track kind="captions" />
+          </audio>
+          {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
+        </div>
+      );
+    }
+    if (mediaLoadState === 'error') {
+      return <p className="text-sm text-muted-foreground">Voice message unavailable. Try download below.</p>;
+    }
   }
 
   if (message.type === 'TEMPLATE') {

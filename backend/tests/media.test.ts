@@ -13,6 +13,7 @@ describe('Media type mapping', () => {
     expect(metaMediaType('IMAGE')).toBe('image');
     expect(metaMediaType('VIDEO')).toBe('video');
     expect(metaMediaType('AUDIO')).toBe('audio');
+    expect(metaMediaType('VOICE')).toBe('audio');
     expect(metaMediaType('DOCUMENT')).toBe('document');
   });
 });
