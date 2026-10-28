@@ -126,7 +126,12 @@ export function ChatWindow({
     );
   };
 
-  const handleSendMedia = (file: File, caption?: string, replyToMessageId?: string) => {
+  const handleSendMedia = (
+    file: File,
+    caption?: string,
+    replyToMessageId?: string,
+    options?: { voiceNote?: boolean }
+  ) => {
     setSendError('');
     sendMediaMessage.mutate(
       {
@@ -134,6 +139,7 @@ export function ChatWindow({
         file,
         caption,
         replyToMessageId,
+        voiceNote: options?.voiceNote,
       },
       {
         onError: (error) => {

@@ -422,9 +422,11 @@ export async function sendOutgoingMessage(
   const preview =
     params.type === 'TEXT'
       ? (params.content as { text: string }).text
-      : params.fileName
-        ? `📎 ${params.fileName}`
-        : `[${params.type}]`;
+      : params.type === 'VOICE'
+        ? '[VOICE]'
+        : params.fileName
+          ? `📎 ${params.fileName}`
+          : `[${params.type}]`;
 
   async function persistMediaAttachment() {
     if (!params.mediaBuffer || !params.mimeType) return;
@@ -500,7 +502,8 @@ export async function sendOutgoingMessage(
         params.mimeType,
         account
       );
-      const mediaType = params.type.toLowerCase();
+      const { metaMediaType } = await import('../../utils/mediaType');
+      const mediaType = metaMediaType(params.type);
       metaResponse = await sendMediaMessage(
         account.phoneNumberId,
         contact.whatsappId,

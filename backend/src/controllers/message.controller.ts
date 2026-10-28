@@ -30,13 +30,15 @@ export async function createMediaMessage(req: AuthenticatedRequest, res: Respons
       return;
     }
 
+    const voiceNote = req.body.voiceNote === true || req.body.voiceNote === 'true';
+    const { mimeToMessageType } = await import('../utils/mediaType');
     const message = await messageService.createMessage(req.user!, req.conversation!, {
-      type: (await import('../utils/mediaType')).mimeToMessageType(file.mimetype),
-      content: { caption: req.body.caption ?? '' },
+      type: voiceNote ? 'VOICE' : mimeToMessageType(file.mimetype),
+      content: voiceNote ? { voice: true } : { caption: req.body.caption ?? '' },
       replyToMessageId: req.body.replyToMessageId,
       mediaBuffer: file.buffer,
       mimeType: file.mimetype,
-      fileName: file.originalname,
+      fileName: voiceNote ? file.originalname || 'voice-note' : file.originalname,
     });
 
     res.status(201).json(message);
