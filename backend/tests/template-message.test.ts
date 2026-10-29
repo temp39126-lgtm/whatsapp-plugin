@@ -53,7 +53,7 @@ describe('WhatsApp template messages', () => {
     });
   });
 
-  it('sendTemplateMessage posts the hello_world template payload', async () => {
+  it('sendTemplateMessage posts the configured template payload', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -81,8 +81,8 @@ describe('WhatsApp template messages', () => {
       to: '15551234567',
       type: 'template',
       template: {
-        name: 'hello_world',
-        language: { code: 'en_US' },
+        name: HELLO_WORLD_TEMPLATE_NAME,
+        language: { code: HELLO_WORLD_TEMPLATE_LANGUAGE },
       },
     });
   });
