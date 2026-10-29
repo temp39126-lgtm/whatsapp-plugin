@@ -3,13 +3,14 @@ import { getMicrophoneStream, mapMicrophoneError } from '@/lib/webrtc/microphone
 const VOICE_NOTE_MAX_MS = 15 * 60 * 1000;
 const VOICE_NOTE_MIN_MS = 800;
 
+/** Prefer WebM/OGG for recording; MP4/AAC only as fallback — always uploaded to Meta as MP3. */
 const RECORDER_MIME_CANDIDATES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
   'audio/ogg;codecs=opus',
   'audio/ogg',
   'audio/mp4',
   'audio/aac',
-  'audio/webm;codecs=opus',
-  'audio/webm',
 ];
 
 export type VoiceNoteRecorder = {
@@ -27,20 +28,13 @@ function pickRecorderMimeType(): string {
   throw new Error('Voice recording is not supported in this browser.');
 }
 
-function extensionForMime(mime: string): string {
-  if (mime.includes('ogg')) return 'voice-note.ogg';
-  if (mime.includes('mp4') || mime.includes('aac')) return 'voice-note.m4a';
-  if (mime.includes('mpeg') || mime.includes('mp3')) return 'voice-note.mp3';
-  return 'voice-note.bin';
-}
-
-async function webmBlobToMp3(webmBlob: Blob): Promise<Blob> {
+async function recordingBlobToMp3(recording: Blob): Promise<Blob> {
   const lameModule = await import('lamejs');
   const lamejs = lameModule.default ?? lameModule;
   const audioContext = new AudioContext();
   try {
-    const arrayBuffer = await webmBlob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    const arrayBuffer = await recording.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
     const sampleRate = audioBuffer.sampleRate;
     const length = audioBuffer.length;
     const samples = new Int16Array(length);
@@ -64,6 +58,10 @@ async function webmBlobToMp3(webmBlob: Blob): Promise<Blob> {
     const flushed = mp3encoder.flush();
     if (flushed.length > 0) mp3Chunks.push(flushed);
 
+    if (mp3Chunks.length === 0) {
+      throw new Error('Could not encode voice note. Try again or use a shorter recording.');
+    }
+
     const totalLength = mp3Chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const merged = new Uint8Array(totalLength);
     let offset = 0;
@@ -77,16 +75,17 @@ async function webmBlobToMp3(webmBlob: Blob): Promise<Blob> {
   }
 }
 
+/** Meta accepts audio/mpeg; raw MediaRecorder MP4/WebM blobs are often rejected (131053). */
 async function chunksToVoiceNoteFile(chunks: Blob[], recorderMime: string): Promise<File> {
   const raw = new Blob(chunks, { type: recorderMime });
-
-  if (recorderMime.includes('webm')) {
-    const mp3 = await webmBlobToMp3(raw);
+  try {
+    const mp3 = await recordingBlobToMp3(raw);
     return new File([mp3], 'voice-note.mp3', { type: 'audio/mpeg' });
+  } catch {
+    throw new Error(
+      'Could not prepare voice note for WhatsApp. Try Chrome or Firefox, or attach an MP3/OGG file with the paperclip.'
+    );
   }
-
-  const mime = recorderMime.split(';')[0]?.trim() || recorderMime;
-  return new File([raw], extensionForMime(mime), { type: mime });
 }
 
 export async function startVoiceNoteRecording(): Promise<VoiceNoteRecorder> {
