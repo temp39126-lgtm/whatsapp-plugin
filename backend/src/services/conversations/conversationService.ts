@@ -5,7 +5,7 @@ import { User } from '../../models/User';
 import { ConversationAssignment } from '../../models/ConversationAssignment';
 import { buildConversationFilter } from '../rbac/conversationAccess';
 import { logActivity } from '../rbac/activityLog';
-import { emitToAuthorizedUsers } from '../realtime/socketService';
+import { emitToAuthorizedUsers, emitToUser } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
 import { enrichConversations } from './conversationEnrichment';
 import { syncGroupInboxConversations } from '../groups/groupInboxService';
@@ -343,10 +343,19 @@ export async function assignConversation(
       previousAssignee,
     });
 
-    await emitToAuthorizedUsers(user.tenantId, conversation._id.toString(), 'conversation.unassigned', {
+    const unassignedPayload = {
       conversationId: conversation._id.toString(),
       previousAssignee,
-    });
+    };
+    await emitToAuthorizedUsers(
+      user.tenantId,
+      conversation._id.toString(),
+      'conversation.unassigned',
+      unassignedPayload
+    );
+    if (previousAssignee) {
+      emitToUser(previousAssignee, 'conversation.unassigned', unassignedPayload);
+    }
 
     return getConversation(user, conversation._id.toString());
   }
@@ -387,6 +396,13 @@ export async function assignConversation(
     conversationLabel,
     assignedByName: user.name ?? 'Admin',
   });
+
+  if (previousAssignee && previousAssignee !== assignedUserId) {
+    emitToUser(previousAssignee, 'conversation.unassigned', {
+      conversationId: conversation._id.toString(),
+      previousAssignee,
+    });
+  }
 
   if (assignedUserId !== user.userId && previousAssignee !== assignedUserId) {
     void createUserNotification({

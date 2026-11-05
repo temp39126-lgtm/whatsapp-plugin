@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { connectSocket, disconnectSocket, onSocketEvent, resetSocket } from '@/lib/socket';
+import type { PaginatedResponse } from '@/types';
 
 export function useSocket() {
   const queryClient = useQueryClient();
@@ -39,7 +40,24 @@ export function useSocket() {
       onSocketEvent('conversation.updated', invalidateConversations),
       onSocketEvent('conversation.created', invalidateConversations),
       onSocketEvent('conversation.assigned', invalidateConversations),
-      onSocketEvent('conversation.unassigned', invalidateConversations),
+      onSocketEvent('conversation.unassigned', (data) => {
+        const payload = data as { conversationId?: string };
+        if (payload.conversationId) {
+          queryClient.setQueriesData<PaginatedResponse<{ _id: string }>>(
+            { queryKey: ['conversations'] },
+            (current) => {
+              if (!current?.data) return current;
+              return {
+                ...current,
+                data: current.data.filter((item) => item._id !== payload.conversationId),
+              };
+            }
+          );
+          queryClient.removeQueries({ queryKey: ['conversation', payload.conversationId] });
+          queryClient.removeQueries({ queryKey: ['messages', payload.conversationId] });
+        }
+        invalidateConversations();
+      }),
       onSocketEvent('contact.deleted', () => {
         invalidateConversations();
         queryClient.invalidateQueries({ queryKey: ['contacts'] });

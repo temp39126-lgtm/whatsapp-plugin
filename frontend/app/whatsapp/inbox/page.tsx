@@ -51,13 +51,22 @@ function InboxPageContent() {
   }, [selectedId]);
 
   useEffect(() => {
-    const unsubscribe = onSocketEvent('contact.deleted', (payload) => {
+    const unsubscribeContact = onSocketEvent('contact.deleted', (payload) => {
       const data = payload as { conversationIds?: string[] };
       if (selectedId && data.conversationIds?.includes(selectedId)) {
         setSelectedId(null);
       }
     });
-    return unsubscribe;
+    const unsubscribeUnassigned = onSocketEvent('conversation.unassigned', (payload) => {
+      const data = payload as { conversationId?: string };
+      if (selectedId && data.conversationId === selectedId) {
+        setSelectedId(null);
+      }
+    });
+    return () => {
+      unsubscribeContact();
+      unsubscribeUnassigned();
+    };
   }, [selectedId]);
 
   const { data, isLoading } = useConversations(filters);
