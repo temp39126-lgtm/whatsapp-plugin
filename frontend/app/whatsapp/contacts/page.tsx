@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Trash2, UserPlus } from 'lucide-react';
+import { MessageCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
@@ -10,8 +10,10 @@ import {
   useCreateContact,
   useDeleteContact,
   useOpenContactConversation,
+  useUpdateContact,
   useUploadContactAvatar,
 } from '@/hooks/useContacts';
+import { ContactEditDialog } from '@/components/whatsapp/contacts/ContactEditDialog';
 import type { ContactDTO, PaginatedResponse } from '@/types';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
@@ -26,7 +28,9 @@ export default function ContactsPage() {
   const [sendWelcomeTemplate, setSendWelcomeTemplate] = useState(false);
   const [message, setMessage] = useState('');
   const [openingContactId, setOpeningContactId] = useState<string | null>(null);
+  const [editingContact, setEditingContact] = useState<ContactDTO | null>(null);
   const deleteContact = useDeleteContact();
+  const updateContact = useUpdateContact();
   const createContact = useCreateContact();
   const openContactConversation = useOpenContactConversation();
   const uploadContactAvatar = useUploadContactAvatar();
@@ -50,6 +54,23 @@ export default function ContactsPage() {
       },
       onSettled: () => setOpeningContactId(null),
     });
+  }
+
+  function handleSaveEdit(payload: { name: string; phone: string }) {
+    if (!editingContact) return;
+    setMessage('');
+    updateContact.mutate(
+      { contactId: editingContact._id, payload },
+      {
+        onSuccess: (updated) => {
+          setEditingContact(null);
+          setMessage(`Updated contact "${updated.name}".`);
+        },
+        onError: (error) => {
+          setMessage(error instanceof Error ? error.message : 'Failed to update contact');
+        },
+      }
+    );
   }
 
   function handleDelete(contact: ContactDTO) {
@@ -96,8 +117,8 @@ export default function ContactsPage() {
         <h1 className="text-2xl font-semibold">Contacts</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {isAdmin
-            ? 'Add a customer by name and phone number. Upload a photo with the camera icon.'
-            : 'Add customer contacts by name and phone number.'}
+            ? 'Add a customer by name and phone number. Edit contacts with Edit or upload a photo with the camera icon.'
+            : 'Add customer contacts by name and phone number. Use Edit on a card to update details.'}
         </p>
 
         <form onSubmit={handleCreateContact} className="mt-4 max-w-3xl space-y-3">
@@ -139,7 +160,7 @@ export default function ContactsPage() {
         {message && (
           <p
             className={`mt-2 text-sm ${
-              createContact.isError ? 'text-red-600' : 'text-whatsapp-dark'
+              createContact.isError || updateContact.isError ? 'text-red-600' : 'text-whatsapp-dark'
             }`}
           >
             {message}
@@ -198,13 +219,24 @@ export default function ContactsPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        disabled={deleteContact.isPending}
-                        onClick={() => handleDelete(contact)}
+                        onClick={() => setEditingContact(contact)}
                       >
-                        <Trash2 className="mr-1 h-4 w-4" />
-                        Delete
+                        <Pencil className="mr-1 h-4 w-4" />
+                        Edit
                       </Button>
+                      {isAdmin ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          disabled={deleteContact.isPending}
+                          onClick={() => handleDelete(contact)}
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          Delete
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -213,6 +245,14 @@ export default function ContactsPage() {
           </div>
         )}
       </div>
+
+      <ContactEditDialog
+        contact={editingContact}
+        open={Boolean(editingContact)}
+        saving={updateContact.isPending}
+        onClose={() => setEditingContact(null)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }

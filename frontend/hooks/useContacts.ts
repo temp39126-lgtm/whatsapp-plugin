@@ -26,6 +26,24 @@ export function useCreateContact() {
   });
 }
 
+export type UpdateContactPayload = {
+  name?: string;
+  phone?: string;
+};
+
+export function useUpdateContact() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, payload }: { contactId: string; payload: UpdateContactPayload }) =>
+      api.put<ContactDTO>(`/contacts/${contactId}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation'] });
+    },
+  });
+}
+
 export function useDeleteContact() {
   const queryClient = useQueryClient();
   return useMutation({

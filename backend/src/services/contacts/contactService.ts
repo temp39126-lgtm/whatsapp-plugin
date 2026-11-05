@@ -250,14 +250,41 @@ export async function getContact(user: AuthUser, contactId: string) {
   return { contact, conversations, calls };
 }
 
-export async function updateContact(user: AuthUser, contactId: string, data: Partial<IContact>) {
+export async function updateContact(
+  user: AuthUser,
+  contactId: string,
+  data: { name?: string; phone?: string; tags?: IContact['tags'] }
+) {
   const existing = await Contact.findOne({ _id: contactId, tenantId: user.tenantId });
   if (!existing) throw new AppError(404, 'Contact not found');
   assertUserCanAccessContact(user, existing);
 
+  const updates: Partial<IContact> = {};
+  if (data.name !== undefined) {
+    updates.name = data.name.trim();
+  }
+  if (data.phone !== undefined) {
+    const { phone, whatsappId } = normalizePhoneInput(data.phone);
+    if (whatsappId !== existing.whatsappId) {
+      const duplicate = await Contact.findOne({
+        tenantId: user.tenantId,
+        whatsappId,
+        _id: { $ne: existing._id },
+      });
+      if (duplicate) {
+        throw new AppError(409, 'A contact with this phone number already exists');
+      }
+    }
+    updates.phone = phone;
+    updates.whatsappId = whatsappId;
+  }
+  if (data.tags !== undefined) {
+    updates.tags = data.tags;
+  }
+
   const contact = await Contact.findOneAndUpdate(
     { _id: contactId, tenantId: user.tenantId },
-    { name: data.name, tags: data.tags },
+    updates,
     { new: true }
   );
   if (!contact) throw new AppError(404, 'Contact not found');
