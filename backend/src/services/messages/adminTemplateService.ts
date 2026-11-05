@@ -1,6 +1,7 @@
 import { AuthUser, AppError } from '../../types';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
-import { MetaApiError, metaDelete, metaGet, metaJsonPost } from '../whatsapp/metaApi';
+import { metaDelete, fetchAllMessageTemplates, metaJsonPost } from '../whatsapp/metaApi';
+import { metaFailureToAppError } from '../whatsapp/metaErrors';
 
 export type AdminTemplateDTO = {
   id: string;
@@ -23,10 +24,6 @@ type MetaTemplateRecord = {
   rejected_reason?: string;
 };
 
-type MetaTemplateListResponse = {
-  data?: MetaTemplateRecord[];
-};
-
 async function getConnectedAccount(tenantId: string) {
   const account = await WhatsAppAccount.findOne({ tenantId });
   if (!account) {
@@ -34,6 +31,15 @@ async function getConnectedAccount(tenantId: string) {
   }
   if (account.connectionStatus !== 'CONNECTED' || !account.businessAccountId) {
     throw new AppError(400, 'WhatsApp Business Account is not connected.');
+  }
+  if (
+    account.businessAccountId.startsWith('demo-') ||
+    account.phoneNumberId.startsWith('demo-')
+  ) {
+    throw new AppError(
+      400,
+      'This workspace still uses demo Meta credentials. Open Settings → Meta Cloud API, enter your real Phone Number ID, WhatsApp Business Account ID, and permanent access token, then save and refresh Templates.'
+    );
   }
   return account;
 }
@@ -102,32 +108,19 @@ function buildComponents(input: {
   return components;
 }
 
-function rethrowMeta(error: unknown): never {
-  if (error instanceof MetaApiError) {
-    throw new AppError(502, error.details ?? error.message);
-  }
-  if (error instanceof Error) {
-    throw new AppError(502, error.message.replace(/Bearer\s+\S+/gi, '[redacted]'));
-  }
-  throw new AppError(502, 'Meta template request failed');
-}
-
 export async function listAdminTemplates(user: AuthUser): Promise<AdminTemplateDTO[]> {
   const account = await getConnectedAccount(user.tenantId);
 
   try {
-    const response = await metaGet<MetaTemplateListResponse>(
-      `/${account.businessAccountId}/message_templates`,
+    const records = await fetchAllMessageTemplates<MetaTemplateRecord>(
+      account.businessAccountId,
       account,
-      {
-        fields: 'id,name,status,language,category,components,rejected_reason',
-        limit: '200',
-      }
+      'id,name,status,language,category,components,rejected_reason'
     );
 
-    return (response.data ?? []).map(mapTemplate).sort((a, b) => a.name.localeCompare(b.name));
+    return records.map(mapTemplate).sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    rethrowMeta(error);
+    metaFailureToAppError(error, 'Meta template request failed');
   }
 }
 
@@ -160,7 +153,7 @@ export async function createAdminTemplate(
       account
     );
   } catch (error) {
-    rethrowMeta(error);
+    metaFailureToAppError(error, 'Meta template request failed');
   }
 
   const templates = await listAdminTemplates(user);
@@ -202,7 +195,7 @@ export async function updateAdminTemplate(
   try {
     await metaJsonPost(`/${templateId}`, payload, account);
   } catch (error) {
-    rethrowMeta(error);
+    metaFailureToAppError(error, 'Meta template request failed');
   }
 
   const templates = await listAdminTemplates(user);
@@ -227,6 +220,6 @@ export async function deleteAdminTemplate(
   try {
     await metaDelete(`/${account.businessAccountId}/message_templates`, account, query);
   } catch (error) {
-    rethrowMeta(error);
+    metaFailureToAppError(error, 'Meta template request failed');
   }
 }

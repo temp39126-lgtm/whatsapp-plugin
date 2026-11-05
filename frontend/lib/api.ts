@@ -5,6 +5,22 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
+function normalizeApiErrorMessage(message: string): string {
+  const trimmed = message.trim();
+  if (!trimmed.startsWith('{')) {
+    return trimmed;
+  }
+  try {
+    const payload = JSON.parse(trimmed) as { error?: { message?: string } };
+    if (payload.error?.message) {
+      return payload.error.message;
+    }
+  } catch {
+    /* keep original */
+  }
+  return trimmed;
+}
+
 class ApiClient {
   constructor(private readonly basePath: string) {}
 
@@ -40,8 +56,19 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+      const raw = await response.text();
+      let message = `HTTP ${response.status}`;
+      try {
+        const error = JSON.parse(raw) as { error?: string; message?: string };
+        message = error.error || error.message || message;
+      } catch {
+        message =
+          response.status >= 502
+            ? 'API unreachable (tunnel or server down). Refresh the page or ask your admin to restart the backend tunnel.'
+            : raw.slice(0, 200) || message;
+      }
+      message = normalizeApiErrorMessage(message);
+      throw new Error(message);
     }
 
     if (response.status === 204) return undefined as T;

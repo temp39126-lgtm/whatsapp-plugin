@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,6 +115,14 @@ export function WhatsAppTemplateManager() {
 
   const saving = createMutation.isPending || updateMutation.isPending;
 
+  const loadErrorMessage =
+    loadError instanceof Error ? loadError.message : loadError ? 'Failed to load templates' : null;
+  const needsMetaSettings =
+    !!loadErrorMessage &&
+    /demo meta credentials|meta cloud api|access token|not connected|not configured/i.test(
+      loadErrorMessage
+    );
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -136,9 +145,18 @@ export function WhatsAppTemplateManager() {
         </div>
       </div>
 
-      {(error || loadError) && (
+      {(error || loadErrorMessage) && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error ?? (loadError instanceof Error ? loadError.message : 'Failed to load templates')}
+          <p>{error ?? loadErrorMessage}</p>
+          {needsMetaSettings ? (
+            <p className="mt-2">
+              <Link href="/whatsapp/settings" className="font-medium underline">
+                Open Settings → Meta Cloud API
+              </Link>{' '}
+              and save your Phone Number ID, WABA ID, and permanent access token from Meta Business
+              Manager. Then click Refresh here to load your existing templates.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -168,9 +186,11 @@ export function WhatsAppTemplateManager() {
         </div>
       ) : filtered.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          {templates.length === 0
-            ? 'No templates yet. Connect Meta Cloud API in Settings, then create your first template.'
-            : 'No templates match your filters.'}
+          {loadErrorMessage
+            ? 'Fix the connection issue above, then refresh to load templates from Meta.'
+            : templates.length === 0
+              ? 'No templates yet. Connect Meta Cloud API in Settings, then create your first template.'
+              : 'No templates match your filters.'}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">

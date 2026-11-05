@@ -235,11 +235,71 @@ export async function metaGet<T = Record<string, unknown>>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
+    const errorText = await response.text();
+    try {
+      const payload = JSON.parse(errorText) as {
+        error?: {
+          code?: number;
+          message?: string;
+          type?: string;
+          error_data?: { details?: string };
+        };
+      };
+      if (payload.error) {
+        throw new MetaApiError({
+          code: payload.error.code,
+          title: payload.error.type,
+          message: payload.error.message || 'Meta API request failed',
+          details: payload.error.error_data?.details,
+        });
+      }
+    } catch (error) {
+      if (error instanceof MetaApiError) throw error;
+    }
+    throw new Error(`Meta API error: ${errorText}`);
   }
 
   return response.json() as Promise<T>;
+}
+
+type MetaTemplatePage<T> = {
+  data?: T[];
+  paging?: { cursors?: { after?: string } };
+};
+
+/** Fetch all WABA message templates (follows Meta cursor pagination). */
+export async function fetchAllMessageTemplates<T extends object>(
+  businessAccountId: string,
+  account: IWhatsAppAccount | undefined,
+  fields: string,
+  pageLimit = '100'
+): Promise<T[]> {
+  const collected: T[] = [];
+  let after: string | undefined;
+
+  for (let page = 0; page < 50; page += 1) {
+    const query: Record<string, string> = { fields, limit: pageLimit };
+    if (after) {
+      query.after = after;
+    }
+
+    const response = await metaGet<MetaTemplatePage<T>>(
+      `/${businessAccountId}/message_templates`,
+      account,
+      query
+    );
+
+    const batch = response.data ?? [];
+    collected.push(...batch);
+
+    const next = response.paging?.cursors?.after;
+    if (!next || batch.length === 0) {
+      break;
+    }
+    after = next;
+  }
+
+  return collected;
 }
 
 async function metaJsonPost<T = Record<string, unknown>>(

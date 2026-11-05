@@ -4,7 +4,7 @@ import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { Contact } from '../../models/Contact';
 import { Message } from '../../models/Message';
 import { Conversation } from '../../models/Conversation';
-import { metaGet, sendTemplateMessage, MetaApiError } from '../whatsapp/metaApi';
+import { fetchAllMessageTemplates, sendTemplateMessage, MetaApiError } from '../whatsapp/metaApi';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 
 interface WhatsAppTemplate {
@@ -13,10 +13,6 @@ interface WhatsAppTemplate {
   language: string;
   category?: string;
   components?: Array<Record<string, unknown>>;
-}
-
-interface WhatsAppTemplateResponse {
-  data?: WhatsAppTemplate[];
 }
 
 async function getConversationResources(
@@ -59,16 +55,13 @@ export async function getApprovedTemplates(
 ) {
   const { account } = await getConversationResources(user, conversation);
 
-  const response = await metaGet<WhatsAppTemplateResponse>(
-    `/${account.businessAccountId}/message_templates`,
+  const templates = await fetchAllMessageTemplates<WhatsAppTemplate>(
+    account.businessAccountId,
     account,
-    {
-      fields: 'name,status,language,category,components',
-      limit: '100',
-    }
+    'name,status,language,category,components'
   );
 
-  return (response.data ?? [])
+  return templates
     .filter((template) => template.status === 'APPROVED')
     .map((template) => ({
       name: template.name,
@@ -103,16 +96,13 @@ export async function sendApprovedTemplate(
 
   const { account, contact } = await getConversationResources(user, conversation);
 
-  const response = await metaGet<WhatsAppTemplateResponse>(
-    `/${account.businessAccountId}/message_templates`,
+  const templates = await fetchAllMessageTemplates<WhatsAppTemplate>(
+    account.businessAccountId,
     account,
-    {
-      fields: 'name,status,language,category,components',
-      limit: '100',
-    }
+    'name,status,language,category,components'
   );
 
-  const approvedTemplate = (response.data ?? []).find(
+  const approvedTemplate = templates.find(
     (template) =>
       template.status === 'APPROVED' &&
       template.name === templateName &&
