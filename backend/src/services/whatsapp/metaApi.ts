@@ -165,6 +165,58 @@ async function metaPost(
   return metaJsonPost(path, body, account) as Promise<{ messages: Array<{ id: string }> }>;
 }
 
+export async function metaDelete<T = Record<string, unknown>>(
+  path: string,
+  account?: IWhatsAppAccount,
+  query?: Record<string, string>
+): Promise<T> {
+  const token = getAccessToken(account);
+  const url = new URL(`${getBaseUrl(account)}${path}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    try {
+      const payload = JSON.parse(errorText) as {
+        error?: {
+          code?: number;
+          message?: string;
+          type?: string;
+          error_data?: { details?: string };
+        };
+      };
+      if (payload.error) {
+        throw new MetaApiError({
+          code: payload.error.code,
+          title: payload.error.type,
+          message: payload.error.message || 'Meta API request failed',
+          details: payload.error.error_data?.details,
+        });
+      }
+    } catch (error) {
+      if (error instanceof MetaApiError) throw error;
+    }
+    throw new Error(`Meta API error: ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export { metaJsonPost };
+
 export async function metaGet<T = Record<string, unknown>>(
   path: string,
   account?: IWhatsAppAccount,

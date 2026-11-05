@@ -25,6 +25,7 @@ import tagRoutes from './routes/tag.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import settingsRoutes from './routes/settings.routes';
 import notificationRoutes from './routes/notification.routes';
+import adminTemplateRoutes from './routes/adminTemplate.routes';
 import groupRoutes from './routes/group.routes';
 import communityRoutes from './routes/community.routes';
 import webhookRoutes from './routes/webhook.routes';
@@ -72,6 +73,7 @@ app.use('/api/whatsapp/groups', groupRoutes);
 app.use('/api/whatsapp/communities', communityRoutes);
 app.use('/api/whatsapp', settingsRoutes);
 app.use('/api/whatsapp/notifications', notificationRoutes);
+app.use('/api/whatsapp/templates', adminTemplateRoutes);
 
 app.use(errorHandler);
 

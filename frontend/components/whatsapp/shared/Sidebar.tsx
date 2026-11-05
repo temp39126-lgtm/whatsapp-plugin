@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
@@ -42,6 +43,7 @@ const navItems: Array<{
   { href: '/whatsapp/inbox', label: 'Inbox', icon: MessageSquare, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/calls', label: 'Calls', icon: Phone, roles: ['ADMIN', 'USER'] },
   { href: '/whatsapp/contacts', label: 'Contacts', icon: Users, roles: ['ADMIN', 'USER'] },
+  { href: '/whatsapp/templates', label: 'Templates', icon: FileText, roles: ['ADMIN'] },
   {
     href: '/whatsapp/analytics',
     label: 'Analytics',
