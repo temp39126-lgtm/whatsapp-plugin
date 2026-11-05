@@ -11,6 +11,8 @@ import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../src/services/notifications/notificationService';
 import type { AuthUser } from '../src/types';
 
@@ -194,5 +196,33 @@ describe('In-app notifications', () => {
     const cleared = await markAllNotificationsRead(authUser);
     expect(cleared).toBe(1);
     expect(await getUnreadNotificationCount(authUser)).toBe(0);
+  });
+
+  it('deletes one notification and clears all notifications', async () => {
+    const first = await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: authUser.userId,
+      type: 'unassigned',
+      title: 'New unassigned conversation',
+      body: 'Customer started a chat',
+      href: '/whatsapp/inbox',
+    });
+    await createUserNotification({
+      tenantId: 'tenant-001',
+      userId: authUser.userId,
+      type: 'message',
+      title: 'New message',
+      body: 'Hello',
+      href: '/whatsapp/inbox',
+    });
+
+    expect(first).toBeTruthy();
+    const removed = await deleteNotification(authUser, first!._id);
+    expect(removed).toBe(true);
+    expect((await listNotifications(authUser)).length).toBe(1);
+
+    const cleared = await deleteAllNotifications(authUser);
+    expect(cleared).toBe(1);
+    expect(await listNotifications(authUser)).toHaveLength(0);
   });
 });

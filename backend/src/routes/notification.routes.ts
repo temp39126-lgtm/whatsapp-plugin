@@ -9,6 +9,8 @@ router.use(authenticate, tenantAccess);
 
 router.get('/', controller.listNotifications);
 router.post('/read-all', controller.markAllNotificationsRead);
+router.delete('/', controller.deleteAllNotifications);
 router.patch('/:id/read', controller.markNotificationRead);
+router.delete('/:id', controller.deleteNotification);
 
 export default router;

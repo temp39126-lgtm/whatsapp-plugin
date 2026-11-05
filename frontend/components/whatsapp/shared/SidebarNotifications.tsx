@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell } from 'lucide-react';
+import { Bell, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -61,6 +61,23 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
         data: (current?.data ?? []).map((item) => ({ ...item, read: true })),
         unreadCount: result.unreadCount,
       }));
+    },
+  });
+
+  const deleteOne = useMutation({
+    mutationFn: (id: string) => api.delete<{ unreadCount: number }>(`/notifications/${id}`),
+    onSuccess: (result, id) => {
+      queryClient.setQueryData(['notifications'], (current: typeof data) => ({
+        data: (current?.data ?? []).filter((item) => item._id !== id),
+        unreadCount: result.unreadCount,
+      }));
+    },
+  });
+
+  const clearAll = useMutation({
+    mutationFn: () => api.delete<{ unreadCount: number }>('/notifications'),
+    onSuccess: () => {
+      queryClient.setQueryData(['notifications'], { data: [], unreadCount: 0 });
     },
   });
 
@@ -156,16 +173,28 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
                   {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
                 </p>
               </div>
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => markAllRead.mutate()}
-                  disabled={markAllRead.isPending}
-                  className="text-xs font-medium text-whatsapp-dark hover:underline disabled:opacity-50"
-                >
-                  Mark all read
-                </button>
-              )}
+              <div className="flex flex-col items-end gap-1">
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllRead.mutate()}
+                    disabled={markAllRead.isPending}
+                    className="text-xs font-medium text-whatsapp-dark hover:underline disabled:opacity-50"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearAll.mutate()}
+                    disabled={clearAll.isPending}
+                    className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-80 overflow-y-auto bg-white">
@@ -177,29 +206,45 @@ export function SidebarNotifications({ collapsed }: SidebarNotificationsProps) {
                 <ul className="divide-y">
                   {notifications.map((notification) => (
                     <li key={notification._id}>
-                      <button
-                        type="button"
-                        onClick={() => handleNotificationClick(notification)}
+                      <div
                         className={cn(
-                          'flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/60',
+                          'flex items-stretch gap-1 transition-colors hover:bg-muted/60',
                           !notification.read && 'bg-whatsapp-light/20'
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium leading-snug">{notification.title}</p>
-                          {!notification.read && (
-                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-whatsapp" />
-                          )}
-                        </div>
-                        <p className="line-clamp-2 text-xs text-muted-foreground">
-                          {notification.body}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(notification.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </p>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(notification)}
+                          className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium leading-snug">{notification.title}</p>
+                            {!notification.read && (
+                              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-whatsapp" />
+                            )}
+                          </div>
+                          <p className="line-clamp-2 text-xs text-muted-foreground">
+                            {notification.body}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete notification"
+                          disabled={deleteOne.isPending}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteOne.mutate(notification._id);
+                          }}
+                          className="shrink-0 px-3 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

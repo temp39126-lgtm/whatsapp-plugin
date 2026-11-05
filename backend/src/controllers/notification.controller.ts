@@ -45,3 +45,37 @@ export async function markAllNotificationsRead(
     next(error);
   }
 }
+
+export async function deleteNotification(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const deleted = await notificationService.deleteNotification(
+      req.user!,
+      getParam(req.params.id)
+    );
+    if (!deleted) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+    const unreadCount = await notificationService.getUnreadNotificationCount(req.user!);
+    res.json({ unreadCount });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAllNotifications(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const deletedCount = await notificationService.deleteAllNotifications(req.user!);
+    res.json({ deletedCount, unreadCount: 0 });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -274,6 +274,26 @@ export async function markAllNotificationsRead(user: AuthUser): Promise<number> 
   return result.modifiedCount;
 }
 
+export async function deleteNotification(
+  user: AuthUser,
+  notificationId: string
+): Promise<boolean> {
+  const result = await Notification.deleteOne({
+    _id: notificationId,
+    tenantId: user.tenantId,
+    userId: user.userId,
+  });
+  return result.deletedCount > 0;
+}
+
+export async function deleteAllNotifications(user: AuthUser): Promise<number> {
+  const result = await Notification.deleteMany({
+    tenantId: user.tenantId,
+    userId: user.userId,
+  });
+  return result.deletedCount;
+}
+
 export function buildInboxHref(conversationId?: string): string {
   return conversationId
     ? `/whatsapp/inbox?conversation=${conversationId}`

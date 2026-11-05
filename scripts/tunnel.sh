@@ -112,9 +112,17 @@ sleep 2
 (cd "$ROOT/backend" && AUTH_COOKIE_CROSS_SITE=true FRONTEND_URL="$FRONTEND_URL" CORS_ORIGIN="$FRONTEND_URL,http://localhost:3000" CALLING_ENABLED=true npm run dev > /tmp/backend-dev.log 2>&1 &)
 sleep 5
 
+TUNNEL_STATE_FILE="${TUNNEL_STATE_FILE:-/tmp/crm-tunnel-urls.env}"
+cat > "$TUNNEL_STATE_FILE" <<EOF
+FRONTEND_URL=$FRONTEND_URL
+BACKEND_URL=$BACKEND_URL
+EOF
+
 echo ""
 echo "============================================"
 echo "  App:     $FRONTEND_URL/whatsapp/inbox"
 echo "  Backend: $BACKEND_URL"
 echo "============================================"
+echo "Tunnel URLs saved to $TUNNEL_STATE_FILE"
+echo "After code changes, keep the same links: bash scripts/tunnel-reload.sh"
 echo "Use production mode for tunnels (not npm run dev)."
