@@ -11,6 +11,10 @@ export interface MessageDTO {
   content: unknown;
   replyToMessageId?: string;
   status: MessageStatus;
+  errorCode?: number;
+  errorTitle?: string;
+  errorMessage?: string;
+  errorDetails?: string;
   sentByUserId?: string;
   isPinned: boolean;
   isStarred: boolean;

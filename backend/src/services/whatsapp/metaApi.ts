@@ -2,6 +2,25 @@ import { env } from '../../config/env';
 import { decrypt } from '../../utils/encryption';
 import { IWhatsAppAccount } from '../../models/WhatsAppAccount';
 
+export class MetaApiError extends Error {
+  code?: number;
+  title?: string;
+  details?: string;
+
+  constructor(data: {
+    message: string;
+    code?: number;
+    title?: string;
+    details?: string;
+  }) {
+    super(data.message);
+    this.name = 'MetaApiError';
+    this.code = data.code;
+    this.title = data.title;
+    this.details = data.details;
+  }
+}
+
 function getBaseUrl(account?: IWhatsAppAccount): string {
   const version = account?.metaApiVersion || env.META_API_VERSION;
   return `https://graph.facebook.com/${version}`;
@@ -19,7 +38,8 @@ export async function sendTemplateMessage(
   to: string,
   templateName: string,
   languageCode: string,
-  account?: IWhatsAppAccount
+  account?: IWhatsAppAccount,
+  components: Array<Record<string, unknown>> = []
 ): Promise<{ messages: Array<{ id: string }> }> {
   return metaJsonPost(
     `/${phoneNumberId}/messages`,
@@ -31,6 +51,7 @@ export async function sendTemplateMessage(
       template: {
         name: templateName,
         language: { code: languageCode },
+        ...(components.length > 0 ? { components } : {}),
       },
     },
     account
@@ -185,8 +206,31 @@ async function metaJsonPost<T = Record<string, unknown>>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Meta API error: ${error}`);
+    const errorText = await response.text();
+
+    try {
+      const payload = JSON.parse(errorText) as {
+        error?: {
+          code?: number;
+          message?: string;
+          type?: string;
+          error_data?: { details?: string };
+        };
+      };
+
+      if (payload.error) {
+        throw new MetaApiError({
+          code: payload.error.code,
+          title: payload.error.type,
+          message: payload.error.message || 'Meta API request failed',
+          details: payload.error.error_data?.details,
+        });
+      }
+    } catch (error) {
+      if (error instanceof MetaApiError) throw error;
+    }
+
+    throw new Error(`Meta API error: ${errorText}`);
   }
 
   if (response.status === 204) {

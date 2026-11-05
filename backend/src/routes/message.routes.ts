@@ -17,6 +17,16 @@ const router = Router();
 
 router.use(authenticate, tenantAccess);
 
+router.get(
+  '/conversations/:id/templates',
+  conversationAccess(),
+  messageController.getApprovedTemplates
+);
+router.post(
+  '/conversations/:id/templates',
+  conversationAccess(),
+  messageController.sendApprovedTemplate
+);
 router.get('/conversations/:id/messages', conversationAccess(), messageController.listMessages);
 router.post(
   '/conversations/:id/messages',

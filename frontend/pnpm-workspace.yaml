@@ -1,0 +1,2 @@
+patchedDependencies:
+  lamejs@1.2.1: patches/lamejs@1.2.1.patch

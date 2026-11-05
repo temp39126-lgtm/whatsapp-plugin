@@ -81,9 +81,10 @@ async function chunksToVoiceNoteFile(chunks: Blob[], recorderMime: string): Prom
   try {
     const mp3 = await recordingBlobToMp3(raw);
     return new File([mp3], 'voice-note.mp3', { type: 'audio/mpeg' });
-  } catch {
+  } catch (error) {
+    console.error('[VoiceNote] MP3 conversion failed:', error);
     throw new Error(
-      'Could not prepare voice note for WhatsApp. Try Chrome or Firefox, or attach an MP3/OGG file with the paperclip.'
+      error instanceof Error ? error.message : 'Voice note conversion failed.'
     );
   }
 }

@@ -10,6 +10,10 @@ export interface IMessage extends Document {
   content: unknown;
   replyToMessageId?: Types.ObjectId;
   status: 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+  errorCode?: number;
+  errorTitle?: string;
+  errorMessage?: string;
+  errorDetails?: string;
   sentByUserId?: string;
   isPinned: boolean;
   isStarred: boolean;
@@ -37,6 +41,10 @@ const messageSchema = new Schema<IMessage>(
       enum: ['SENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED'],
       default: 'SENDING',
     },
+    errorCode: { type: Number },
+    errorTitle: { type: String },
+    errorMessage: { type: String },
+    errorDetails: { type: String },
     sentByUserId: { type: String },
     isPinned: { type: Boolean, default: false },
     isStarred: { type: Boolean, default: false },

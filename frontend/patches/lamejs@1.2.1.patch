@@ -1,0 +1,182 @@
+diff --git a/src/js/BitStream.js b/src/js/BitStream.js
+index dd9d69f80958ff5ce988a3245a03ca6a4ee351f7..bb24ca130f94cecc0f7dfe58d79e33ebec03f13e 100644
+--- a/src/js/BitStream.js
++++ b/src/js/BitStream.js
+@@ -1,4 +1,5 @@
+ var common = require('./common.js');
++var LAME_MAXMP3BUFFER = 16384 + (128 * 1024);
+ var System = common.System;
+ var VbrMode = common.VbrMode;
+ var Float = common.Float;
+@@ -114,7 +115,7 @@ function BitStream() {
+             if (bufBitIdx == 0) {
+                 bufBitIdx = 8;
+                 bufByteIdx++;
+-                assert(bufByteIdx < Lame.LAME_MAXMP3BUFFER);
++                assert(bufByteIdx < LAME_MAXMP3BUFFER);
+                 assert(gfc.header[gfc.w_ptr].write_timing >= totbit);
+                 if (gfc.header[gfc.w_ptr].write_timing == totbit) {
+                     putheader_bits(gfc);
+@@ -147,7 +148,7 @@ function BitStream() {
+             if (bufBitIdx == 0) {
+                 bufBitIdx = 8;
+                 bufByteIdx++;
+-                assert(bufByteIdx < Lame.LAME_MAXMP3BUFFER);
++                assert(bufByteIdx < LAME_MAXMP3BUFFER);
+                 buf[bufByteIdx] = 0;
+             }
+
+@@ -1009,7 +1010,7 @@ function BitStream() {
+     };
+
+     this.init_bit_stream_w = function (gfc) {
+-        buf = new_byte(Lame.LAME_MAXMP3BUFFER);
++        buf = new_byte(LAME_MAXMP3BUFFER);
+
+         gfc.h_ptr = gfc.w_ptr = 0;
+         gfc.header[gfc.h_ptr].write_timing = 0;
+diff --git a/src/js/Encoder.js b/src/js/Encoder.js
+index 4fea74e12461f2c12667701c9bf4fcd471fd4a1f..1a05073d26d4194ce9a796bd375ac210fb86f9b6 100644
+--- a/src/js/Encoder.js
++++ b/src/js/Encoder.js
+@@ -1,4 +1,5 @@
+ var common = require('./common.js');
++var MPEGMode = require('./MPEGMode.js');
+ var System = common.System;
+ var VbrMode = common.VbrMode;
+ var Float = common.Float;
+diff --git a/src/js/Lame.js b/src/js/Lame.js
+index d2dc7c08ea65ac6a7f81dbb47bf01f8ae6c83634..3eceede17d63eb96b49d4c23d20b50f9d3cc2be1 100644
+--- a/src/js/Lame.js
++++ b/src/js/Lame.js
+@@ -1,4 +1,5 @@
+ var common = require('./common.js');
++var MPEGMode = require('./MPEGMode.js');
+ var System = common.System;
+ var VbrMode = common.VbrMode;
+ var Float = common.Float;
+diff --git a/src/js/Presets.js b/src/js/Presets.js
+index a3de3c63003ecb1d4f4ef873ab7c5e3ed4df8262..becc7a1aaff5176af433cb38145d62ff2eb904a0 100644
+--- a/src/js/Presets.js
++++ b/src/js/Presets.js
+@@ -359,49 +359,49 @@ function Presets() {
+     this.apply_preset = function(gfp, preset, enforce) {
+         /* translate legacy presets */
+         switch (preset) {
+-            case Lame.R3MIX:
++            case lame.R3MIX:
+             {
+-                preset = Lame.V3;
++                preset = lame.V3;
+                 gfp.VBR = VbrMode.vbr_mtrh;
+                 break;
+             }
+-            case Lame.MEDIUM:
++            case lame.MEDIUM:
+             {
+-                preset = Lame.V4;
++                preset = lame.V4;
+                 gfp.VBR = VbrMode.vbr_rh;
+                 break;
+             }
+-            case Lame.MEDIUM_FAST:
++            case lame.MEDIUM_FAST:
+             {
+-                preset = Lame.V4;
++                preset = lame.V4;
+                 gfp.VBR = VbrMode.vbr_mtrh;
+                 break;
+             }
+-            case Lame.STANDARD:
++            case lame.STANDARD:
+             {
+-                preset = Lame.V2;
++                preset = lame.V2;
+                 gfp.VBR = VbrMode.vbr_rh;
+                 break;
+             }
+-            case Lame.STANDARD_FAST:
++            case lame.STANDARD_FAST:
+             {
+-                preset = Lame.V2;
++                preset = lame.V2;
+                 gfp.VBR = VbrMode.vbr_mtrh;
+                 break;
+             }
+-            case Lame.EXTREME:
++            case lame.EXTREME:
+             {
+-                preset = Lame.V0;
++                preset = lame.V0;
+                 gfp.VBR = VbrMode.vbr_rh;
+                 break;
+             }
+-            case Lame.EXTREME_FAST:
++            case lame.EXTREME_FAST:
+             {
+-                preset = Lame.V0;
++                preset = lame.V0;
+                 gfp.VBR = VbrMode.vbr_mtrh;
+                 break;
+             }
+-            case Lame.INSANE:
++            case lame.INSANE:
+             {
+                 preset = 320;
+                 gfp.preset = preset;
+@@ -414,34 +414,34 @@ function Presets() {
+         gfp.preset = preset;
+         {
+             switch (preset) {
+-                case Lame.V9:
++                case lame.V9:
+                     apply_vbr_preset(gfp, 9, enforce);
+                     return preset;
+-                case Lame.V8:
++                case lame.V8:
+                     apply_vbr_preset(gfp, 8, enforce);
+                     return preset;
+-                case Lame.V7:
++                case lame.V7:
+                     apply_vbr_preset(gfp, 7, enforce);
+                     return preset;
+-                case Lame.V6:
++                case lame.V6:
+                     apply_vbr_preset(gfp, 6, enforce);
+                     return preset;
+-                case Lame.V5:
++                case lame.V5:
+                     apply_vbr_preset(gfp, 5, enforce);
+                     return preset;
+-                case Lame.V4:
++                case lame.V4:
+                     apply_vbr_preset(gfp, 4, enforce);
+                     return preset;
+-                case Lame.V3:
++                case lame.V3:
+                     apply_vbr_preset(gfp, 3, enforce);
+                     return preset;
+-                case Lame.V2:
++                case lame.V2:
+                     apply_vbr_preset(gfp, 2, enforce);
+                     return preset;
+-                case Lame.V1:
++                case lame.V1:
+                     apply_vbr_preset(gfp, 1, enforce);
+                     return preset;
+-                case Lame.V0:
++                case lame.V0:
+                     apply_vbr_preset(gfp, 0, enforce);
+                     return preset;
+                 default:
+diff --git a/src/js/PsyModel.js b/src/js/PsyModel.js
+index e44028021e228358237c569ac936d5b4fd9d7ad6..e3eaaa46de8b0363bee524975b270b346a125dbb 100644
+--- a/src/js/PsyModel.js
++++ b/src/js/PsyModel.js
+@@ -157,6 +157,7 @@ var assert = common.assert;
+
+ var FFT = require("./FFT.js");
+ var Encoder = require("./Encoder.js");
++var MPEGMode = require("./MPEGMode.js");
+
+ function PsyModel() {

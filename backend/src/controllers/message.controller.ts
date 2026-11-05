@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, AppError, getParam } from '../types';
 import * as messageService from '../services/messages/messageService';
+import * as templateService from '../services/messages/templateService';
 
 export async function listMessages(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -31,6 +32,23 @@ export async function createMediaMessage(req: AuthenticatedRequest, res: Respons
     }
 
     const voiceNote = req.body.voiceNote === true || req.body.voiceNote === 'true';
+
+    // Verify the audio signature before declaring a voice note as MP3.
+    if (voiceNote) {
+      const b = file.buffer;
+      const hasId3Header =
+        b.length >= 3 && b.subarray(0, 3).toString('ascii') === 'ID3';
+      const hasMpegFrameHeader =
+        b.length >= 2 && b[0] === 0xff && (b[1] & 0xe0) === 0xe0;
+
+      if (!hasId3Header && !hasMpegFrameHeader) {
+        throw new AppError(
+          400,
+          'Voice note is not a valid MP3 file. Please record again and retry.'
+        );
+      }
+    }
+
     const { mimeToMessageType } = await import('../utils/mediaType');
     const voiceMimeType = voiceNote ? 'audio/mpeg' : file.mimetype;
     const message = await messageService.createMessage(req.user!, req.conversation!, {
@@ -134,6 +152,43 @@ export async function getStarred(req: AuthenticatedRequest, res: Response, next:
   try {
     const messages = await messageService.getStarredMessages(req.user!, getParam(req.params.id));
     res.json(messages);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getApprovedTemplates(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const templates = await templateService.getApprovedTemplates(
+      req.user!,
+      req.conversation!
+    );
+    res.json({ data: templates });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function sendApprovedTemplate(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const message = await templateService.sendApprovedTemplate(
+      req.user!,
+      req.conversation!,
+      {
+        templateName: req.body.templateName,
+        languageCode: req.body.languageCode,
+        components: req.body.components,
+      }
+    );
+    res.status(201).json(message);
   } catch (error) {
     next(error);
   }

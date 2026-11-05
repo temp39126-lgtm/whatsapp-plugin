@@ -20,6 +20,7 @@ interface MessageBubbleProps {
   onDelete?: (messageId: string) => void;
   onDeleteForEveryone?: (messageId: string) => void;
   onRetry?: (messageId: string) => void;
+  onSendTemplate?: (messageId: string) => void;
 }
 
 const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -63,6 +64,7 @@ export function MessageBubble({
   onDelete,
   onDeleteForEveryone,
   onRetry,
+  onSendTemplate,
 }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -297,7 +299,23 @@ export function MessageBubble({
             {isOutgoing && !isDeletedForEveryone && <DeliveryStatus status={message.status} />}
           </div>
 
-          {message.status === 'FAILED' && onRetry && (
+          {message.status === 'FAILED' && message.errorCode === 131047 ? (
+            <div className="mt-2 max-w-sm rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
+              <p className="text-xs leading-relaxed">
+                This conversation's 24-hour messaging window has expired. Send an approved template to reconnect with the customer.
+              </p>
+              {onSendTemplate && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-8 border-amber-400 bg-white text-amber-900 hover:bg-amber-100"
+                  onClick={() => onSendTemplate(message._id)}
+                >
+                  Send Template
+                </Button>
+              )}
+            </div>
+          ) : message.status === 'FAILED' && onRetry ? (
             <Button
               variant="ghost"
               size="sm"
@@ -306,7 +324,7 @@ export function MessageBubble({
             >
               <RotateCcw className="mr-1 h-3 w-3" /> Retry
             </Button>
-          )}
+          ) : null}
         </div>
 
         {!isDeletedForEveryone && (

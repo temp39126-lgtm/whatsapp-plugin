@@ -340,7 +340,16 @@ export async function retryMessage(
   user: AuthUser,
   message: IMessage
 ): Promise<EnrichedMessage> {
-  if (message.status !== 'FAILED') throw new AppError(400, 'Only failed messages can be retried');
+  if (message.status !== 'FAILED') {
+    throw new AppError(400, 'Only failed messages can be retried');
+  }
+
+  if (message.errorCode === 131047) {
+    throw new AppError(
+      409,
+      "This conversation's 24-hour messaging window has expired. Send an approved template to reconnect with the customer."
+    );
+  }
 
   const conversation = await getAccessibleConversation(
     user,

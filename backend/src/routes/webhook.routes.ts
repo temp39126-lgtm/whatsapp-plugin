@@ -173,7 +173,34 @@ router.post('/', webhookRateLimiter, async (req: Request, res: Response) => {
           );
         }
 
-        await processStatusUpdate(account, String(status.id), String(status.status));
+        const firstError = Array.isArray(status.errors)
+          ? (status.errors[0] as Record<string, unknown> | undefined)
+          : undefined;
+        const errorData = firstError?.error_data as
+          | Record<string, unknown>
+          | undefined;
+        const rawCode = Number(firstError?.code);
+
+        await processStatusUpdate(
+          account,
+          String(status.id),
+          String(status.status),
+          firstError
+            ? {
+                code: Number.isFinite(rawCode) ? rawCode : undefined,
+                title:
+                  typeof firstError.title === 'string' ? firstError.title : undefined,
+                message:
+                  typeof firstError.message === 'string'
+                    ? firstError.message
+                    : undefined,
+                details:
+                  typeof errorData?.details === 'string'
+                    ? errorData.details
+                    : undefined,
+              }
+            : undefined
+        );
       }
     }
 

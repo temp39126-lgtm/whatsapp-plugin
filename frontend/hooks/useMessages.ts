@@ -159,3 +159,57 @@ export function useStarredMessages(conversationId: string | null) {
     enabled: !!conversationId,
   });
 }
+
+export interface WhatsAppTemplateComponent {
+  type?: string;
+  text?: string;
+  format?: string;
+  [key: string]: unknown;
+}
+
+export interface WhatsAppTemplate {
+  name: string;
+  language: string;
+  category?: string;
+  components: WhatsAppTemplateComponent[];
+}
+
+export function useWhatsAppTemplates(conversationId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ['whatsapp-templates', conversationId],
+    queryFn: () =>
+      api.get<{ data: WhatsAppTemplate[] }>(
+        `/conversations/${conversationId}/templates`
+      ),
+    enabled: Boolean(conversationId) && enabled,
+  });
+}
+
+export function useSendWhatsAppTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      conversationId,
+      templateName,
+      languageCode,
+      components,
+    }: {
+      conversationId: string;
+      templateName: string;
+      languageCode: string;
+      components: Array<Record<string, unknown>>;
+    }) =>
+      api.post<MessageDTO>(`/conversations/${conversationId}/templates`, {
+        templateName,
+        languageCode,
+        components,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['messages', variables.conversationId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}

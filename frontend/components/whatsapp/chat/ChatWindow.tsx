@@ -7,6 +7,7 @@ import { ChatConversationMenu } from '@/components/whatsapp/chat/ChatConversatio
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { EditMessageDialog } from './EditMessageDialog';
+import { TemplateSendDialog } from './TemplateSendDialog';
 import {
   useMessages,
   useSendMessage,
@@ -41,6 +42,7 @@ export function ChatWindow({
   const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
   const [editingMessage, setEditingMessage] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const membersRef = useRef<HTMLDivElement>(null);
@@ -266,6 +268,7 @@ export function ChatWindow({
                 if (confirmed) deleteMessage.mutate({ messageId: id, scope: 'everyone' });
               }}
               onRetry={(id) => retryMessage.mutate(id)}
+              onSendTemplate={() => setShowTemplateDialog(true)}
             />
           ))
         )}
@@ -282,6 +285,11 @@ export function ChatWindow({
       {sendError && (
         <div className="border-t bg-red-50 px-4 py-2 text-sm text-red-700">{sendError}</div>
       )}
+      <TemplateSendDialog
+        open={showTemplateDialog}
+        conversationId={conversation?._id ?? ''}
+        onClose={() => setShowTemplateDialog(false)}
+      />
       <EditMessageDialog
         open={Boolean(editingMessage)}
         initialText={editingMessage ? getEditableMessageText(editingMessage) : ''}

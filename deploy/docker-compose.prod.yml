@@ -16,7 +16,7 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/aistor/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -28,7 +28,7 @@ services:
       - internal
 
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/aistor/mc:latest
     depends_on:
       - minio
     environment:
@@ -49,11 +49,11 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5001:5000"
     depends_on:
       mongodb:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -62,13 +62,14 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       CORS_ORIGIN: ${APP_URL}
       FRONTEND_URL: ${APP_URL}
+      META_APP_SECRET: ${META_APP_SECRET}
       META_VERIFY_TOKEN: ${META_VERIFY_TOKEN}
       CALLING_ENABLED: ${CALLING_ENABLED:-true}
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://seaweedfs:8333
       S3_REGION: us-east-1
       S3_BUCKET: ${S3_BUCKET}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
       RUN_SEED_ON_START: "true"
       ADMIN_EMAIL: ${ADMIN_EMAIL}
@@ -84,36 +85,20 @@ services:
 
   frontend:
     build:
-      context: ../frontend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${APP_URL}
         NEXT_PUBLIC_SOCKET_URL: ${APP_URL}
         NEXT_PUBLIC_PUBLIC_USER_SIGNUP_ENABLED: ${PUBLIC_USER_SIGNUP_ENABLED:-false}
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3004:3000"
     depends_on:
       - backend
     environment:
       NODE_ENV: production
       PORT: 3000
-    networks:
-      - internal
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      DOMAIN: ${DOMAIN}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
     networks:
       - internal
 

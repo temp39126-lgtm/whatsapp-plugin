@@ -13,6 +13,7 @@ import {
   sendTemplateMessage,
   downloadMetaMedia,
   markMessageAsRead,
+  MetaApiError,
 } from './metaApi';
 
 export const HELLO_WORLD_TEMPLATE_NAME = 'tech2globe_whatsapp';
@@ -354,7 +355,8 @@ export async function processIncomingMessage(
 export async function processStatusUpdate(
   account: IWhatsAppAccount,
   metaMessageId: string,
-  status: string
+  status: string,
+  metaError?: { code?: number; title?: string; message?: string; details?: string }
 ): Promise<void> {
   const statusMap: Record<string, string> = {
     sent: 'SENT',
@@ -371,9 +373,18 @@ export async function processStatusUpdate(
     return;
   }
 
+  const update: Record<string, unknown> = { status: mappedStatus };
+
+  if (metaError) {
+    if (metaError.code !== undefined) update.errorCode = metaError.code;
+    if (metaError.title) update.errorTitle = metaError.title;
+    if (metaError.message) update.errorMessage = metaError.message;
+    if (metaError.details) update.errorDetails = metaError.details;
+  }
+
   const message = await Message.findOneAndUpdate(
     { _id: existing._id },
-    { status: mappedStatus },
+    { $set: update },
     { new: true }
   );
 
@@ -386,6 +397,10 @@ export async function processStatusUpdate(
         messageId: message._id.toString(),
         conversationId: message.conversationId.toString(),
         status: mappedStatus,
+        errorCode: message.errorCode,
+        errorTitle: message.errorTitle,
+        errorMessage: message.errorMessage,
+        errorDetails: message.errorDetails,
       }
     );
   }
@@ -537,6 +552,14 @@ export async function sendOutgoingMessage(
     return finalizeMessage('SENT');
   } catch (error) {
     message.status = 'FAILED';
+
+    if (error instanceof MetaApiError) {
+      message.errorCode = error.code;
+      message.errorTitle = error.title;
+      message.errorMessage = error.message;
+      message.errorDetails = error.details;
+    }
+
     await message.save();
     throw error;
   }
