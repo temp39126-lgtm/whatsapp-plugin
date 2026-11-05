@@ -33,7 +33,14 @@ echo "==> Rebuilding frontend (API: $BACKEND_URL)"
 cd "$ROOT/frontend"
 pkill -f "/tmp/whatsapp-crm-frontend/server.js" 2>/dev/null || true
 pkill -f "next start" 2>/dev/null || true
-fuser -k 3000/tcp 2>/dev/null || true
+pkill -f "next-server" 2>/dev/null || true
+if command -v fuser >/dev/null 2>&1; then
+  fuser -k 3000/tcp 2>/dev/null || true
+else
+  while read -r pid; do
+    [[ -n "$pid" ]] && kill "$pid" 2>/dev/null || true
+  done < <(lsof -t -iTCP:3000 -sTCP:LISTEN 2>/dev/null || true)
+fi
 sleep 2
 
 NEXT_PUBLIC_API_URL="$BACKEND_URL" NEXT_PUBLIC_SOCKET_URL="$BACKEND_URL" npm run build
@@ -47,6 +54,17 @@ cp -r .next/static "$DEPLOY_DIR/.next/static"
 mkdir -p "$DEPLOY_DIR/public"
 cp -r public/. "$DEPLOY_DIR/public/" 2>/dev/null || true
 (cd "$DEPLOY_DIR" && PORT=3000 HOSTNAME=0.0.0.0 node server.js > /tmp/next-prod.log 2>&1 &)
+for _ in $(seq 1 30); do
+  if curl -sf "http://127.0.0.1:3000/whatsapp/templates" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+if ! curl -sf "http://127.0.0.1:3000/whatsapp/templates" >/dev/null 2>&1; then
+  echo "ERROR: Production frontend failed to start on port 3000" >&2
+  tail -30 /tmp/next-prod.log >&2 || true
+  exit 1
+fi
 
 echo "==> Restarting backend"
 pkill -f "tsx watch src/server.ts" 2>/dev/null || true
