@@ -7,7 +7,6 @@ import {
   MessageSquare,
   BarChart3,
   Inbox,
-  UserPlus,
   AlertCircle,
   UserCheck,
 } from 'lucide-react';
@@ -132,7 +131,7 @@ export function AdminDashboard() {
 
         <section>
           <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
             <QuickAction
               href="/whatsapp/inbox"
               label="Inbox"
@@ -144,12 +143,6 @@ export function AdminDashboard() {
               label="Analytics"
               description="Reports and metrics"
               icon={BarChart3}
-            />
-            <QuickAction
-              href="/whatsapp/team"
-              label="Create user"
-              description="Add a team member and set permissions"
-              icon={UserPlus}
             />
           </div>
         </section>
@@ -163,7 +156,10 @@ export function AdminDashboard() {
                 themselves). Click a user for details.
               </p>
             </div>
-            <Link href="/whatsapp/team" className="text-sm text-whatsapp-dark hover:underline">
+            <Link
+              href="/whatsapp/settings?panel=team"
+              className="text-sm text-whatsapp-dark hover:underline"
+            >
               Add user
             </Link>
           </div>

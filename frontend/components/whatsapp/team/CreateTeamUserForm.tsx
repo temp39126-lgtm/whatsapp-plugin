@@ -1,0 +1,116 @@
+'use client';
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { UserPlus } from 'lucide-react';
+import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { TeamUserDTO } from '@/types';
+import type { Permission } from '@shared/constants/permissions';
+import { TeamUserPermissionPicker } from '@/components/whatsapp/team/TeamUserPermissionPicker';
+
+export function CreateTeamUserForm() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [message, setMessage] = useState('');
+
+  const createUser = useMutation({
+    mutationFn: (payload: {
+      name: string;
+      email: string;
+      password: string;
+      permissions: Permission[];
+    }) => api.post<TeamUserDTO>('/team/users', payload),
+    onSuccess: (user) => {
+      queryClient.invalidateQueries({ queryKey: ['team-users'] });
+      queryClient.invalidateQueries({ queryKey: ['team-workload'] });
+      setName('');
+      setEmail('');
+      setPassword('');
+      setPermissions([]);
+      const emailNote =
+        user.welcomeEmailSent === true
+          ? `A welcome email with login details was sent to ${user.email}.`
+          : user.welcomeEmailSent === false
+            ? `User created, but the welcome email could not be sent. Check SMTP in Settings and share login details manually.`
+            : '';
+      setMessage(
+        [`Created user account for ${user.name}. Assign chats from the inbox.`, emailNote]
+          .filter(Boolean)
+          .join(' ')
+      );
+    },
+    onError: (error) =>
+      setMessage(error instanceof Error ? error.message : 'Failed to create user'),
+  });
+
+  function handleCreateUser(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage('');
+    createUser.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      permissions,
+    });
+  }
+
+  return (
+    <section className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <UserPlus className="h-5 w-5 text-whatsapp" />
+        <h2 className="text-lg font-semibold">Create user account</h2>
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Public sign-up is disabled. Create every user account here. When SMTP notifications are
+        configured, a welcome email is sent with the login link, email, and temporary password.
+      </p>
+      <form onSubmit={handleCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Input
+          placeholder="Full name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          required
+          minLength={2}
+        />
+        <Input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          placeholder="Temporary password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+          minLength={6}
+        />
+        <Button
+          type="submit"
+          variant="whatsapp"
+          disabled={createUser.isPending}
+          className="w-full sm:w-auto xl:col-span-1"
+        >
+          {createUser.isPending ? 'Creating...' : 'Create user'}
+        </Button>
+      </form>
+      <div className="mt-4">
+        <TeamUserPermissionPicker value={permissions} onChange={setPermissions} />
+      </div>
+      {message && (
+        <p
+          className={`mt-3 text-sm ${createUser.isError ? 'text-red-600' : 'text-whatsapp-dark'}`}
+        >
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}

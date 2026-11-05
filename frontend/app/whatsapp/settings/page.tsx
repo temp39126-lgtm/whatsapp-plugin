@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Bell,
@@ -8,6 +9,7 @@ import {
   KeyRound,
   MessageCircle,
   Shield,
+  UserPlus,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -22,8 +24,16 @@ import { SettingsPrivacyPanel } from '@/components/whatsapp/settings/SettingsPri
 import { SettingsMetaCloudPanel } from '@/components/whatsapp/settings/SettingsMetaCloudPanel';
 
 import { SettingsWhatsAppPanel } from '@/components/whatsapp/settings/SettingsWhatsAppPanel';
+import { SettingsTeamPanel } from '@/components/whatsapp/settings/SettingsTeamPanel';
 
-type SettingsPanel = 'home' | 'account' | 'notifications' | 'metaCloudApi' | 'privacy' | 'whatsapp';
+type SettingsPanel =
+  | 'home'
+  | 'account'
+  | 'notifications'
+  | 'metaCloudApi'
+  | 'privacy'
+  | 'whatsapp'
+  | 'team';
 
 const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   account: 'Account',
@@ -31,12 +41,33 @@ const panelTitles: Record<Exclude<SettingsPanel, 'home'>, string> = {
   metaCloudApi: 'Meta Cloud API',
   privacy: 'Privacy',
   whatsapp: 'WhatsApp',
+  team: 'Create user',
 };
 
+const VALID_PANELS: SettingsPanel[] = [
+  'account',
+  'notifications',
+  'metaCloudApi',
+  'privacy',
+  'whatsapp',
+  'team',
+];
+
 export default function SettingsPage() {
-  const { isAdmin, canManageSettings } = usePermissions();
+  const { isAdmin, canManageSettings, canManageTeam } = usePermissions();
+  const searchParams = useSearchParams();
   const [panel, setPanel] = useState<SettingsPanel>('home');
   const [avatarVersion, setAvatarVersion] = useState(0);
+
+  useEffect(() => {
+    const requested = searchParams.get('panel');
+    if (!requested || !VALID_PANELS.includes(requested as SettingsPanel)) return;
+    const next = requested as SettingsPanel;
+    if (next === 'team' && !canManageTeam) return;
+    if (next === 'metaCloudApi' && !canManageSettings) return;
+    if ((next === 'privacy' || next === 'whatsapp') && isAdmin) return;
+    setPanel(next);
+  }, [searchParams, canManageTeam, canManageSettings, isAdmin]);
 
   const {
     data: profile,
@@ -98,6 +129,7 @@ export default function SettingsPage() {
         {panel === 'account' && <SettingsAccountPanel profile={profile} />}
         {panel === 'notifications' && <SettingsNotificationsPanel profile={profile} />}
         {canManageSettings && panel === 'metaCloudApi' && <SettingsMetaCloudPanel />}
+        {canManageTeam && panel === 'team' && <SettingsTeamPanel />}
         {!isAdmin && panel === 'privacy' && <SettingsPrivacyPanel profile={profile} />}
         {!isAdmin && panel === 'whatsapp' && (
           <SettingsWhatsAppPanel connection={connection} isLoading={isLoadingConnection} />
@@ -144,6 +176,14 @@ export default function SettingsPage() {
             title="Meta Cloud API"
             subtitle="Meta credentials and webhook setup"
             onClick={() => setPanel('metaCloudApi')}
+          />
+        )}
+        {canManageTeam && (
+          <SettingsMenuItem
+            icon={UserPlus}
+            title="Create user"
+            subtitle="Add a team member and set permissions"
+            onClick={() => setPanel('team')}
           />
         )}
         {!isAdmin && (
