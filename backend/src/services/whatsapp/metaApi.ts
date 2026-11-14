@@ -1,6 +1,7 @@
 import { env } from '../../config/env';
 import { decrypt } from '../../utils/encryption';
 import { IWhatsAppAccount } from '../../models/WhatsAppAccount';
+import { normalizeWhatsAppId } from '../../utils/phone';
 
 export class MetaApiError extends Error {
   code?: number;
@@ -393,6 +394,21 @@ export async function enableCallingOnPhoneNumber(
   );
 }
 
+type MetaCallConnectResponse = {
+  call_id?: string;
+  calls?: Array<{ id?: string }>;
+};
+
+function resolveMetaCallId(response: MetaCallConnectResponse): string {
+  const id = response.call_id?.trim() || response.calls?.[0]?.id?.trim();
+  if (!id) {
+    throw new MetaApiError({
+      message: 'Meta calling API did not return a call ID',
+    });
+  }
+  return id;
+}
+
 export async function initiateCall(
   phoneNumberId: string,
   to: string,
@@ -403,16 +419,18 @@ export async function initiateCall(
     throw new Error('CALL_SDP_REQUIRED');
   }
 
-  return metaJsonPost<{ call_id: string }>(
+  const response = await metaJsonPost<MetaCallConnectResponse>(
     `/${phoneNumberId}/calls`,
     {
       messaging_product: 'whatsapp',
-      to,
+      to: normalizeWhatsAppId(to),
       action: 'connect',
       session,
     },
     account
   );
+
+  return { call_id: resolveMetaCallId(response) };
 }
 
 export async function acceptMetaCall(

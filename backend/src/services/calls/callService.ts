@@ -17,6 +17,7 @@ import { normalizeWhatsAppId } from '../../utils/phone';
 import { isDuplicateKeyError } from '../../utils/mongo';
 import { getOrCreateContactConversation } from '../contacts/contactConversationService';
 import { removeCallTimelineMessages, upsertCallTimelineMessage } from './callTimelineService';
+import { logger } from '../../config/logger';
 
 /** Ringing/initiating calls older than this are cleared so a new call can start. */
 const STALE_ACTIVE_CALL_MS = 2 * 60 * 1000;
@@ -183,6 +184,50 @@ export async function getCall(user: AuthUser, callId: string) {
   return { call, events };
 }
 
+async function supersedeStuckOutboundCall(call: ICall, tenantId: string): Promise<void> {
+  if (call.metaCallId) {
+    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
+    if (account) {
+      try {
+        const { terminateMetaCall } = await import('../whatsapp/metaApi');
+        await terminateMetaCall(account.phoneNumberId, call.metaCallId, account);
+      } catch {
+        // Best-effort terminate so a new outbound call can start.
+      }
+    }
+  }
+
+  call.status = 'FAILED';
+  call.failureReason = 'Superseded by a new outbound call attempt';
+  call.endedAt = new Date();
+  call.signalingSession = undefined;
+  await call.save();
+  await createCallEvent(call, 'call.failed', { reason: call.failureReason, superseded: true });
+  await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.ended', {
+    callId: call._id.toString(),
+    status: 'FAILED',
+    reason: call.failureReason,
+  });
+  try {
+    await upsertCallTimelineMessage(call);
+  } catch (error) {
+    logger.warn({ error, callId: call._id }, 'Failed to update call timeline after superseding');
+  }
+}
+
+function formatCallStartFailure(error: unknown): string {
+  if (error instanceof MetaApiError) {
+    if (error.code === 138006) {
+      return 'This customer has not allowed business calls from your number in WhatsApp. Ask them to enable calling permission.';
+    }
+    return error.details ?? error.message;
+  }
+  if (error instanceof Error && error.message === 'CALL_SDP_REQUIRED') {
+    return 'Outbound calls require WebRTC SDP from the client. Incoming calls are still supported.';
+  }
+  return error instanceof Error ? error.message : 'Meta calling API not available';
+}
+
 async function createCallEvent(call: ICall, eventType: string, metadata?: Record<string, unknown>) {
   await CallEvent.create({
     tenantId: call.tenantId,
@@ -222,7 +267,7 @@ export async function startCall(
       (activeCall.status === 'INITIATING' || activeCall.status === 'RINGING') &&
       activeCall.initiatedByUserId === user.userId;
     if (canReplaceStuckOutbound) {
-      await endCall(user, activeCall);
+      await supersedeStuckOutboundCall(activeCall, user.tenantId);
       activeCall = null;
     }
   }
@@ -252,24 +297,28 @@ export async function startCall(
     await createCallEvent(call, 'call.ringing');
   } catch (error) {
     call.status = 'FAILED';
-    if (error instanceof Error && error.message === 'CALL_SDP_REQUIRED') {
-      call.failureReason =
-        'Outbound calls require WebRTC SDP from the client. Incoming calls are still supported.';
-    } else if (error instanceof MetaApiError) {
-      call.failureReason = error.message;
-    } else {
-      call.failureReason =
-        error instanceof Error ? error.message : 'Meta calling API not available';
-    }
+    call.failureReason = formatCallStartFailure(error);
+    call.endedAt = new Date();
     await call.save();
     await createCallEvent(call, 'call.failed', { reason: call.failureReason });
+    await emitToAuthorizedUsers(user.tenantId, conversationId, 'call.ended', {
+      callId: call._id.toString(),
+      status: 'FAILED',
+      reason: call.failureReason,
+    });
   }
 
-  await emitToAuthorizedUsers(user.tenantId, conversationId, 'call.ringing', {
-    call: call.toObject(),
-  });
+  if (call.status === 'RINGING') {
+    await emitToAuthorizedUsers(user.tenantId, conversationId, 'call.ringing', {
+      call: call.toObject(),
+    });
+  }
 
-  await upsertCallTimelineMessage(call);
+  try {
+    await upsertCallTimelineMessage(call);
+  } catch (error) {
+    logger.warn({ error, callId: call._id }, 'Failed to upsert call timeline message');
+  }
 
   return call;
 }
