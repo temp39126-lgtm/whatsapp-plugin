@@ -183,13 +183,13 @@ export default function ContactsPage() {
         ) : contacts.length === 0 ? (
           <p className="text-center text-muted-foreground">No contacts found</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,17.5rem),1fr))]">
             {contacts.map((contact) => {
               const isEditing = editingContact?._id === contact._id;
               return (
                 <div
                   key={contact._id}
-                  className={`rounded-lg border p-4 ${isEditing ? 'border-whatsapp/50 bg-muted/30' : 'hover:bg-muted/50'}`}
+                  className={`rounded-lg border p-3 ${isEditing ? 'border-whatsapp/50 bg-muted/30 sm:col-span-full' : 'hover:bg-muted/50'}`}
                 >
                   {isEditing ? (
                     <ContactInlineEdit
@@ -199,7 +199,7 @@ export default function ContactsPage() {
                       onSave={handleSaveEdit}
                     />
                   ) : (
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <ProfileAvatar
                         name={contact.name}
                         imageUrl={
@@ -215,44 +215,44 @@ export default function ContactsPage() {
                         }
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{contact.name}</p>
+                        <p className="truncate font-medium leading-tight">{contact.name}</p>
                         <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
-                        <div className="mt-3 flex items-center gap-0.5">
+                      </div>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-whatsapp hover:bg-whatsapp-light hover:text-whatsapp-dark"
+                          aria-label={`Message ${contact.name}`}
+                          disabled={openingContactId === contact._id}
+                          onClick={() => handleMessage(contact)}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          aria-label={`Edit ${contact.name}`}
+                          onClick={() => setEditingContact(contact)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {isAdmin ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 text-whatsapp hover:bg-whatsapp-light hover:text-whatsapp-dark"
-                            aria-label={`Message ${contact.name}`}
-                            disabled={openingContactId === contact._id}
-                            onClick={() => handleMessage(contact)}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            aria-label={`Delete ${contact.name}`}
+                            disabled={deleteContact.isPending}
+                            onClick={() => handleDelete(contact)}
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                            aria-label={`Edit ${contact.name}`}
-                            onClick={() => setEditingContact(contact)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {isAdmin ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              aria-label={`Delete ${contact.name}`}
-                              disabled={deleteContact.isPending}
-                              onClick={() => handleDelete(contact)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                        </div>
+                        ) : null}
                       </div>
                     </div>
                   )}
