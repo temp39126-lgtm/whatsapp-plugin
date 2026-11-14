@@ -50,6 +50,13 @@ function bodyPreviewFromComponents(components?: Array<Record<string, unknown>>):
   return typeof text === 'string' ? text : undefined;
 }
 
+function normalizeRejectedReason(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toUpperCase() === 'NONE') return undefined;
+  return trimmed;
+}
+
 function mapTemplate(record: MetaTemplateRecord): AdminTemplateDTO {
   return {
     id: String(record.id ?? ''),
@@ -58,7 +65,7 @@ function mapTemplate(record: MetaTemplateRecord): AdminTemplateDTO {
     category: record.category,
     status: record.status,
     components: record.components ?? [],
-    rejectedReason: record.rejected_reason,
+    rejectedReason: normalizeRejectedReason(record.rejected_reason),
     bodyPreview: bodyPreviewFromComponents(record.components),
   };
 }

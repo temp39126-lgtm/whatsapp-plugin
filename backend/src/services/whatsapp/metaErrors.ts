@@ -9,6 +9,12 @@ export function metaFailureToAppError(error: unknown, fallbackMessage: string): 
         'Invalid WhatsApp access token. Open Settings → Meta Cloud API and save a valid permanent token from Meta Business Manager.'
       );
     }
+    if (error.code === 100) {
+      throw new AppError(
+        502,
+        'Meta denied this action. Use a System User token with whatsapp_business_management, assigned to your WhatsApp Business Account in Business Manager — then delete templates here without opening Business Suite.'
+      );
+    }
     throw new AppError(502, error.details ?? error.message);
   }
 
@@ -22,6 +28,12 @@ export function metaFailureToAppError(error: unknown, fallbackMessage: string): 
         throw new AppError(
           502,
           'Invalid WhatsApp access token. Open Settings → Meta Cloud API and save a valid permanent token from Meta Business Manager.'
+        );
+      }
+      if (payload.error?.code === 100) {
+        throw new AppError(
+          502,
+          'Meta denied this action. Use a System User token with whatsapp_business_management, assigned to your WhatsApp Business Account in Business Manager — then delete templates here without opening Business Suite.'
         );
       }
       if (payload.error?.message) {

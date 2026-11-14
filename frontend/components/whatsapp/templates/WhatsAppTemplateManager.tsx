@@ -21,6 +21,11 @@ function canEditTemplate(status: string): boolean {
   return normalized === 'APPROVED' || normalized === 'REJECTED' || normalized === 'PAUSED';
 }
 
+function canDeleteTemplate(status: string): boolean {
+  const normalized = status.toUpperCase();
+  return normalized !== 'DISABLED';
+}
+
 export function WhatsAppTemplateManager() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -28,6 +33,7 @@ export function WhatsAppTemplateManager() {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<AdminWhatsAppTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, refetch, error: loadError } = useAdminTemplates();
   const createMutation = useCreateAdminTemplate();
@@ -98,15 +104,24 @@ export function WhatsAppTemplateManager() {
   }
 
   function handleDelete(template: AdminWhatsAppTemplate) {
+    if (!canDeleteTemplate(template.status)) {
+      setError('Meta does not allow deleting disabled templates. Re-enable or remove them in WhatsApp Manager.');
+      return;
+    }
     const confirmed = window.confirm(
-      `Delete template "${template.name}" (${template.language})? This removes it from your WhatsApp Business Account.`
+      `Delete "${template.name}" (${template.language}) from your WhatsApp account? This uses Meta’s API — you do not need to open Business Suite.`
     );
     if (!confirmed) return;
     setError(null);
     deleteMutation.mutate(
       { id: template.id, name: template.name, language: template.language },
       {
+        onSuccess: () => {
+          setError(null);
+          setMessage(`Deleted template "${template.name}" (${template.language}) from your WhatsApp account.`);
+        },
         onError: (deleteError) => {
+          setMessage('');
           setError(deleteError instanceof Error ? deleteError.message : 'Delete failed');
         },
       }
@@ -129,8 +144,9 @@ export function WhatsAppTemplateManager() {
         <div>
           <h1 className="text-2xl font-semibold">Templates</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Manage WhatsApp message templates on your connected Meta Business Account. New and
-            edited templates go through Meta review before they appear in chat.
+            Create, edit, and delete templates on your connected WhatsApp Business Account from
+            here (same Meta API as Business Suite). New and edited templates go through Meta review
+            before they appear in chat.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -144,6 +160,12 @@ export function WhatsAppTemplateManager() {
           </Button>
         </div>
       </div>
+
+      {message && (
+        <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          {message}
+        </div>
+      )}
 
       {(error || loadErrorMessage) && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -241,7 +263,12 @@ export function WhatsAppTemplateManager() {
                         variant="ghost"
                         size="icon"
                         aria-label={`Delete ${template.name}`}
-                        disabled={deleteMutation.isPending}
+                        disabled={deleteMutation.isPending || !canDeleteTemplate(template.status)}
+                        title={
+                          canDeleteTemplate(template.status)
+                            ? 'Delete from WhatsApp account'
+                            : 'Disabled templates cannot be deleted via API'
+                        }
                         onClick={() => handleDelete(template)}
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
