@@ -269,13 +269,23 @@ export async function processIncomingMessage(
       mimeType = incoming.audio?.mime_type;
       type = 'VOICE';
       break;
-    case 'document':
+    case 'document': {
       content = { fileName: incoming.document?.filename };
       mediaId = incoming.document?.id;
       mimeType = incoming.document?.mime_type;
       fileName = incoming.document?.filename;
-      type = 'DOCUMENT';
+      const docMime = (mimeType ?? '').toLowerCase();
+      if (docMime.startsWith('image/')) {
+        type = 'IMAGE';
+        content = { fileName };
+      } else if (docMime.startsWith('video/')) {
+        type = 'VIDEO';
+        content = { fileName };
+      } else {
+        type = 'DOCUMENT';
+      }
       break;
+    }
     case 'sticker':
       mediaId = incoming.sticker?.id;
       mimeType = incoming.sticker?.mime_type;

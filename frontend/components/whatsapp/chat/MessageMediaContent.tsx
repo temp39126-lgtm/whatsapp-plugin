@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { FileText, Download, Check, Film, Music, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth';
 import { getWhatsAppMediaUrl, resolveMediaUrl } from '@/lib/api';
+import {
+  isDisplayableImageMessage,
+  isDisplayableVideoMessage,
+  shouldLoadMessageBlob,
+} from '@/lib/message-media';
 import type { MessageDTO } from '@/types';
 
 function formatFileSize(bytes?: number): string {
@@ -16,7 +21,7 @@ function formatFileSize(bytes?: number): string {
 function defaultMediaLabel(type: string): string {
   if (type === 'VOICE' || type === 'AUDIO') return 'Voice message';
   if (type === 'VIDEO') return 'Video';
-  if (type === 'IMAGE') return 'Image';
+  if (type === 'IMAGE' || type === 'STICKER') return 'Image';
   if (type === 'INTERACTIVE') return 'Message';
   return 'Attachment';
 }
@@ -44,46 +49,42 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
     templateName?: string;
     preview?: string;
   };
+  const showAsImage = isDisplayableImageMessage(message);
+  const showAsVideo = isDisplayableVideoMessage(message);
+  const needsBlob = shouldLoadMessageBlob(message);
+
   const fileName =
     message.media?.fileName ?? content.fileName ?? defaultMediaLabel(message.type);
   const caption = content.caption?.trim();
   const mediaPath = message.media?.url ?? getWhatsAppMediaUrl(message._id);
 
   useEffect(() => {
-    if (message.type === 'TEXT' || message.type === 'TEMPLATE') return;
+    if (!needsBlob) return;
 
     let objectUrl: string | null = null;
     let cancelled = false;
 
     async function loadMedia() {
-      if (message.type === 'VOICE' || message.type === 'AUDIO') {
-        if (!cancelled) setMediaLoadState('loading');
-      }
+      if (!cancelled) setMediaLoadState('loading');
       try {
         const response = await fetch(resolveMediaUrl(mediaPath), {
           headers: getAuthHeaders(),
           credentials: 'include',
         });
         if (!response.ok) {
-          if (!cancelled && (message.type === 'VOICE' || message.type === 'AUDIO')) {
-            setMediaLoadState('error');
-          }
+          if (!cancelled) setMediaLoadState('error');
           return;
         }
         const blob = await response.blob();
         objectUrl = URL.createObjectURL(blob);
         if (!cancelled) {
           setBlobUrl(objectUrl);
-          if (message.type === 'VOICE' || message.type === 'AUDIO') {
-            setMediaLoadState('ready');
-          }
+          setMediaLoadState('ready');
         }
       } catch {
         if (!cancelled) {
           setBlobUrl(null);
-          if (message.type === 'VOICE' || message.type === 'AUDIO') {
-            setMediaLoadState('error');
-          }
+          setMediaLoadState('error');
         }
       }
     }
@@ -94,7 +95,7 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [message._id, message.type, mediaPath]);
+  }, [message._id, mediaPath, needsBlob]);
 
   if (message.type === 'CALL') {
     const callContent = content as {
@@ -161,15 +162,44 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
     );
   }
 
-  if (message.type === 'IMAGE') {
+  if (showAsImage) {
     return (
       <div className="space-y-2">
         {blobUrl ? (
-          <img src={blobUrl} alt={fileName} className="max-h-48 max-w-full rounded object-cover" />
-        ) : (
-          <div className="flex h-24 items-center justify-center rounded bg-black/5 text-xs text-muted-foreground">
-            Loading image...
+          <img
+            src={blobUrl}
+            alt={caption || fileName}
+            className="block max-h-[min(70vh,32rem)] w-auto max-w-full rounded-md object-contain"
+          />
+        ) : mediaLoadState === 'loading' ? (
+          <div className="flex min-h-[8rem] min-w-[10rem] items-center justify-center rounded-md bg-black/5 text-xs text-muted-foreground">
+            Loading image…
           </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Image unavailable.</p>
+        )}
+        {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
+      </div>
+    );
+  }
+
+  if (showAsVideo) {
+    return (
+      <div className="space-y-2">
+        {blobUrl ? (
+          <video
+            src={blobUrl}
+            controls
+            playsInline
+            preload="metadata"
+            className="block max-h-[min(70vh,32rem)] w-auto max-w-full rounded-md bg-black"
+          />
+        ) : mediaLoadState === 'loading' ? (
+          <div className="flex min-h-[8rem] items-center justify-center rounded-md bg-black/5 text-xs text-muted-foreground">
+            Loading video…
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Video unavailable.</p>
         )}
         {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
       </div>

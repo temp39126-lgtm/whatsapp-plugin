@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { ChevronDown, Pin, Star, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { isDisplayableImageMessage } from '@/lib/message-media';
 import { cn } from '@/lib/utils';
 import { DeliveryStatus } from './DeliveryStatus';
 import { MessageMediaContent } from './MessageMediaContent';
@@ -267,7 +268,12 @@ export function MessageBubble({
 
   return (
     <div className={cn('group flex w-full', isOutgoing ? 'justify-end' : 'justify-start')}>
-      <div className="relative max-w-[min(75%,32rem)]">
+      <div
+        className={cn(
+          'relative',
+          isDisplayableImageMessage(message) ? 'max-w-[min(92%,36rem)]' : 'max-w-[min(75%,32rem)]'
+        )}
+      >
         <div
           ref={bubbleRef}
           onContextMenu={handleContextMenu}
