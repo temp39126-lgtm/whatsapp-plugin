@@ -41,8 +41,12 @@ export function useSendMessage() {
 export function useTogglePin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (messageId: string) => api.post(`/messages/${messageId}/pin`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['messages'] }),
+    mutationFn: ({ messageId }: { messageId: string; conversationId: string }) =>
+      api.post(`/messages/${messageId}/pin`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['pinned', variables.conversationId] });
+    },
   });
 }
 

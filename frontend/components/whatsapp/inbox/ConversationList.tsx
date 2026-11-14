@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import { Pin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
@@ -63,7 +64,15 @@ export function ConversationList({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-medium">{name}</span>
+                <span className="flex min-w-0 items-center gap-1 truncate font-medium">
+                  {conversation.isPinned ? (
+                    <Pin
+                      className="h-3.5 w-3.5 shrink-0 text-whatsapp"
+                      aria-label="Pinned chat"
+                    />
+                  ) : null}
+                  <span className="truncate">{name}</span>
+                </span>
                 {conversation.lastMessageAt && (
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(conversation.lastMessageAt), { addSuffix: true })}

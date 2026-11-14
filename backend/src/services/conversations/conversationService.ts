@@ -19,6 +19,9 @@ import { sendContactAssignmentNotice } from './assignmentContactNotice';
 import { saveConversationWithVersion } from './conversationLock';
 import { escapeRegExp } from '../../utils/regex';
 import { assertActiveTenantUser } from '../users/assigneeValidation';
+import { ConversationRead } from '../../models/ConversationRead';
+
+const MAX_PINNED_CHATS = 3;
 
 interface ConversationFilters {
   status?: string;
@@ -204,6 +207,99 @@ export async function getAdminAssignedCountsByUser(
   return counts;
 }
 
+async function loadPinnedConversationIds(user: AuthUser): Promise<{ id: string; pinnedAt: Date }[]> {
+  const reads = await ConversationRead.find({
+    tenantId: user.tenantId,
+    userId: user.userId,
+    isPinned: true,
+  })
+    .sort({ pinnedAt: -1 })
+    .select('conversationId pinnedAt')
+    .lean();
+
+  return reads
+    .filter((read) => read.conversationId && read.pinnedAt)
+    .map((read) => ({
+      id: read.conversationId.toString(),
+      pinnedAt: read.pinnedAt as Date,
+    }));
+}
+
+async function attachPinStateToConversations<T extends { _id?: unknown }>(
+  user: AuthUser,
+  conversations: T[]
+): Promise<Array<T & { isPinned: boolean; pinnedAt?: string }>> {
+  if (conversations.length === 0) return [];
+
+  const ids = conversations.map((conversation) =>
+    typeof conversation._id === 'object' && conversation._id !== null && 'toString' in conversation._id
+      ? (conversation._id as { toString(): string }).toString()
+      : String(conversation._id)
+  );
+
+  const reads = await ConversationRead.find({
+    tenantId: user.tenantId,
+    userId: user.userId,
+    conversationId: { $in: ids },
+    isPinned: true,
+  })
+    .select('conversationId pinnedAt')
+    .lean();
+
+  const pinMap = new Map(
+    reads.map((read) => [read.conversationId.toString(), read.pinnedAt?.toISOString()])
+  );
+
+  return conversations.map((conversation) => {
+    const id =
+      typeof conversation._id === 'object' && conversation._id !== null && 'toString' in conversation._id
+        ? (conversation._id as { toString(): string }).toString()
+        : String(conversation._id);
+    const pinnedAt = pinMap.get(id);
+    return {
+      ...conversation,
+      isPinned: Boolean(pinnedAt),
+      pinnedAt,
+    };
+  });
+}
+
+type LeanConversationRow = Record<string, unknown>;
+
+async function queryConversations(
+  filter: Record<string, unknown>,
+  options: { sort?: Record<string, 1 | -1>; skip?: number; limit?: number }
+): Promise<LeanConversationRow[]> {
+  let query = Conversation.find(filter)
+    .populate('contactId', 'name phone whatsappId profileImage')
+    .populate('groupId', 'name contactIds profileImage')
+    .populate('tags', 'name');
+
+  if (options.sort) {
+    query = query.sort(options.sort);
+  }
+  if (options.skip) {
+    query = query.skip(options.skip);
+  }
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
+
+  return query.lean() as Promise<LeanConversationRow[]>;
+}
+
+function orderPinnedConversations(
+  rows: LeanConversationRow[],
+  pinnedOrder: { id: string }[]
+): LeanConversationRow[] {
+  const order = new Map(pinnedOrder.map((entry, index) => [entry.id, index]));
+  return [...rows].sort((left, right) => {
+    const leftId = String(left._id);
+    const rightId = String(right._id);
+    return (order.get(leftId) ?? 999) - (order.get(rightId) ?? 999);
+  });
+}
+
 export async function listConversations(
   user: AuthUser,
   filters: ConversationFilters,
@@ -260,19 +356,60 @@ export async function listConversations(
 
   const filter = buildConversationFilter(user, query);
   const { skip, limit: lim } = getPagination({ page, limit });
+  const pinnedOrder = await loadPinnedConversationIds(user);
+  const pinnedIds = pinnedOrder.map((entry) => entry.id);
 
-  const conversations = await Conversation.find(filter)
-    .sort({ lastMessageAt: -1 })
-    .skip(skip)
-    .limit(lim)
-    .populate('contactId', 'name phone whatsappId profileImage')
-    .populate('groupId', 'name contactIds profileImage')
-    .populate('tags', 'name')
-    .lean();
+  let conversations: LeanConversationRow[];
+
+  if (pinnedIds.length > 0) {
+    const pinnedFilter = buildConversationFilter(user, {
+      ...query,
+      _id: { $in: pinnedIds },
+    });
+    const pinnedRows = orderPinnedConversations(
+      await queryConversations(pinnedFilter, {}),
+      pinnedOrder
+    );
+    const pinnedMatchingCount = await Conversation.countDocuments(pinnedFilter);
+
+    if (page === 1) {
+      const remaining = Math.max(0, lim - pinnedRows.length);
+      const unpinnedFilter = buildConversationFilter(user, {
+        ...query,
+        _id: { $nin: pinnedIds },
+      });
+      const unpinnedRows =
+        remaining > 0
+          ? await queryConversations(unpinnedFilter, {
+              sort: { lastMessageAt: -1 },
+              limit: remaining,
+            })
+          : [];
+      conversations = [...pinnedRows, ...unpinnedRows];
+    } else {
+      const unpinnedFilter = buildConversationFilter(user, {
+        ...query,
+        _id: { $nin: pinnedIds },
+      });
+      const unpinnedSkip = Math.max(0, skip - pinnedMatchingCount);
+      conversations = await queryConversations(unpinnedFilter, {
+        sort: { lastMessageAt: -1 },
+        skip: unpinnedSkip,
+        limit: lim,
+      });
+    }
+  } else {
+    conversations = await queryConversations(filter, {
+      sort: { lastMessageAt: -1 },
+      skip,
+      limit: lim,
+    });
+  }
 
   const total = await Conversation.countDocuments(filter);
+  const withPin = await attachPinStateToConversations(user, conversations);
   const enriched = await enrichConversations(
-    conversations.map((conversation) => {
+    withPin.map((conversation) => {
       return {
         ...conversation,
         contact: mapPopulatedContact(conversation.contactId),
@@ -282,6 +419,48 @@ export async function listConversations(
   );
 
   return paginatedResponse(enriched, total, page, lim);
+}
+
+export async function toggleConversationPin(user: AuthUser, conversation: IConversation) {
+  const existing = await ConversationRead.findOne({
+    tenantId: user.tenantId,
+    conversationId: conversation._id,
+    userId: user.userId,
+  });
+
+  const currentlyPinned = Boolean(existing?.isPinned);
+
+  if (currentlyPinned) {
+    await ConversationRead.findOneAndUpdate(
+      { tenantId: user.tenantId, conversationId: conversation._id, userId: user.userId },
+      { $set: { isPinned: false }, $unset: { pinnedAt: '' } },
+      { upsert: true }
+    );
+    await logActivity(user, 'conversation.unpinned', 'conversation', conversation._id.toString());
+    return { isPinned: false };
+  }
+
+  const pinnedCount = await ConversationRead.countDocuments({
+    tenantId: user.tenantId,
+    userId: user.userId,
+    isPinned: true,
+    conversationId: { $ne: conversation._id },
+  });
+  if (pinnedCount >= MAX_PINNED_CHATS) {
+    throw new AppError(
+      400,
+      `You can pin up to ${MAX_PINNED_CHATS} chats. Unpin another chat first.`
+    );
+  }
+
+  const pinnedAt = new Date();
+  await ConversationRead.findOneAndUpdate(
+    { tenantId: user.tenantId, conversationId: conversation._id, userId: user.userId },
+    { $set: { isPinned: true, pinnedAt, lastReadAt: existing?.lastReadAt ?? pinnedAt } },
+    { upsert: true }
+  );
+  await logActivity(user, 'conversation.pinned', 'conversation', conversation._id.toString());
+  return { isPinned: true, pinnedAt: pinnedAt.toISOString() };
 }
 
 export async function getConversation(user: AuthUser, conversationId: string) {
@@ -300,9 +479,10 @@ export async function getConversation(user: AuthUser, conversationId: string) {
   if (!conversation) return null;
 
   const obj = conversation.toObject();
+  const [withPin] = await attachPinStateToConversations(user, [obj]);
   const [enriched] = await enrichConversations([
     {
-      ...obj,
+      ...withPin,
       contact: mapPopulatedContact(obj.contactId),
       group: mapPopulatedGroup(obj.groupId, true),
     },

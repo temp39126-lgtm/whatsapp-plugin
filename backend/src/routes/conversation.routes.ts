@@ -71,5 +71,6 @@ router.get(
   controller.exportConversation
 );
 router.post('/:id/read', conversationAccess(), controller.markRead);
+router.post('/:id/pin', conversationAccess(), controller.togglePin);
 
 export default router;

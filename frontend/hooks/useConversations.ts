@@ -164,3 +164,14 @@ export function useMarkAllRead() {
     },
   });
 }
+
+export function useToggleConversationPin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      api.post<{ isPinned: boolean }>(`/conversations/${conversationId}/pin`),
+    onSuccess: (_data, conversationId) => {
+      invalidateConversationQueries(queryClient, conversationId);
+    },
+  });
+}

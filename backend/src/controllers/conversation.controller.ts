@@ -149,6 +149,15 @@ export async function markRead(req: AuthenticatedRequest, res: Response, next: N
   }
 }
 
+export async function togglePin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await conversationService.toggleConversationPin(req.user!, req.conversation!);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function markAllRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const result = await conversationService.markAllConversationsRead(req.user!);

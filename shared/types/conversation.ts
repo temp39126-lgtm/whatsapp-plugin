@@ -20,6 +20,9 @@ export interface ConversationDTO {
   unreadCount: number;
   lastMessage?: string;
   lastMessageAt?: string;
+  /** Whether the signed-in user pinned this chat in the inbox. */
+  isPinned?: boolean;
+  pinnedAt?: string;
   createdAt: string;
   updatedAt: string;
   contact?: {
