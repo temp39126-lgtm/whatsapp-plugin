@@ -13,7 +13,7 @@ import {
   useUpdateContact,
   useUploadContactAvatar,
 } from '@/hooks/useContacts';
-import { ContactEditDialog } from '@/components/whatsapp/contacts/ContactEditDialog';
+import { ContactInlineEdit } from '@/components/whatsapp/contacts/ContactInlineEdit';
 import type { ContactDTO, PaginatedResponse } from '@/types';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/AuthProvider';
@@ -184,75 +184,83 @@ export default function ContactsPage() {
           <p className="text-center text-muted-foreground">No contacts found</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {contacts.map((contact) => (
-              <div key={contact._id} className="rounded-lg border p-4 hover:bg-muted/50">
-                <div className="flex items-start gap-3">
-                  <ProfileAvatar
-                    name={contact.name}
-                    imageUrl={
-                      contact.profileImage
-                        ? `/api/whatsapp/contacts/${contact._id}/avatar`
-                        : undefined
-                    }
-                    size="md"
-                    editable={isAdmin}
-                    uploading={uploadContactAvatar.isPending}
-                    onUpload={(file) =>
-                      uploadContactAvatar.mutate({ contactId: contact._id, file })
-                    }
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{contact.name}</p>
-                    <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="whatsapp"
-                        size="sm"
-                        disabled={openingContactId === contact._id}
-                        onClick={() => handleMessage(contact)}
-                      >
-                        <MessageCircle className="mr-1 h-4 w-4" />
-                        {openingContactId === contact._id ? 'Opening...' : 'Message'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingContact(contact)}
-                      >
-                        <Pencil className="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-                      {isAdmin ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          disabled={deleteContact.isPending}
-                          onClick={() => handleDelete(contact)}
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />
-                          Delete
-                        </Button>
-                      ) : null}
+            {contacts.map((contact) => {
+              const isEditing = editingContact?._id === contact._id;
+              return (
+                <div
+                  key={contact._id}
+                  className={`rounded-lg border p-4 ${isEditing ? 'border-whatsapp/50 bg-muted/30' : 'hover:bg-muted/50'}`}
+                >
+                  {isEditing ? (
+                    <ContactInlineEdit
+                      contact={contact}
+                      saving={updateContact.isPending}
+                      onCancel={() => setEditingContact(null)}
+                      onSave={handleSaveEdit}
+                    />
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <ProfileAvatar
+                        name={contact.name}
+                        imageUrl={
+                          contact.profileImage
+                            ? `/api/whatsapp/contacts/${contact._id}/avatar`
+                            : undefined
+                        }
+                        size="md"
+                        editable={isAdmin}
+                        uploading={uploadContactAvatar.isPending}
+                        onUpload={(file) =>
+                          uploadContactAvatar.mutate({ contactId: contact._id, file })
+                        }
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{contact.name}</p>
+                        <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="whatsapp"
+                            size="sm"
+                            disabled={openingContactId === contact._id}
+                            onClick={() => handleMessage(contact)}
+                          >
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            {openingContactId === contact._id ? 'Opening...' : 'Message'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingContact(contact)}
+                          >
+                            <Pencil className="mr-1 h-4 w-4" />
+                            Edit
+                          </Button>
+                          {isAdmin ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              disabled={deleteContact.isPending}
+                              onClick={() => handleDelete(contact)}
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              Delete
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      <ContactEditDialog
-        contact={editingContact}
-        open={Boolean(editingContact)}
-        saving={updateContact.isPending}
-        onClose={() => setEditingContact(null)}
-        onSave={handleSaveEdit}
-      />
     </div>
   );
 }
