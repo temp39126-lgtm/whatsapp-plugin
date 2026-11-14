@@ -217,16 +217,17 @@ export default function ContactsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{contact.name}</p>
                         <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-1">
+                        <div className="mt-3 flex items-center gap-0.5">
                           <Button
                             type="button"
-                            variant="whatsapp"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-whatsapp hover:bg-whatsapp-light hover:text-whatsapp-dark"
+                            aria-label={`Message ${contact.name}`}
                             disabled={openingContactId === contact._id}
                             onClick={() => handleMessage(contact)}
                           >
-                            <MessageCircle className="mr-1 h-4 w-4" />
-                            {openingContactId === contact._id ? 'Opening...' : 'Message'}
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                           <Button
                             type="button"
