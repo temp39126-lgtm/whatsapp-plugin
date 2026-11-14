@@ -80,18 +80,27 @@ export async function sendTextMessage(
   return metaPost(`/${phoneNumberId}/messages`, body, account);
 }
 
+export type SendMediaMessageOptions = {
+  voice?: boolean;
+  replyToMessageId?: string;
+};
+
 export async function sendMediaMessage(
   phoneNumberId: string,
   to: string,
   type: string,
   mediaId: string,
   caption?: string,
-  account?: IWhatsAppAccount
+  account?: IWhatsAppAccount,
+  options?: SendMediaMessageOptions
 ): Promise<{ messages: Array<{ id: string }> }> {
   const mediaPayload: Record<string, unknown> = { id: mediaId };
   if (caption) mediaPayload.caption = caption;
+  if (type === 'audio' && options?.voice === true) {
+    mediaPayload.voice = true;
+  }
 
-  const body = {
+  const body: Record<string, unknown> = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to,
@@ -99,19 +108,36 @@ export async function sendMediaMessage(
     [type]: mediaPayload,
   };
 
+  if (options?.replyToMessageId) {
+    body.context = { message_id: options.replyToMessageId };
+  }
+
   return metaPost(`/${phoneNumberId}/messages`, body, account);
+}
+
+export function mediaUploadFileName(mimeType: string, preferredName?: string): string {
+  if (preferredName?.trim()) return preferredName.trim();
+  const lower = mimeType.toLowerCase();
+  if (lower.includes('mpeg') || lower.includes('mp3')) return 'voice-note.mp3';
+  if (lower.includes('ogg') || lower.includes('opus')) return 'voice-note.ogg';
+  if (lower.startsWith('image/')) return 'image';
+  if (lower.startsWith('video/')) return 'video.mp4';
+  if (lower.startsWith('audio/')) return 'audio';
+  return 'media';
 }
 
 export async function uploadMediaToMeta(
   phoneNumberId: string,
   buffer: Buffer,
   mimeType: string,
-  account?: IWhatsAppAccount
+  account?: IWhatsAppAccount,
+  fileName?: string
 ): Promise<{ id: string }> {
   const token = getAccessToken(account);
+  const uploadName = mediaUploadFileName(mimeType, fileName);
   const formData = new FormData();
   formData.append('messaging_product', 'whatsapp');
-  formData.append('file', new Blob([buffer], { type: mimeType }), 'file');
+  formData.append('file', new Blob([buffer], { type: mimeType }), uploadName);
   formData.append('type', mimeType);
 
   const response = await fetch(`${getBaseUrl(account)}/${phoneNumberId}/media`, {

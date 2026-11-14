@@ -33,31 +33,47 @@ export async function createMediaMessage(req: AuthenticatedRequest, res: Respons
 
     const voiceNote = req.body.voiceNote === true || req.body.voiceNote === 'true';
 
-    // Verify the audio signature before declaring a voice note as MP3.
+    const { mimeToMessageType, isNativeWhatsAppVoiceMime, normalizeVoiceNoteMimeType } =
+      await import('../utils/mediaType');
+
+    let voiceUsesOgg = false;
     if (voiceNote) {
       const b = file.buffer;
+      voiceUsesOgg =
+        b.length >= 4 && b.subarray(0, 4).toString('ascii') === 'OggS';
       const hasId3Header =
         b.length >= 3 && b.subarray(0, 3).toString('ascii') === 'ID3';
       const hasMpegFrameHeader =
         b.length >= 2 && b[0] === 0xff && (b[1] & 0xe0) === 0xe0;
 
-      if (!hasId3Header && !hasMpegFrameHeader) {
+      if (!voiceUsesOgg && !hasId3Header && !hasMpegFrameHeader) {
         throw new AppError(
           400,
-          'Voice note is not a valid MP3 file. Please record again and retry.'
+          'Voice note audio is invalid. Please record again and retry.'
         );
       }
     }
 
-    const { mimeToMessageType } = await import('../utils/mediaType');
-    const voiceMimeType = voiceNote ? 'audio/mpeg' : file.mimetype;
+    const voiceMimeType = voiceNote
+      ? normalizeVoiceNoteMimeType(
+          voiceUsesOgg || isNativeWhatsAppVoiceMime(file.mimetype)
+            ? file.mimetype || 'audio/ogg'
+            : 'audio/mpeg'
+        )
+      : file.mimetype;
+    const voiceFileName = voiceNote
+      ? voiceMimeType.includes('ogg')
+        ? 'voice-note.ogg'
+        : 'voice-note.mp3'
+      : file.originalname;
+
     const message = await messageService.createMessage(req.user!, req.conversation!, {
       type: voiceNote ? 'VOICE' : mimeToMessageType(file.mimetype),
       content: voiceNote ? { voice: true } : { caption: req.body.caption ?? '' },
       replyToMessageId: req.body.replyToMessageId,
       mediaBuffer: file.buffer,
       mimeType: voiceMimeType,
-      fileName: voiceNote ? 'voice-note.mp3' : file.originalname,
+      fileName: voiceFileName,
     });
 
     res.status(201).json(message);

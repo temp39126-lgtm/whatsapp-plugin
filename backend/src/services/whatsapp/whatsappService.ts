@@ -530,21 +530,33 @@ export async function sendOutgoingMessage(
       );
     } else if (params.mediaBuffer && params.mimeType) {
       const { uploadMediaToMeta } = await import('./metaApi');
+      const { metaMediaType, isNativeWhatsAppVoiceMime, normalizeVoiceNoteMimeType } =
+        await import('../../utils/mediaType');
+      const uploadMime =
+        params.type === 'VOICE'
+          ? normalizeVoiceNoteMimeType(params.mimeType)
+          : params.mimeType;
       const { id: mediaId } = await uploadMediaToMeta(
         account.phoneNumberId,
         params.mediaBuffer,
-        params.mimeType,
-        account
+        uploadMime,
+        account,
+        params.fileName
       );
-      const { metaMediaType } = await import('../../utils/mediaType');
       const mediaType = metaMediaType(params.type);
+      const sendAsNativeVoice =
+        params.type === 'VOICE' && isNativeWhatsAppVoiceMime(params.mimeType);
       metaResponse = await sendMediaMessage(
         account.phoneNumberId,
         contact.whatsappId,
         mediaType,
         mediaId,
         (params.content as { caption?: string }).caption,
-        account
+        account,
+        {
+          voice: sendAsNativeVoice,
+          replyToMessageId: params.replyToMetaMessageId,
+        }
       );
 
       const storageKey = generateStorageKey(

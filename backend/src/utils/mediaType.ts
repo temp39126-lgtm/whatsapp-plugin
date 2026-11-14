@@ -5,6 +5,17 @@ export function mimeToMessageType(mimeType: string): string {
   return 'DOCUMENT';
 }
 
+/** WhatsApp Cloud API native voice notes require OGG/Opus and `audio.voice: true`. */
+export function isNativeWhatsAppVoiceMime(mimeType: string): boolean {
+  const lower = mimeType.toLowerCase();
+  return lower.includes('ogg') || lower.includes('opus');
+}
+
+export function normalizeVoiceNoteMimeType(mimeType: string): string {
+  if (isNativeWhatsAppVoiceMime(mimeType)) return 'audio/ogg';
+  return mimeType;
+}
+
 export function metaMediaType(messageType: string): string {
   switch (messageType) {
     case 'IMAGE':

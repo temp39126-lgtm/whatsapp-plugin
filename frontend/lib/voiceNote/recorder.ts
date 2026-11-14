@@ -3,15 +3,20 @@ import { getMicrophoneStream, mapMicrophoneError } from '@/lib/webrtc/microphone
 const VOICE_NOTE_MAX_MS = 15 * 60 * 1000;
 const VOICE_NOTE_MIN_MS = 800;
 
-/** Prefer WebM/OGG for recording; MP4/AAC only as fallback — always uploaded to Meta as MP3. */
+/** Prefer OGG/Opus for native WhatsApp voice notes; WebM is converted to MP3 for Meta. */
 const RECORDER_MIME_CANDIDATES = [
-  'audio/webm;codecs=opus',
-  'audio/webm',
   'audio/ogg;codecs=opus',
   'audio/ogg',
+  'audio/webm;codecs=opus',
+  'audio/webm',
   'audio/mp4',
   'audio/aac',
 ];
+
+function isOggOpusRecordingMime(mime: string): boolean {
+  const lower = mime.toLowerCase();
+  return lower.includes('ogg') || lower.includes('opus');
+}
 
 export type VoiceNoteRecorder = {
   stop: () => Promise<{ file: File; durationMs: number }>;
@@ -75,9 +80,13 @@ async function recordingBlobToMp3(recording: Blob): Promise<Blob> {
   }
 }
 
-/** Meta accepts audio/mpeg; raw MediaRecorder MP4/WebM blobs are often rejected (131053). */
+/** OGG/Opus is sent as a native WhatsApp voice note; WebM is converted to MP3. */
 async function chunksToVoiceNoteFile(chunks: Blob[], recorderMime: string): Promise<File> {
   const raw = new Blob(chunks, { type: recorderMime });
+  if (isOggOpusRecordingMime(recorderMime)) {
+    const type = recorderMime.includes('ogg') ? recorderMime : 'audio/ogg;codecs=opus';
+    return new File([raw], 'voice-note.ogg', { type });
+  }
   try {
     const mp3 = await recordingBlobToMp3(raw);
     return new File([mp3], 'voice-note.mp3', { type: 'audio/mpeg' });
