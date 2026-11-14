@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  lamejs@1.2.1: 420d554c19730e59c5e5e31bbfe0afb94e3e924692d8c78d609f909434dba4de
-
 importers:
 
   .:
@@ -55,7 +52,7 @@ importers:
         version: 4.22.3(react@19.3.1)
       lamejs:
         specifier: ^1.2.1
-        version: 1.2.1(patch_hash=420d554c19730e59c5e5e31bbfe0afb94e3e924692d8c78d609f909434dba4de)
+        version: 1.2.1
       lucide-react:
         specifier: ^0.475.0
         version: 0.475.0(react@19.3.1)
@@ -2078,7 +2075,7 @@ snapshots:
 
   jiti@1.21.7: {}
 
-  lamejs@1.2.1(patch_hash=420d554c19730e59c5e5e31bbfe0afb94e3e924692d8c78d609f909434dba4de):
+  lamejs@1.2.1:
     dependencies:
       use-strict: 1.0.1
 

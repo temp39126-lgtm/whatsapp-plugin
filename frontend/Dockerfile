@@ -8,7 +8,6 @@ WORKDIR /app
 
 COPY frontend/package.json ./package.json
 COPY frontend/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY frontend/patches ./patches
 
 RUN pnpm install --frozen-lockfile
