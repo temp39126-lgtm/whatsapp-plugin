@@ -2,7 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Send, Paperclip, Smile, X, Image as ImageIcon, FileText, Mic, Trash2 } from 'lucide-react';
+import {
+  Send,
+  Paperclip,
+  Smile,
+  X,
+  Image as ImageIcon,
+  FileText,
+  Mic,
+  Trash2,
+  Pause,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { MessageDTO } from '@/types';
@@ -38,7 +48,9 @@ export function MessageComposer({
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [canPauseRecording, setCanPauseRecording] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,12 +83,16 @@ export function MessageComposer({
   useEffect(() => {
     if (!isRecording) {
       setRecordingSeconds(0);
+      setRecordingPaused(false);
       return;
     }
 
     const interval = window.setInterval(() => {
-      setRecordingSeconds((value) => value + 1);
-    }, 1000);
+      const recorder = voiceRecorderRef.current;
+      if (!recorder) return;
+      setRecordingSeconds(Math.floor(recorder.getElapsedMs() / 1000));
+      setRecordingPaused(recorder.getIsPaused());
+    }, 200);
 
     return () => window.clearInterval(interval);
   }, [isRecording]);
@@ -85,6 +101,7 @@ export function MessageComposer({
     voiceRecorderRef.current?.cancel();
     voiceRecorderRef.current = null;
     setIsRecording(false);
+    setRecordingPaused(false);
     setRecordingSeconds(0);
   }, []);
 
@@ -130,6 +147,8 @@ export function MessageComposer({
     try {
       const recorder = await startVoiceNoteRecording();
       voiceRecorderRef.current = recorder;
+      setCanPauseRecording(recorder.supportsPause);
+      setRecordingPaused(false);
       setIsRecording(true);
     } catch (error) {
       setVoiceError(error instanceof Error ? error.message : 'Could not start voice recording');
@@ -204,37 +223,82 @@ export function MessageComposer({
       ) : null}
 
       {isRecording ? (
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-destructive hover:text-destructive"
-            disabled={isProcessingVoice}
-            onClick={cancelVoiceRecording}
-            aria-label="Cancel voice recording"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
-            </span>
-            <span className="font-medium tabular-nums">{formatRecordingDuration(recordingSeconds)}</span>
-            <span className="truncate text-red-800/80">Recording voice note…</span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-destructive hover:text-destructive"
+              disabled={isProcessingVoice}
+              onClick={cancelVoiceRecording}
+              aria-label="Cancel voice recording"
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
+            <div
+              className={`flex min-w-0 flex-1 items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                recordingPaused
+                  ? 'border-whatsapp/30 bg-whatsapp-light text-foreground'
+                  : 'border-red-200 bg-red-50 text-red-900'
+              }`}
+            >
+              {!recordingPaused ? (
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+                </span>
+              ) : (
+                <Mic className="h-4 w-4 shrink-0 text-whatsapp-dark" aria-hidden />
+              )}
+              <span className="font-medium tabular-nums">{formatRecordingDuration(recordingSeconds)}</span>
+              <span className="truncate opacity-80">
+                {recordingPaused ? 'Paused — tap Resume to continue' : 'Recording voice note…'}
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="whatsapp"
+              size="icon"
+              className="shrink-0"
+              disabled={isProcessingVoice}
+              onClick={() => void finishRecording()}
+              aria-label="Send voice note"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="whatsapp"
-            size="icon"
-            className="shrink-0"
-            disabled={isProcessingVoice}
-            onClick={() => void finishRecording()}
-            aria-label="Send voice note"
-          >
-            <Send className="h-5 w-5" />
-          </Button>
+          {canPauseRecording ? (
+            <Button
+              type="button"
+              variant="whatsapp"
+              className="h-11 w-full gap-2 rounded-full"
+              disabled={isProcessingVoice}
+              onClick={() => {
+                const recorder = voiceRecorderRef.current;
+                if (!recorder) return;
+                if (recordingPaused) {
+                  recorder.resume();
+                  setRecordingPaused(false);
+                } else {
+                  recorder.pause();
+                  setRecordingPaused(true);
+                }
+              }}
+            >
+              {recordingPaused ? (
+                <>
+                  <Mic className="h-5 w-5" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="h-5 w-5" />
+                  Pause
+                </>
+              )}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <div className="flex items-end gap-2">

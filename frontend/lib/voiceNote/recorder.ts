@@ -18,7 +18,24 @@ function isOggOpusRecordingMime(mime: string): boolean {
   return lower.includes('ogg') || lower.includes('opus');
 }
 
+function bufferHasOggHeader(buffer: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buffer);
+  return bytes.length >= 4 && bytes[0] === 0x4f && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53;
+}
+
+function bufferHasMp3Header(buffer: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length < 2) return false;
+  if (bytes.length >= 3 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) return true;
+  return bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0;
+}
+
 export type VoiceNoteRecorder = {
+  pause: () => boolean;
+  resume: () => boolean;
+  getIsPaused: () => boolean;
+  getElapsedMs: () => number;
+  supportsPause: boolean;
   stop: () => Promise<{ file: File; durationMs: number }>;
   cancel: () => void;
 };
@@ -80,15 +97,25 @@ async function recordingBlobToMp3(recording: Blob): Promise<Blob> {
   }
 }
 
-/** OGG/Opus is sent as a native WhatsApp voice note; WebM is converted to MP3. */
+/** OGG/Opus is sent as a native WhatsApp voice note when the blob is valid; otherwise MP3. */
 async function chunksToVoiceNoteFile(chunks: Blob[], recorderMime: string): Promise<File> {
   const raw = new Blob(chunks, { type: recorderMime });
-  if (isOggOpusRecordingMime(recorderMime)) {
-    const type = recorderMime.includes('ogg') ? recorderMime : 'audio/ogg;codecs=opus';
+  const rawBuffer = await raw.arrayBuffer();
+  if (rawBuffer.byteLength === 0) {
+    throw new Error('No audio was captured. Check your microphone and try again.');
+  }
+
+  if (isOggOpusRecordingMime(recorderMime) && bufferHasOggHeader(rawBuffer)) {
+    const type = recorderMime.includes('ogg') ? recorderMime.split(';')[0]! : 'audio/ogg';
     return new File([raw], 'voice-note.ogg', { type });
   }
+
   try {
     const mp3 = await recordingBlobToMp3(raw);
+    const mp3Buffer = await mp3.arrayBuffer();
+    if (!bufferHasMp3Header(mp3Buffer)) {
+      throw new Error('Voice note encoding failed. Please record again.');
+    }
     return new File([mp3], 'voice-note.mp3', { type: 'audio/mpeg' });
   } catch (error) {
     console.error('[VoiceNote] MP3 conversion failed:', error);
@@ -106,8 +133,13 @@ export async function startVoiceNoteRecording(): Promise<VoiceNoteRecorder> {
   const mimeType = pickRecorderMimeType();
   const recorder = new MediaRecorder(stream, { mimeType });
   const chunks: Blob[] = [];
-  const startedAt = Date.now();
+  let accumulatedMs = 0;
+  let segmentStart = Date.now();
+  let paused = false;
   let maxTimer: number | undefined;
+
+  const supportsPause =
+    typeof recorder.pause === 'function' && typeof recorder.resume === 'function';
 
   recorder.addEventListener('dataavailable', (event) => {
     if (event.data.size > 0) chunks.push(event.data);
@@ -124,7 +156,29 @@ export async function startVoiceNoteRecording(): Promise<VoiceNoteRecorder> {
     if (maxTimer !== undefined) window.clearTimeout(maxTimer);
   };
 
+  const getElapsedMs = () => {
+    const active = paused ? 0 : Date.now() - segmentStart;
+    return accumulatedMs + active;
+  };
+
   return {
+    supportsPause,
+    getIsPaused: () => paused,
+    getElapsedMs,
+    pause() {
+      if (!supportsPause || recorder.state !== 'recording' || paused) return false;
+      recorder.pause();
+      accumulatedMs += Date.now() - segmentStart;
+      paused = true;
+      return true;
+    },
+    resume() {
+      if (!supportsPause || recorder.state !== 'paused' || !paused) return false;
+      recorder.resume();
+      segmentStart = Date.now();
+      paused = false;
+      return true;
+    },
     cancel() {
       if (recorder.state !== 'inactive') {
         recorder.stop();
@@ -143,7 +197,10 @@ export async function startVoiceNoteRecording(): Promise<VoiceNoteRecorder> {
           () => {
             void (async () => {
               try {
-                const durationMs = Date.now() - startedAt;
+                if (!paused) {
+                  accumulatedMs += Date.now() - segmentStart;
+                }
+                const durationMs = accumulatedMs;
                 cleanupStream();
                 if (durationMs < VOICE_NOTE_MIN_MS) {
                   fail('Recording is too short. Hold the mic a little longer.');
@@ -163,7 +220,7 @@ export async function startVoiceNoteRecording(): Promise<VoiceNoteRecorder> {
           { once: true }
         );
 
-        if (recorder.state === 'recording') {
+        if (recorder.state === 'recording' || recorder.state === 'paused') {
           recorder.stop();
         } else if (recorder.state === 'inactive') {
           fail('Recording already stopped.');
