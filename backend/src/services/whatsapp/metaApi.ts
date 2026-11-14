@@ -433,6 +433,24 @@ export async function initiateCall(
   return { call_id: resolveMetaCallId(response) };
 }
 
+export async function preAcceptMetaCall(
+  phoneNumberId: string,
+  callId: string,
+  session: { sdp_type: 'answer'; sdp: string },
+  account?: IWhatsAppAccount
+): Promise<void> {
+  await metaJsonPost(
+    `/${phoneNumberId}/calls`,
+    {
+      messaging_product: 'whatsapp',
+      call_id: callId,
+      action: 'pre_accept',
+      session,
+    },
+    account
+  );
+}
+
 export async function acceptMetaCall(
   phoneNumberId: string,
   callId: string,

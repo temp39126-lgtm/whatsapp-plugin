@@ -9,6 +9,7 @@ import { WhatsAppAccount } from '../src/models/WhatsAppAccount';
 import { Call } from '../src/models/Call';
 import {
   acceptCall,
+  preAcceptCall,
   listActiveIncomingCalls,
   processCallWebhook,
   processIncomingCallWebhook,
@@ -30,6 +31,7 @@ vi.mock('../src/services/whatsapp/metaApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/services/whatsapp/metaApi')>();
   return {
     ...actual,
+    preAcceptMetaCall: vi.fn().mockResolvedValue(undefined),
     acceptMetaCall: vi.fn().mockResolvedValue(undefined),
     rejectMetaCall: vi.fn().mockResolvedValue(undefined),
     terminateMetaCall: vi.fn().mockResolvedValue(undefined),
@@ -184,6 +186,7 @@ describe('incoming calls', () => {
     });
 
     await expect(acceptCall(admin, call)).rejects.toBeInstanceOf(AppError);
+    await preAcceptCall(admin, call, { sdp_type: 'answer', sdp: 'v=0' });
     const accepted = await acceptCall(admin, call, { sdp_type: 'answer', sdp: 'v=0' });
     expect(accepted.status).toBe('CONNECTED');
   });

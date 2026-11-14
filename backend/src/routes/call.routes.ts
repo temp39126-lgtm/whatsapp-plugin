@@ -16,6 +16,7 @@ router.get('/incoming/active', controller.listActiveIncomingCalls);
 router.get('/:id', callAccess, controller.getCall);
 router.delete('/:id', callAccess, controller.deleteCallFromHistory);
 router.post('/start', validateBody(startCallSchema), controller.startCall);
+router.post('/:id/pre-accept', callAccess, validateBody(acceptCallSchema), controller.preAcceptCall);
 router.post('/:id/accept', callAccess, validateBody(acceptCallSchema), controller.acceptCall);
 router.post('/:id/reject', callAccess, controller.rejectCall);
 router.post('/:id/end', callAccess, controller.endCall);

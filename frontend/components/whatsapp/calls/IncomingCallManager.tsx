@@ -216,6 +216,8 @@ export function IncomingCallManager() {
       const session = await createIncomingCallSession(pending.session);
       sessionRef.current = session;
       const answer = await session.createAnswer();
+      await api.post(`/calls/${pending.call._id}/pre-accept`, { session: answer });
+      await session.waitUntilMediaReady();
       const updated = await api.post<CallDTO>(`/calls/${pending.call._id}/accept`, {
         session: answer,
       });

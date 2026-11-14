@@ -35,6 +35,15 @@ export async function startCall(req: AuthenticatedRequest, res: Response, next: 
   }
 }
 
+export async function preAcceptCall(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const call = await callService.preAcceptCall(req.user!, req.call!, req.body.session);
+    res.json(call);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function acceptCall(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const call = await callService.acceptCall(req.user!, req.call!, req.body.session);

@@ -323,6 +323,44 @@ export async function startCall(
   return call;
 }
 
+const PRE_ACCEPT_MAX_AGE_MS = 2 * 60 * 1000;
+
+export async function preAcceptCall(
+  user: AuthUser,
+  call: ICall,
+  session: { sdp_type: 'answer'; sdp: string }
+) {
+  if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
+
+  if (call.direction !== 'INCOMING' || call.status !== 'RINGING') {
+    throw new AppError(409, 'Only ringing incoming calls can be pre-accepted');
+  }
+
+  if (!session?.sdp) {
+    throw new AppError(400, 'WebRTC answer session is required to pre-accept the call');
+  }
+
+  await getAccessibleConversation(user, call.conversationId.toString());
+
+  if (call.metaCallId) {
+    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
+    if (account) {
+      try {
+        const { preAcceptMetaCall } = await import('../whatsapp/metaApi');
+        await preAcceptMetaCall(account.phoneNumberId, call.metaCallId, session, account);
+      } catch (error) {
+        if (!isDemoWhatsAppAccount(account)) throw error;
+      }
+    }
+  }
+
+  call.preAcceptedAt = new Date();
+  call.signalingSession = undefined;
+  await call.save();
+  await createCallEvent(call, 'call.pre_accepted');
+  return call;
+}
+
 export async function acceptCall(
   user: AuthUser,
   call: ICall,
@@ -336,6 +374,16 @@ export async function acceptCall(
 
   if (!session?.sdp) {
     throw new AppError(400, 'WebRTC answer session is required to accept the call');
+  }
+
+  if (
+    !call.preAcceptedAt ||
+    Date.now() - call.preAcceptedAt.getTime() > PRE_ACCEPT_MAX_AGE_MS
+  ) {
+    throw new AppError(
+      409,
+      'Call must be pre-accepted before accept. Retry accepting the incoming call.'
+    );
   }
 
   if (call.metaCallId) {

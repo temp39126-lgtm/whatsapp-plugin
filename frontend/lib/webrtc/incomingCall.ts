@@ -1,8 +1,11 @@
 import { getMicrophoneStream, mapMicrophoneError } from '@/lib/webrtc/microphone';
 import type { WebRtcSession } from '@/lib/webrtc/outboundCall';
+import { playRemoteStream, stopRemoteAudio } from '@/lib/webrtc/remoteAudio';
+import { waitForMediaConnection } from '@/lib/webrtc/waitForMediaConnection';
 
 export type IncomingCallSession = {
   createAnswer: () => Promise<WebRtcSession>;
+  waitUntilMediaReady: (timeoutMs?: number) => Promise<void>;
   close: () => void;
 };
 
@@ -48,13 +51,9 @@ export async function createIncomingCallSession(
 
   let remoteAudio: HTMLAudioElement | null = null;
   peerConnection.ontrack = (event) => {
-    const [stream] = event.streams;
-    if (!stream) return;
-    if (!remoteAudio) {
-      remoteAudio = new Audio();
-      remoteAudio.autoplay = true;
-    }
-    remoteAudio.srcObject = stream;
+    const stream = event.streams[0] ?? new MediaStream([event.track]);
+    stopRemoteAudio(remoteAudio);
+    remoteAudio = playRemoteStream(stream);
   };
 
   await peerConnection.setRemoteDescription({
@@ -73,13 +72,14 @@ export async function createIncomingCallSession(
       }
       return { sdp_type: 'answer', sdp };
     },
+    waitUntilMediaReady(timeoutMs?: number) {
+      return waitForMediaConnection(peerConnection, timeoutMs);
+    },
     close() {
       localStream.getTracks().forEach((track) => track.stop());
       peerConnection.close();
-      if (remoteAudio) {
-        remoteAudio.srcObject = null;
-        remoteAudio = null;
-      }
+      stopRemoteAudio(remoteAudio);
+      remoteAudio = null;
     },
   };
 }
