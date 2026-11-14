@@ -217,7 +217,7 @@ export default function ContactsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{contact.name}</p>
                         <p className="truncate text-sm text-muted-foreground">{contact.phone}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap items-center gap-1">
                           <Button
                             type="button"
                             variant="whatsapp"
@@ -230,24 +230,25 @@ export default function ContactsPage() {
                           </Button>
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                            aria-label={`Edit ${contact.name}`}
                             onClick={() => setEditingContact(contact)}
                           >
-                            <Pencil className="mr-1 h-4 w-4" />
-                            Edit
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           {isAdmin ? (
                             <Button
                               type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              aria-label={`Delete ${contact.name}`}
                               disabled={deleteContact.isPending}
                               onClick={() => handleDelete(contact)}
                             >
-                              <Trash2 className="mr-1 h-4 w-4" />
-                              Delete
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           ) : null}
                         </div>
