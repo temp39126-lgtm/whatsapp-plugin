@@ -216,8 +216,16 @@ export function IncomingCallManager() {
       const session = await createIncomingCallSession(pending.session);
       sessionRef.current = session;
       const answer = await session.createAnswer();
-      await api.post(`/calls/${pending.call._id}/pre-accept`, { session: answer });
-      await session.waitUntilMediaReady();
+      try {
+        await api.post(`/calls/${pending.call._id}/pre-accept`, { session: answer });
+      } catch (preAcceptError) {
+        console.warn('[IncomingCall] pre-accept call failed; accept will retry:', preAcceptError);
+      }
+      try {
+        await session.waitUntilMediaReady(25_000);
+      } catch (waitError) {
+        console.warn('[IncomingCall] Media not ready yet; accepting anyway:', waitError);
+      }
       const updated = await api.post<CallDTO>(`/calls/${pending.call._id}/accept`, {
         session: answer,
       });

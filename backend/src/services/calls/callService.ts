@@ -325,6 +325,42 @@ export async function startCall(
 
 const PRE_ACCEPT_MAX_AGE_MS = 2 * 60 * 1000;
 
+async function markCallPreAccepted(call: ICall): Promise<ICall> {
+  call.preAcceptedAt = new Date();
+  call.signalingSession = undefined;
+  await call.save();
+  await createCallEvent(call, 'call.pre_accepted');
+  return call;
+}
+
+async function ensureCallPreAcceptedWithMeta(
+  call: ICall,
+  session: { sdp_type: 'answer'; sdp: string }
+): Promise<void> {
+  const fresh = await Call.findById(call._id);
+  if (
+    fresh?.preAcceptedAt &&
+    Date.now() - fresh.preAcceptedAt.getTime() <= PRE_ACCEPT_MAX_AGE_MS
+  ) {
+    return;
+  }
+
+  const target = fresh ?? call;
+  if (target.metaCallId) {
+    const account = await WhatsAppAccount.findById(target.whatsappAccountId);
+    if (account) {
+      try {
+        const { preAcceptMetaCall } = await import('../whatsapp/metaApi');
+        await preAcceptMetaCall(account.phoneNumberId, target.metaCallId, session, account);
+      } catch (error) {
+        if (!isDemoWhatsAppAccount(account)) throw error;
+      }
+    }
+  }
+
+  await markCallPreAccepted(target);
+}
+
 export async function preAcceptCall(
   user: AuthUser,
   call: ICall,
@@ -342,23 +378,9 @@ export async function preAcceptCall(
 
   await getAccessibleConversation(user, call.conversationId.toString());
 
-  if (call.metaCallId) {
-    const account = await WhatsAppAccount.findById(call.whatsappAccountId);
-    if (account) {
-      try {
-        const { preAcceptMetaCall } = await import('../whatsapp/metaApi');
-        await preAcceptMetaCall(account.phoneNumberId, call.metaCallId, session, account);
-      } catch (error) {
-        if (!isDemoWhatsAppAccount(account)) throw error;
-      }
-    }
-  }
-
-  call.preAcceptedAt = new Date();
-  call.signalingSession = undefined;
-  await call.save();
-  await createCallEvent(call, 'call.pre_accepted');
-  return call;
+  const fresh = (await Call.findById(call._id)) ?? call;
+  await ensureCallPreAcceptedWithMeta(fresh, session);
+  return (await Call.findById(call._id)) ?? fresh;
 }
 
 export async function acceptCall(
@@ -368,6 +390,9 @@ export async function acceptCall(
 ) {
   if (!env.CALLING_ENABLED) throw new AppError(503, 'WhatsApp calling is not enabled');
 
+  const freshCall = (await Call.findById(call._id)) ?? call;
+  call = freshCall;
+
   if (call.direction !== 'INCOMING' || call.status !== 'RINGING') {
     throw new AppError(409, 'Only ringing incoming calls can be accepted');
   }
@@ -376,15 +401,9 @@ export async function acceptCall(
     throw new AppError(400, 'WebRTC answer session is required to accept the call');
   }
 
-  if (
-    !call.preAcceptedAt ||
-    Date.now() - call.preAcceptedAt.getTime() > PRE_ACCEPT_MAX_AGE_MS
-  ) {
-    throw new AppError(
-      409,
-      'Call must be pre-accepted before accept. Retry accepting the incoming call.'
-    );
-  }
+  await getAccessibleConversation(user, call.conversationId.toString());
+  await ensureCallPreAcceptedWithMeta(call, session);
+  call = (await Call.findById(call._id)) ?? call;
 
   if (call.metaCallId) {
     const account = await WhatsAppAccount.findById(call.whatsappAccountId);
