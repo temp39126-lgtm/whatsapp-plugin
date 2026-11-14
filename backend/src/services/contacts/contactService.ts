@@ -78,6 +78,7 @@ export async function createContact(
     tenantId: user.tenantId,
     whatsappAccountId: account._id,
     name: input.name.trim(),
+    crmDisplayNameLocked: true,
     phone,
     whatsappId,
     tags: [],
@@ -262,6 +263,7 @@ export async function updateContact(
   const updates: Partial<IContact> = {};
   if (data.name !== undefined) {
     updates.name = data.name.trim();
+    updates.crmDisplayNameLocked = true;
   }
   if (data.phone !== undefined) {
     const { phone, whatsappId } = normalizePhoneInput(data.phone);

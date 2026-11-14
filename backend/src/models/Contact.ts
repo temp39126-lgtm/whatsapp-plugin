@@ -4,6 +4,8 @@ export interface IContact extends Document {
   tenantId: string;
   whatsappAccountId: Types.ObjectId;
   name: string;
+  /** When true, inbound WhatsApp profile names must not replace name (CRM UI label). */
+  crmDisplayNameLocked?: boolean;
   phone: string;
   whatsappId: string;
   profileImage?: string;
@@ -18,6 +20,7 @@ const contactSchema = new Schema<IContact>(
     tenantId: { type: String, required: true, index: true },
     whatsappAccountId: { type: Schema.Types.ObjectId, ref: 'WhatsAppAccount', required: true },
     name: { type: String, required: true },
+    crmDisplayNameLocked: { type: Boolean, default: false },
     phone: { type: String, required: true },
     whatsappId: { type: String, required: true },
     profileImage: { type: String },

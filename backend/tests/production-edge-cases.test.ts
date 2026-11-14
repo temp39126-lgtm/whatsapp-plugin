@@ -72,6 +72,22 @@ describe('Production edge cases', () => {
     expect(await Contact.countDocuments({ tenantId: 'tenant-001' })).toBe(1);
   });
 
+  it('does not overwrite CRM display name with WhatsApp profile name', async () => {
+    await Contact.create({
+      tenantId: 'tenant-001',
+      whatsappAccountId: account._id,
+      name: 'Rangeen Confetti Kurta',
+      crmDisplayNameLocked: true,
+      phone: '+15551234567',
+      whatsappId: '15551234567',
+      tags: [],
+    });
+
+    const contact = await findOrCreateContact(account, '15551234567', 'Different WhatsApp Profile');
+
+    expect(contact.name).toBe('Rangeen Confetti Kurta');
+  });
+
   it('reopens a closed conversation instead of creating a duplicate thread', async () => {
     const contact = await findOrCreateContact(account, '919111111111', 'Customer');
     const first = await findOrCreateConversation(account, contact);
