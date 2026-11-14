@@ -23,9 +23,11 @@ export function waitForCallSdpAnswer(
     unsubscribeAnswer = onSocketEvent('call.sdp-answer', (data) => {
       const payload = data as {
         conversationId?: string;
+        callId?: string;
         session?: WebRtcSession;
       };
       if (payload.conversationId !== conversationId || !payload.session) return;
+      if (callId && payload.callId && payload.callId !== callId) return;
       window.clearTimeout(timeout);
       stopListening();
       resolve(payload.session);

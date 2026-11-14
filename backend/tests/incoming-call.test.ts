@@ -26,6 +26,17 @@ vi.mock('../src/config/env', () => ({
   },
 }));
 
+vi.mock('../src/services/whatsapp/metaApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/services/whatsapp/metaApi')>();
+  return {
+    ...actual,
+    acceptMetaCall: vi.fn().mockResolvedValue(undefined),
+    rejectMetaCall: vi.fn().mockResolvedValue(undefined),
+    terminateMetaCall: vi.fn().mockResolvedValue(undefined),
+    initiateCall: vi.fn().mockResolvedValue({ call_id: 'meta-out-1' }),
+  };
+});
+
 describe('incoming calls', () => {
   let mongo: MongoMemoryServer;
 
@@ -175,6 +186,24 @@ describe('incoming calls', () => {
     await expect(acceptCall(admin, call)).rejects.toBeInstanceOf(AppError);
     const accepted = await acceptCall(admin, call, { sdp_type: 'answer', sdp: 'v=0' });
     expect(accepted.status).toBe('CONNECTED');
+  });
+
+  it('creates a contact when an unknown caller initiates a voice call', async () => {
+  const account = await WhatsAppAccount.findOne({ tenantId: 'tenant-001' });
+    vi.spyOn(socketService, 'emitToAuthorizedUsers').mockResolvedValue();
+    vi.spyOn(socketService, 'emitToTenant').mockImplementation(() => undefined);
+
+    await processIncomingCallWebhook('tenant-001', {
+      callId: 'meta-call-unknown',
+      from: '9199999888777',
+      phoneNumberId: account!.phoneNumberId,
+      session: { sdp_type: 'offer', sdp: 'v=0' },
+    });
+
+    const contact = await Contact.findOne({ tenantId: 'tenant-001', whatsappId: '9199999888777' });
+    expect(contact).toBeTruthy();
+    const call = await Call.findOne({ metaCallId: 'meta-call-unknown' });
+    expect(call?.signalingSession?.sdp).toBe('v=0');
   });
 
   it('rejects duplicate incoming webhook for the same meta call id', async () => {

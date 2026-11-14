@@ -13,6 +13,8 @@ export interface ICall extends Document {
   endedAt?: Date;
   duration?: number;
   failureReason?: string;
+  /** Last WebRTC SDP from Meta (incoming offer while ringing; cleared when connected). */
+  signalingSession?: { sdp_type: 'offer' | 'answer'; sdp: string };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +37,10 @@ const callSchema = new Schema<ICall>(
     endedAt: { type: Date },
     duration: { type: Number },
     failureReason: { type: String },
+    signalingSession: {
+      sdp_type: { type: String, enum: ['offer', 'answer'] },
+      sdp: { type: String },
+    },
   },
   { timestamps: true }
 );

@@ -126,15 +126,21 @@ export function IncomingCallManager() {
 
   const syncActiveIncoming = useCallback(async () => {
     try {
-      const response = await api.get<{ data: Array<PendingIncomingCall['call'] & { contact?: PendingIncomingCall['contact'] }> }>(
-        '/calls/incoming/active'
-      );
+      const response = await api.get<{
+        data: Array<
+          PendingIncomingCall['call'] & {
+            contact?: PendingIncomingCall['contact'];
+            session?: PendingIncomingCall['session'];
+          }
+        >;
+      }>('/calls/incoming/active');
       const ringing = response.data?.[0];
       if (!ringing) return;
       if (activeIdRef.current) return;
       applyPendingPayload({
         call: ringing,
         contact: ringing.contact,
+        session: ringing.session,
       });
     } catch {
       // Ignore sync errors (calling disabled, auth, etc.)

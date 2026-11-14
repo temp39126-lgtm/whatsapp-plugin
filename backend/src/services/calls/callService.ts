@@ -7,7 +7,9 @@ import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { buildConversationFilter, getAccessibleConversation } from '../rbac/conversationAccess';
 import { hasPermission } from '../../types';
 import { PERMISSIONS } from '../../constants/permissions';
-import { emitToAuthorizedUsers } from '../realtime/socketService';
+import { emitToAuthorizedUsers, emitToTenant } from '../realtime/socketService';
+import { MetaApiError } from '../whatsapp/metaApi';
+import { findOrCreateContact, isDemoWhatsAppAccount } from '../whatsapp/whatsappService';
 import { env } from '../../config/env';
 import { AppError } from '../../types';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
@@ -90,12 +92,19 @@ export async function listActiveIncomingCalls(user: AuthUser): Promise<ActiveInc
       contact && typeof contact === 'object' && '_id' in contact
         ? String(contact._id)
         : String(call.contactId);
+    const signalingSession = call.signalingSession as
+      | { sdp_type: 'offer' | 'answer'; sdp: string }
+      | undefined;
     return {
       ...call,
       contactId,
       contact: contact
         ? { _id: contactId, name: contact.name, phone: contact.phone }
         : undefined,
+      session:
+        signalingSession?.sdp_type === 'offer'
+          ? { sdp_type: 'offer' as const, sdp: signalingSession.sdp }
+          : undefined,
     };
   });
 }
@@ -243,10 +252,15 @@ export async function startCall(
     await createCallEvent(call, 'call.ringing');
   } catch (error) {
     call.status = 'FAILED';
-    call.failureReason =
-      error instanceof Error && error.message === 'CALL_SDP_REQUIRED'
-        ? 'Outbound calls require WebRTC SDP from the client. Incoming calls are still supported.'
-        : 'Meta calling API not available';
+    if (error instanceof Error && error.message === 'CALL_SDP_REQUIRED') {
+      call.failureReason =
+        'Outbound calls require WebRTC SDP from the client. Incoming calls are still supported.';
+    } else if (error instanceof MetaApiError) {
+      call.failureReason = error.message;
+    } else {
+      call.failureReason =
+        error instanceof Error ? error.message : 'Meta calling API not available';
+    }
     await call.save();
     await createCallEvent(call, 'call.failed', { reason: call.failureReason });
   }
@@ -281,12 +295,13 @@ export async function acceptCall(
       try {
         const { acceptMetaCall } = await import('../whatsapp/metaApi');
         await acceptMetaCall(account.phoneNumberId, call.metaCallId, account, session);
-      } catch {
-        // Continue updating local state even if Meta accept fails in demo environments.
+      } catch (error) {
+        if (!isDemoWhatsAppAccount(account)) throw error;
       }
     }
   }
 
+  call.signalingSession = undefined;
   call.status = 'CONNECTED';
   await call.save();
   await createCallEvent(call, 'call.connected');
@@ -308,12 +323,13 @@ export async function rejectCall(user: AuthUser, call: ICall) {
       try {
         const { rejectMetaCall } = await import('../whatsapp/metaApi');
         await rejectMetaCall(account.phoneNumberId, call.metaCallId, account);
-      } catch {
-        // Continue updating local state even if Meta reject fails in demo environments.
+      } catch (error) {
+        if (!isDemoWhatsAppAccount(account)) throw error;
       }
     }
   }
 
+  call.signalingSession = undefined;
   call.status = 'REJECTED';
   call.endedAt = new Date();
   await call.save();
@@ -339,12 +355,13 @@ export async function endCall(user: AuthUser, call: ICall) {
       try {
         const { terminateMetaCall } = await import('../whatsapp/metaApi');
         await terminateMetaCall(account.phoneNumberId, call.metaCallId, account);
-      } catch {
-        // Continue updating local state even if Meta terminate fails in demo environments.
+      } catch (error) {
+        if (!isDemoWhatsAppAccount(account)) throw error;
       }
     }
   }
 
+  call.signalingSession = undefined;
   call.status = 'ENDED';
   call.endedAt = new Date();
   if (call.startedAt) {
@@ -384,15 +401,17 @@ export async function processCallWebhook(
     call.status = 'CONNECTED';
     await call.save();
     await createCallEvent(call, 'call.connected', { source: 'meta_webhook' });
-    await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.sdp-answer', {
+    const sdpPayload = {
       metaCallId: data.callId,
       callId: call._id.toString(),
       conversationId: call.conversationId.toString(),
       session: {
-        sdp_type: 'answer',
+        sdp_type: 'answer' as const,
         sdp: data.session.sdp,
       },
-    });
+    };
+    await emitToAuthorizedUsers(tenantId, call.conversationId.toString(), 'call.sdp-answer', sdpPayload);
+    emitToTenant(tenantId, 'call.sdp-answer', sdpPayload);
     await upsertCallTimelineMessage(call);
     return;
   }
@@ -428,7 +447,11 @@ export async function processCallWebhook(
     return;
   }
 
-  if (data.event === 'connect' && data.direction === 'USER_INITIATED' && data.from) {
+  if (
+    data.direction === 'USER_INITIATED' &&
+    data.from &&
+    (!data.event || data.event === 'connect' || data.event === 'ringing')
+  ) {
     await processIncomingCallWebhook(tenantId, {
       callId: data.callId,
       from: data.from,
@@ -453,12 +476,36 @@ export async function processIncomingCallWebhook(
   const account = await WhatsAppAccount.findOne({ tenantId, phoneNumberId: data.phoneNumberId });
   if (!account) return;
 
-  const normalizedFrom = normalizeWhatsAppId(data.from);
-  const contact = await Contact.findOne({ tenantId, whatsappId: normalizedFrom });
-  if (!contact) return;
+  const contact = await findOrCreateContact(account, data.from);
 
   const existingCall = await Call.findOne({ tenantId, metaCallId: data.callId });
-  if (existingCall) return;
+  if (existingCall) {
+    if (
+      data.session?.sdp &&
+      existingCall.direction === 'INCOMING' &&
+      existingCall.status === 'RINGING'
+    ) {
+      existingCall.signalingSession = data.session;
+      await existingCall.save();
+      const refreshPayload = {
+        call: existingCall.toObject(),
+        contact: {
+          _id: contact._id.toString(),
+          name: contact.name,
+          phone: contact.phone,
+        },
+        session: data.session,
+      };
+      await emitToAuthorizedUsers(
+        tenantId,
+        existingCall.conversationId.toString(),
+        'call.incoming',
+        refreshPayload
+      );
+      emitToTenant(tenantId, 'call.incoming', refreshPayload);
+    }
+    return;
+  }
 
   const { conversation } = await getOrCreateContactConversation({
     tenantId,
@@ -479,6 +526,7 @@ export async function processIncomingCallWebhook(
       status: 'RINGING',
       metaCallId: data.callId,
       startedAt: new Date(),
+      ...(data.session ? { signalingSession: data.session } : {}),
     });
   } catch (error) {
     if (isDuplicateKeyError(error)) {
@@ -488,7 +536,7 @@ export async function processIncomingCallWebhook(
   }
 
   await createCallEvent(call, 'call.incoming');
-  await emitToAuthorizedUsers(tenantId, conversation._id.toString(), 'call.incoming', {
+  const incomingPayload = {
     call: call.toObject(),
     contact: {
       _id: contact._id.toString(),
@@ -496,7 +544,9 @@ export async function processIncomingCallWebhook(
       phone: contact.phone,
     },
     ...(data.session ? { session: data.session } : {}),
-  });
+  };
+  await emitToAuthorizedUsers(tenantId, conversation._id.toString(), 'call.incoming', incomingPayload);
+  emitToTenant(tenantId, 'call.incoming', incomingPayload);
 
   await upsertCallTimelineMessage(call);
 }
