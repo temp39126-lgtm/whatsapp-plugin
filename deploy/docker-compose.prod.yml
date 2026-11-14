@@ -99,6 +99,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Proxy /api and /socket.io to Express when traffic hits the Next server (no edge proxy on /api).
+      BACKEND_INTERNAL_URL: http://backend:5000
     networks:
       - internal
 

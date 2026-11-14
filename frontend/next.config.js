@@ -1,10 +1,25 @@
 const path = require('path');
 
+function backendProxyBase() {
+  const raw =
+    process.env.BACKEND_INTERNAL_URL ||
+    process.env.INTERNAL_API_URL ||
+    'http://127.0.0.1:5000';
+  return raw.replace(/\/$/, '');
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '..'),
+  async rewrites() {
+    const base = backendProxyBase();
+    return [
+      { source: '/api/:path*', destination: `${base}/api/:path*` },
+      { source: '/socket.io/:path*', destination: `${base}/socket.io/:path*` },
+    ];
+  },
   async headers() {
     return [
       {

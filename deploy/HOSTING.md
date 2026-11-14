@@ -178,6 +178,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 | SSL certificate failed | DNS must point to server **before** deploy. Check with `dig YOUR-DOMAIN` |
 | Blank page | Check `docker compose logs frontend` |
 | Can't login | Check `ADMIN_PASSWORD` in `deploy/.env` |
+| Templates show `Cannot GET /api/whatsapp/templates` | Rebuild **backend** and **frontend** (`docker compose ... up -d --build`). Ensure `/api/*` reaches Express (Caddy `handle /api/*` in `deploy/Caddyfile`, or rely on frontend `BACKEND_INTERNAL_URL` in compose). |
 | Webhook fails | Ensure port 80 and 443 are open in VPS firewall |
 | Out of memory | Upgrade VPS to 4GB RAM |
 
