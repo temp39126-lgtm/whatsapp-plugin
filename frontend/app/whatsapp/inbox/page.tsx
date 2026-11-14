@@ -15,7 +15,7 @@ import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
 import { useConversation, useConversations } from '@/hooks/useConversations';
 import { useOutboundCall } from '@/hooks/useOutboundCall';
 import { onSocketEvent } from '@/lib/socket';
-import { ActiveCallBar } from '@/components/whatsapp/calls/ActiveCallBar';
+import { OngoingCallModal } from '@/components/whatsapp/calls/OngoingCallModal';
 import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
 import { setActiveConversationId } from '@/lib/notifications';
 
@@ -106,14 +106,6 @@ function InboxPageContent() {
           selectedId ? 'flex flex-1' : 'hidden lg:flex lg:flex-1'
         )}
       >
-        {outboundCall.activeCall && selected && (
-          <ActiveCallBar
-            call={outboundCall.activeCall}
-            contactName={selected.contact?.name}
-            onEnd={() => outboundCall.endCall(outboundCall.activeCall!._id)}
-          />
-        )}
-
         <ChatWindow
           conversation={selected}
           onBack={selectedId ? () => setSelectedId(null) : undefined}
@@ -129,6 +121,14 @@ function InboxPageContent() {
           callDisabled={outboundCall.isStarting || Boolean(outboundCall.activeCall)}
         />
       </div>
+
+      {outboundCall.activeCall ? (
+        <OngoingCallModal
+          call={outboundCall.activeCall}
+          contactName={selected?.contact?.name ?? 'Contact'}
+          onEnd={() => outboundCall.endCall(outboundCall.activeCall!._id)}
+        />
+      ) : null}
 
       {outboundCall.error && (
         <div className="pointer-events-none fixed bottom-4 left-4 right-4 z-50 rounded-lg border bg-background px-4 py-3 text-sm shadow-lg sm:left-auto sm:right-4 sm:max-w-sm">

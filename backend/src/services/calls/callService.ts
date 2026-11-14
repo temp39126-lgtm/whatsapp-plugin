@@ -3,12 +3,13 @@ import { Call, ICall } from '../../models/Call';
 import { CallEvent } from '../../models/CallEvent';
 import { Conversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
-import { WhatsAppAccount } from '../../models/WhatsAppAccount';
+import { WhatsAppAccount, IWhatsAppAccount } from '../../models/WhatsAppAccount';
 import { buildConversationFilter, getAccessibleConversation } from '../rbac/conversationAccess';
 import { hasPermission } from '../../types';
 import { PERMISSIONS } from '../../constants/permissions';
 import { emitToAuthorizedUsers, emitToTenant } from '../realtime/socketService';
 import { MetaApiError } from '../whatsapp/metaApi';
+import { metaFailureToAppError } from '../whatsapp/metaErrors';
 import { findOrCreateContact, isDemoWhatsAppAccount } from '../whatsapp/whatsappService';
 import { env } from '../../config/env';
 import { AppError } from '../../types';
@@ -23,6 +24,11 @@ import { logger } from '../../config/logger';
 const STALE_ACTIVE_CALL_MS = 2 * 60 * 1000;
 
 const ACTIVE_CALL_STATUSES = ['INITIATING', 'RINGING', 'CONNECTED'] as const;
+
+function assertMetaCallOrDemo(error: unknown, account: IWhatsAppAccount, fallback: string): void {
+  if (isDemoWhatsAppAccount(account)) return;
+  metaFailureToAppError(error, fallback);
+}
 
 export async function releaseStaleActiveCalls(
   tenantId: string,
@@ -353,7 +359,7 @@ async function ensureCallPreAcceptedWithMeta(
         const { preAcceptMetaCall } = await import('../whatsapp/metaApi');
         await preAcceptMetaCall(account.phoneNumberId, target.metaCallId, session, account);
       } catch (error) {
-        if (!isDemoWhatsAppAccount(account)) throw error;
+        assertMetaCallOrDemo(error, account, 'Failed to pre-accept the call with WhatsApp');
       }
     }
   }
@@ -412,19 +418,26 @@ export async function acceptCall(
         const { acceptMetaCall } = await import('../whatsapp/metaApi');
         await acceptMetaCall(account.phoneNumberId, call.metaCallId, account, session);
       } catch (error) {
-        if (!isDemoWhatsAppAccount(account)) throw error;
+        assertMetaCallOrDemo(error, account, 'Failed to accept the call with WhatsApp');
       }
     }
   }
 
   call.signalingSession = undefined;
   call.status = 'CONNECTED';
+  if (!call.startedAt) {
+    call.startedAt = new Date();
+  }
   await call.save();
   await createCallEvent(call, 'call.connected');
   await emitToAuthorizedUsers(user.tenantId, call.conversationId.toString(), 'call.connected', {
     callId: call._id.toString(),
   });
-  await upsertCallTimelineMessage(call);
+  try {
+    await upsertCallTimelineMessage(call);
+  } catch (error) {
+    logger.warn({ error, callId: call._id }, 'Failed to upsert call timeline after accept');
+  }
   return call;
 }
 
@@ -440,7 +453,7 @@ export async function rejectCall(user: AuthUser, call: ICall) {
         const { rejectMetaCall } = await import('../whatsapp/metaApi');
         await rejectMetaCall(account.phoneNumberId, call.metaCallId, account);
       } catch (error) {
-        if (!isDemoWhatsAppAccount(account)) throw error;
+        assertMetaCallOrDemo(error, account, 'Failed to reject the call with WhatsApp');
       }
     }
   }
@@ -472,7 +485,10 @@ export async function endCall(user: AuthUser, call: ICall) {
         const { terminateMetaCall } = await import('../whatsapp/metaApi');
         await terminateMetaCall(account.phoneNumberId, call.metaCallId, account);
       } catch (error) {
-        if (!isDemoWhatsAppAccount(account)) throw error;
+        logger.warn(
+          { error, callId: call._id, metaCallId: call.metaCallId },
+          'Meta terminate failed; ending call locally'
+        );
       }
     }
   }

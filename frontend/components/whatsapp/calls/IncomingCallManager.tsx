@@ -15,7 +15,7 @@ import { createIncomingCallSession } from '@/lib/webrtc/incomingCall';
 import type { IncomingCallSession } from '@/lib/webrtc/incomingCall';
 import { mapMicrophoneError, prepareMicrophoneAccess } from '@/lib/webrtc/microphone';
 import { IncomingCallModal } from './IncomingCallModal';
-import { ActiveCallBar } from './ActiveCallBar';
+import { OngoingCallModal } from './OngoingCallModal';
 
 function normalizeCall(raw: CallDTO): CallDTO {
   return {
@@ -260,16 +260,14 @@ export function IncomingCallManager() {
 
   return (
     <>
-      {activeCall && (
-        <div className="fixed left-0 right-0 top-0 z-[190] lg:left-64">
-          <ActiveCallBar
-            call={activeCall}
-            contactName={contactLabel}
-            isEnding={isEnding}
-            onEnd={handleEndActive}
-          />
-        </div>
-      )}
+      {activeCall ? (
+        <OngoingCallModal
+          call={activeCall}
+          contactName={contactLabel}
+          isEnding={isEnding}
+          onEnd={handleEndActive}
+        />
+      ) : null}
       {shouldShowIncomingModal(pending, activeCall) ? (
         <IncomingCallModal
           pending={pending!}
