@@ -51,8 +51,8 @@ function pickRecorderMimeType(): string {
 }
 
 async function recordingBlobToMp3(recording: Blob): Promise<Blob> {
-  const lameModule = await import('lamejs');
-  const lamejs = lameModule.default ?? lameModule;
+  const { loadLameEncoder } = await import('./loadLameEncoder');
+  const { Mp3Encoder } = await loadLameEncoder();
   const audioContext = new AudioContext();
   try {
     const arrayBuffer = await recording.arrayBuffer();
@@ -69,12 +69,12 @@ async function recordingBlobToMp3(recording: Blob): Promise<Blob> {
       samples[i] = clamped < 0 ? clamped * 32768 : clamped * 32767;
     }
 
-    const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+    const mp3encoder = new Mp3Encoder(1, sampleRate, 128);
     const mp3Chunks: Int8Array[] = [];
     const blockSize = 1152;
     for (let i = 0; i < samples.length; i += blockSize) {
       const slice = samples.subarray(i, i + blockSize);
-      const encoded = mp3encoder.encodeBuffer(slice);
+      const encoded = mp3encoder.encodeBuffer(slice, slice);
       if (encoded.length > 0) mp3Chunks.push(encoded);
     }
     const flushed = mp3encoder.flush();
