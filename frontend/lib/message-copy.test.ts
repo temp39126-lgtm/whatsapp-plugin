@@ -25,6 +25,23 @@ describe('getCopyableMessageText', () => {
     expect(getCopyableMessageText(baseMessage({ content: { text: 'Hey' } }))).toBe('Hey');
   });
 
+  it('does not expose media API URLs as copy text', () => {
+    expect(
+      getCopyableMessageText(
+        baseMessage({
+          type: 'IMAGE',
+          content: {},
+          media: {
+            _id: 'media1',
+            mediaType: 'IMAGE',
+            mimeType: 'image/webp',
+            url: '/api/whatsapp/messages/abc123/media',
+          },
+        })
+      )
+    ).toBeNull();
+  });
+
   it('copies template preview', () => {
     expect(
       getCopyableMessageText(

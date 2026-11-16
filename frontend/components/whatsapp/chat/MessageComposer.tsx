@@ -21,6 +21,8 @@ import {
   startVoiceNoteRecording,
   type VoiceNoteRecorder,
 } from '@/lib/voiceNote/recorder';
+import { isInternalMediaUrl } from '@/lib/message-copy';
+import { toastError } from '@/lib/toast';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
@@ -58,6 +60,26 @@ export function MessageComposer({
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const voiceRecorderRef = useRef<VoiceNoteRecorder | null>(null);
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = event.clipboardData.getData('text/plain').trim();
+    if (pastedText && isInternalMediaUrl(pastedText)) {
+      event.preventDefault();
+      toastError('Use Forward on the message to send media — do not paste the link');
+      return;
+    }
+
+    const items = event.clipboardData.items;
+    for (const item of items) {
+      if (!item.type.startsWith('image/')) continue;
+      const file = item.getAsFile();
+      if (!file || !onSendMedia) continue;
+      event.preventDefault();
+      void onSendMedia(file, text.trim() || undefined, replyTo?._id);
+      setText('');
+      return;
+    }
+  };
 
   const canSendTextOrMedia = Boolean(text.trim() || selectedFile);
   const showVoiceNoteButton = Boolean(onSendMedia) && !canSendTextOrMedia && !isRecording && !disabled;
@@ -123,6 +145,10 @@ export function MessageComposer({
     }
 
     if (!text.trim() || disabled) return;
+    if (isInternalMediaUrl(text.trim())) {
+      toastError('Use Forward on the message to send media — do not paste the link');
+      return;
+    }
     onSend(text.trim(), replyTo?._id);
     setText('');
     setShowEmoji(false);
@@ -325,6 +351,7 @@ export function MessageComposer({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={selectedFile ? 'Add a caption (optional)...' : 'Type a message...'}
               disabled={disabled}
               className="pr-10"

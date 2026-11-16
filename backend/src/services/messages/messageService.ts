@@ -7,6 +7,7 @@ import { Contact } from '../../models/Contact';
 import { Conversation } from '../../models/Conversation';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { sendOutgoingMessage } from '../whatsapp/whatsappService';
+import { downloadMetaMedia } from '../whatsapp/metaApi';
 import { getMessageMediaPath, readMediaFile } from '../media/mediaService';
 import { getAccessibleConversation } from '../rbac/conversationAccess';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
@@ -431,20 +432,55 @@ export async function forwardMessageToConversation(
     messageId: sourceMessage._id,
   });
 
-  if (media && FORWARDABLE_MEDIA_TYPES.has(sourceMessage.type)) {
-    const file = await readMediaFile(media.storageKey);
-    const content =
-      typeof sourceMessage.content === 'object' && sourceMessage.content !== null
-        ? { ...(sourceMessage.content as Record<string, unknown>) }
-        : {};
+  if (FORWARDABLE_MEDIA_TYPES.has(sourceMessage.type)) {
+    let mediaBuffer: Buffer | undefined;
+    let mimeType: string | undefined;
+    let fileName = media?.fileName ?? 'media';
 
-    return createMessage(user, targetConversation, {
-      type: sourceMessage.type,
-      content,
-      mediaBuffer: file.body,
-      mimeType: media.mimeType || file.mimeType,
-      fileName: media.fileName ?? 'media',
-    });
+    if (media?.storageKey) {
+      try {
+        const file = await readMediaFile(media.storageKey);
+        mediaBuffer = file.body;
+        mimeType = media.mimeType || file.mimeType;
+      } catch {
+        /* try Meta re-download below */
+      }
+    }
+
+    if (
+      !mediaBuffer &&
+      media?.metaMediaId &&
+      !media.metaMediaId.startsWith('local')
+    ) {
+      const account = await WhatsAppAccount.findById(targetConversation.whatsappAccountId);
+      if (account) {
+        try {
+          const { url, mimeType: metaMime } = await downloadMetaMedia(media.metaMediaId, account);
+          const response = await fetch(url);
+          if (response.ok) {
+            mediaBuffer = Buffer.from(await response.arrayBuffer());
+            mimeType = metaMime || media.mimeType;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+    }
+
+    if (mediaBuffer && mimeType) {
+      const content =
+        typeof sourceMessage.content === 'object' && sourceMessage.content !== null
+          ? { ...(sourceMessage.content as Record<string, unknown>) }
+          : {};
+
+      return createMessage(user, targetConversation, {
+        type: sourceMessage.type,
+        content,
+        mediaBuffer,
+        mimeType,
+        fileName,
+      });
+    }
   }
 
   const text = extractForwardableText(sourceMessage);

@@ -82,7 +82,10 @@ export function MessageBubble({
     isOutgoing &&
     !isDeletedForEveryone &&
     Date.now() - new Date(message.createdAt).getTime() <= DELETE_FOR_EVERYONE_WINDOW_MS;
-  const canCopy = Boolean(getCopyableMessageText(message));
+  const canCopy =
+    Boolean(getCopyableMessageText(message)) ||
+    Boolean(message.media?.url) ||
+    ['IMAGE', 'STICKER', 'VIDEO', 'DOCUMENT', 'AUDIO', 'VOICE'].includes(message.type);
   const canForward = !isDeletedForEveryone && message.type !== 'CALL' && Boolean(onForward);
 
   const closeMenu = useCallback(() => {
@@ -211,10 +214,12 @@ export function MessageBubble({
                   closeMenu();
                   try {
                     const copied = await copyMessageToClipboard(message);
-                    if (copied) {
+                    if (copied === 'media') {
+                      toastSuccess('Image copied — paste in chat to send as media');
+                    } else if (copied === 'text') {
                       toastSuccess('Message copied');
                     } else {
-                      toastError('Nothing to copy');
+                      toastError('Use Forward to send this media to another chat');
                     }
                   } catch {
                     toastError('Could not copy to clipboard');
