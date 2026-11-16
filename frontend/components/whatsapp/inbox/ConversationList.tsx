@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import type { ConversationDTO } from '@/types';
+import { formatLastMessagePreview } from '@/lib/message-preview';
 
 interface ConversationListProps {
   conversations: ConversationDTO[];
@@ -82,8 +83,10 @@ export function ConversationList({
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-sm text-muted-foreground">
                   {isGroup && group
-                    ? conversation.lastMessage ?? `${group.memberCount} participants`
-                    : conversation.lastMessage ?? 'No messages'}
+                    ? formatLastMessagePreview(
+                        conversation.lastMessage ?? `${group.memberCount} participants`
+                      )
+                    : formatLastMessagePreview(conversation.lastMessage)}
                 </p>
                 {conversation.unreadCount > 0 && (
                   <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-whatsapp px-1.5 text-xs font-medium text-white">

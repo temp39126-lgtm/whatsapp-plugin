@@ -12,9 +12,15 @@ import { Button } from '@/components/ui/button';
 import type { MessageDTO } from '@/types';
 import { copyMessageToClipboard, getCopyableMessageText } from '@/lib/message-copy';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { getMessagePreviewLabel } from '@/lib/message-preview';
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
 
 interface MessageBubbleProps {
   message: MessageDTO;
+  quotedMessage?: MessageDTO | null;
+  onScrollToQuotedMessage?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
   onReply?: (message: MessageDTO) => void;
   onEdit?: (message: MessageDTO) => void;
   canEdit?: boolean;
@@ -58,8 +64,20 @@ function computeMenuPosition(
   return { top, left };
 }
 
+function reactionSummary(reactions: MessageDTO['reactions']): Array<{ emoji: string; count: number }> {
+  if (!reactions?.length) return [];
+  const counts = new Map<string, number>();
+  for (const reaction of reactions) {
+    counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([emoji, count]) => ({ emoji, count }));
+}
+
 export function MessageBubble({
   message,
+  quotedMessage,
+  onScrollToQuotedMessage,
+  onReact,
   onReply,
   onEdit,
   canEdit = false,
@@ -87,6 +105,7 @@ export function MessageBubble({
     Boolean(message.media?.url) ||
     ['IMAGE', 'STICKER', 'VIDEO', 'DOCUMENT', 'AUDIO', 'VOICE'].includes(message.type);
   const canForward = !isDeletedForEveryone && message.type !== 'CALL' && Boolean(onForward);
+  const reactionCounts = reactionSummary(message.reactions);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -205,6 +224,28 @@ export function MessageBubble({
                 Reply
               </button>
             )}
+            {onReact && !isDeletedForEveryone && (
+              <div className="border-b px-2 py-2" role="none">
+                <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  React (team only)
+                </p>
+                <div className="flex flex-wrap gap-0.5">
+                  {QUICK_REACTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="rounded-md px-2 py-1 text-lg hover:bg-muted"
+                      onClick={() => {
+                        onReact(message._id, emoji);
+                        closeMenu();
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {canCopy && (
               <button
                 type="button"
@@ -247,12 +288,13 @@ export function MessageBubble({
                 type="button"
                 role="menuitem"
                 className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                title="Changes this message in the CRM only. The customer keeps the original on WhatsApp."
                 onClick={() => {
                   onEdit(message);
                   closeMenu();
                 }}
               >
-                Edit
+                Edit in CRM
               </button>
             )}
             {onPin && (
@@ -286,12 +328,13 @@ export function MessageBubble({
                 type="button"
                 role="menuitem"
                 className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                title="Removes this message from your CRM view for the team."
                 onClick={() => {
                   onDelete(message._id);
                   closeMenu();
                 }}
               >
-                Delete message
+                Remove for me (CRM)
               </button>
             )}
             {canDeleteForEveryone && onDeleteForEveryone && (
@@ -299,12 +342,13 @@ export function MessageBubble({
                 type="button"
                 role="menuitem"
                 className="flex w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                title="Hides the message in the CRM for everyone. Does not remove it on the customer's phone."
                 onClick={() => {
                   onDeleteForEveryone(message._id);
                   closeMenu();
                 }}
               >
-                Delete for everyone
+                Remove for everyone (CRM)
               </button>
             )}
           </div>,
@@ -332,6 +376,24 @@ export function MessageBubble({
         >
           {message.isPinned && !isDeletedForEveryone && (
             <Pin className="absolute -top-2 -right-2 h-3 w-3 text-whatsapp" />
+          )}
+
+          {quotedMessage && !isDeletedForEveryone && (
+            <button
+              type="button"
+              onClick={() => onScrollToQuotedMessage?.(quotedMessage._id)}
+              className={cn(
+                'mb-2 block w-full rounded border-l-4 bg-black/[0.04] px-2 py-1.5 text-left transition-colors hover:bg-black/[0.07]',
+                isOutgoing ? 'border-whatsapp-dark' : 'border-whatsapp'
+              )}
+            >
+              <span className="block text-[11px] font-semibold text-whatsapp-dark">
+                {quotedMessage.direction === 'OUTGOING' ? 'You' : 'Customer'}
+              </span>
+              <span className="line-clamp-2 text-xs text-muted-foreground">
+                {getMessagePreviewLabel(quotedMessage)}
+              </span>
+            </button>
           )}
 
           {isDeletedForEveryone ? (
@@ -378,6 +440,25 @@ export function MessageBubble({
             </Button>
           ) : null}
         </div>
+
+        {reactionCounts.length > 0 && !isDeletedForEveryone && (
+          <div
+            className={cn(
+              'mt-1 flex flex-wrap gap-1',
+              isOutgoing ? 'justify-end' : 'justify-start'
+            )}
+          >
+            {reactionCounts.map(({ emoji, count }) => (
+              <span
+                key={emoji}
+                className="inline-flex items-center gap-0.5 rounded-full border bg-background px-1.5 py-0.5 text-xs shadow-sm"
+              >
+                <span>{emoji}</span>
+                {count > 1 ? <span className="text-[10px] text-muted-foreground">{count}</span> : null}
+              </span>
+            ))}
+          </div>
+        )}
 
         {!isDeletedForEveryone && (
           <button

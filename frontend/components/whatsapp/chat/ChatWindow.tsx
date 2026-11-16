@@ -21,12 +21,18 @@ import {
   useDeleteMessage,
   useEditMessage,
   usePinnedMessages,
+  useAddReaction,
 } from '@/hooks/useMessages';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { canEditMessage, getEditableMessageText } from '@/lib/message-edit';
 import { useMarkConversationRead } from '@/hooks/useConversations';
 import type { ConversationDTO, MessageDTO } from '@/types';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  formatSessionTimeRemaining,
+  getLastIncomingCustomerMessageAt,
+  isWhatsappSessionOpen,
+} from '@/lib/whatsapp-session';
 
 interface ChatWindowProps {
   conversation: ConversationDTO | null;
@@ -61,15 +67,29 @@ export function ChatWindow({
   const retryMessage = useRetryMessage();
   const deleteMessage = useDeleteMessage();
   const editMessage = useEditMessage();
+  const addReaction = useAddReaction();
   const forwardMessage = useForwardMessage();
   const markRead = useMarkConversationRead();
 
   const { data: pinnedMessages = [] } = usePinnedMessages(conversation?._id ?? null);
 
   const messages = messagesData?.data ?? [];
+  const messagesById = useMemo(() => {
+    const map = new Map<string, MessageDTO>();
+    for (const msg of messages) {
+      map.set(msg._id, msg);
+    }
+    return map;
+  }, [messages]);
+
   const contact = conversation?.contact;
   const group = conversation?.group;
   const isGroup = Boolean(group);
+
+  const lastIncomingAt = useMemo(() => getLastIncomingCustomerMessageAt(messages), [messages]);
+  const whatsappSessionOpen = isWhatsappSessionOpen(lastIncomingAt);
+  const sessionTimeRemaining = whatsappSessionOpen ? formatSessionTimeRemaining(lastIncomingAt) : null;
+  const requiresTemplate = !isGroup && !whatsappSessionOpen;
   const headerName = group?.name ?? contact?.name ?? 'Unknown';
   const headerSubtitle = isGroup
     ? `${group?.memberCount ?? 0} participants`
@@ -262,6 +282,18 @@ export function ChatWindow({
             >
               <MessageBubble
                 message={message}
+                quotedMessage={
+                  message.replyToMessageId
+                    ? messagesById.get(message.replyToMessageId) ?? null
+                    : null
+                }
+                onScrollToQuotedMessage={(messageId) => {
+                  messageRefs.current[messageId]?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                  });
+                }}
+                onReact={(messageId, emoji) => addReaction.mutate({ messageId, emoji })}
                 onReply={setReplyTo}
                 canEdit={canEditMessage(message)}
                 onEdit={setEditingMessage}
@@ -269,10 +301,15 @@ export function ChatWindow({
                   togglePin.mutate({ messageId: id, conversationId: conversation._id })
                 }
                 onStar={(id) => toggleStar.mutate(id)}
-                onDelete={(id) => deleteMessage.mutate({ messageId: id, scope: 'me' })}
+                onDelete={(id) => {
+                  const confirmed = window.confirm(
+                    'Remove this message from the CRM for your team?\n\nIt may still appear for agents who have not removed it, and on WhatsApp it is unchanged.'
+                  );
+                  if (confirmed) deleteMessage.mutate({ messageId: id, scope: 'me' });
+                }}
                 onDeleteForEveryone={(id) => {
                   const confirmed = window.confirm(
-                    'Delete this message for everyone in this conversation?'
+                    'Remove this message for everyone in the CRM?\n\nThis does not delete it on the customer\'s WhatsApp — only replaces it here with "This message was deleted."'
                   );
                   if (confirmed) deleteMessage.mutate({ messageId: id, scope: 'everyone' });
                 }}
@@ -292,6 +329,9 @@ export function ChatWindow({
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
         disabled={sendMessage.isPending || sendMediaMessage.isPending}
+        requiresTemplate={requiresTemplate}
+        sessionTimeRemaining={sessionTimeRemaining}
+        onOpenTemplates={() => setShowTemplateDialog(true)}
       />
       {sendError && (
         <div className="border-t bg-red-50 px-4 py-2 text-sm text-red-700">{sendError}</div>

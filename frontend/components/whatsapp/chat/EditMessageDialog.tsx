@@ -41,11 +41,11 @@ export function EditMessageDialog({
         aria-labelledby="edit-message-title"
       >
         <h3 id="edit-message-title" className="text-lg font-semibold">
-          Edit message
+          Edit message (CRM only)
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Updates this chat in the CRM. WhatsApp Cloud API cannot change the message on the
-          customer&apos;s phone after it was sent.
+          Updates this chat for your team. The customer&apos;s WhatsApp still shows the original
+          message unless you send a separate correction below.
         </p>
         <Input
           className="mt-3"

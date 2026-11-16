@@ -37,6 +37,10 @@ interface MessageComposerProps {
   replyTo?: MessageDTO | null;
   onCancelReply?: () => void;
   disabled?: boolean;
+  /** Meta 24h window closed — only templates can reach the customer on WhatsApp. */
+  requiresTemplate?: boolean;
+  sessionTimeRemaining?: string | null;
+  onOpenTemplates?: () => void;
 }
 
 export function MessageComposer({
@@ -45,6 +49,9 @@ export function MessageComposer({
   replyTo,
   onCancelReply,
   disabled,
+  requiresTemplate = false,
+  sessionTimeRemaining = null,
+  onOpenTemplates,
 }: MessageComposerProps) {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -81,8 +88,10 @@ export function MessageComposer({
     }
   };
 
+  const composerBlocked = disabled || requiresTemplate;
   const canSendTextOrMedia = Boolean(text.trim() || selectedFile);
-  const showVoiceNoteButton = Boolean(onSendMedia) && !canSendTextOrMedia && !isRecording && !disabled;
+  const showVoiceNoteButton =
+    Boolean(onSendMedia) && !canSendTextOrMedia && !isRecording && !composerBlocked;
 
   useEffect(() => {
     if (!showEmoji) return;
@@ -204,6 +213,34 @@ export function MessageComposer({
 
   return (
     <div className="border-t bg-background p-3 shrink-0">
+      {requiresTemplate ? (
+        <div
+          className="mb-2 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p className="text-xs leading-relaxed sm:text-sm">
+            The 24-hour WhatsApp messaging window is closed. Send an approved template to message
+            this customer (free text and media will fail).
+          </p>
+          {onOpenTemplates ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-amber-400 bg-white hover:bg-amber-100"
+              onClick={onOpenTemplates}
+            >
+              Send template
+            </Button>
+          ) : null}
+        </div>
+      ) : sessionTimeRemaining ? (
+        <p className="mb-2 text-center text-[11px] text-muted-foreground" role="status">
+          Free WhatsApp replies for about{' '}
+          <span className="font-medium text-foreground">{sessionTimeRemaining}</span>
+        </p>
+      ) : null}
+
       {replyTo && (
         <div className="mb-2 flex items-center justify-between gap-2 rounded bg-muted px-3 py-2 text-sm">
           <span className="min-w-0 flex-1 truncate text-muted-foreground">
@@ -339,7 +376,7 @@ export function MessageComposer({
             variant="ghost"
             size="icon"
             className="shrink-0"
-            disabled={disabled}
+            disabled={composerBlocked}
             onClick={() => fileInputRef.current?.click()}
           >
             <Paperclip className="h-5 w-5" />
@@ -352,8 +389,14 @@ export function MessageComposer({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder={selectedFile ? 'Add a caption (optional)...' : 'Type a message...'}
-              disabled={disabled}
+              placeholder={
+                requiresTemplate
+                  ? 'Use Send template above to message this customer'
+                  : selectedFile
+                    ? 'Add a caption (optional)...'
+                    : 'Type a message...'
+              }
+              disabled={composerBlocked}
               className="pr-10"
             />
             <button
@@ -412,7 +455,7 @@ export function MessageComposer({
               variant="whatsapp"
               size="icon"
               onClick={handleSend}
-              disabled={(!text.trim() && !selectedFile) || disabled}
+              disabled={(!text.trim() && !selectedFile) || composerBlocked}
               className="shrink-0"
             >
               <Send className="h-5 w-5" />
