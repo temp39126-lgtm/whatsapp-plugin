@@ -90,10 +90,28 @@ describe('Contact service create', () => {
     ).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  it('rejects duplicate phone numbers', async () => {
-    await createContact(user, { name: 'First', phone: '+15551234567' });
-    await expect(
-      createContact(user, { name: 'Second', phone: '15551234567' })
-    ).rejects.toBeInstanceOf(AppError);
+  it('reuses the same contact when phone matches after normalization', async () => {
+    const first = await createContact(user, { name: 'First', phone: '+15551234567' });
+    const second = await createContact(user, { name: 'Second', phone: '15551234567' });
+    expect(second._id.toString()).toBe(first._id.toString());
+    expect(second.name).toBe('Second');
+    expect(await Contact.countDocuments({ tenantId: 'tenant-001' })).toBe(1);
+  });
+
+  it('merges an India 10-digit save with an existing 91-digit webhook contact', async () => {
+    const account = await WhatsAppAccount.findOne({ tenantId: 'tenant-001' });
+    const { findOrCreateContact } = await import('../src/services/whatsapp/whatsappService');
+
+    await findOrCreateContact(account!, '918860916437', 'naveen');
+
+    const saved = await createContact(user, {
+      name: 'Naveen Sinha',
+      phone: '8860916437',
+    });
+
+    expect(saved.whatsappId).toBe('918860916437');
+    expect(saved.name).toBe('Naveen Sinha');
+    expect(await Contact.countDocuments({ tenantId: 'tenant-001' })).toBe(1);
+    expect(await Conversation.countDocuments({ tenantId: 'tenant-001' })).toBe(1);
   });
 });

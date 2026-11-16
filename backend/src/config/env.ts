@@ -55,6 +55,8 @@ const envSchema = z.object({
   ADMIN_NAME: z.string().optional(),
   /** When false, POST /auth/signup returns 403 (User role only; Admin still via seed/team). */
   PUBLIC_USER_SIGNUP_ENABLED: z.coerce.boolean().default(false),
+  /** Default region for normalizing local mobiles to international whatsappId (IN = prepend 91). */
+  DEFAULT_PHONE_REGION: z.enum(['IN', 'NONE']).default('IN'),
 });
 
 export const env = envSchema

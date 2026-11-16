@@ -13,23 +13,29 @@ import { assertActiveTenantUser } from '../users/assigneeValidation';
 import { storeAvatar, readAvatar } from '../avatars/avatarService';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { escapeRegExp } from '../../utils/regex';
-import { normalizeWhatsAppId, formatPhoneDisplay } from '../../utils/phone';
+import {
+  canonicalWhatsAppId,
+  formatPhoneDisplay,
+  whatsappIdLookupVariants,
+} from '../../utils/phone';
 import {
   atomicClaimConversation,
+  dedupeContactConversations,
   getOrCreateContactConversation,
 } from './contactConversationService';
 import { emitContactDeletedToAuthorizedUsers } from '../realtime/socketService';
 import { sendHelloWorldTemplateMessage } from '../whatsapp/whatsappService';
 import { logger } from '../../config/logger';
+import { findAndMergeContactsByWhatsAppVariants } from './contactDedupeService';
 
 function normalizePhoneInput(phone: string): { phone: string; whatsappId: string } {
-  const digits = normalizeWhatsAppId(phone);
+  const whatsappId = canonicalWhatsAppId(phone);
 
-  if (digits.length < 8 || digits.length > 15) {
+  if (whatsappId.length < 8 || whatsappId.length > 15) {
     throw new AppError(400, 'Enter a valid phone number with country code');
   }
 
-  return { phone: formatPhoneDisplay(digits), whatsappId: digits };
+  return { phone: formatPhoneDisplay(whatsappId), whatsappId };
 }
 
 export type CreateContactInput = {
@@ -67,23 +73,40 @@ export async function createContact(
   }
 
   const { phone, whatsappId } = normalizePhoneInput(input.phone);
-  const existing = await Contact.findOne({ tenantId: user.tenantId, whatsappId });
-  if (existing) {
-    throw new AppError(409, 'A contact with this phone number already exists');
-  }
+  const lookupIds = whatsappIdLookupVariants(whatsappId);
+  const mergedExisting = await findAndMergeContactsByWhatsAppVariants(
+    user.tenantId,
+    lookupIds,
+    whatsappId
+  );
 
   const assignToCreator = user.role === 'USER';
 
-  const contact = await Contact.create({
-    tenantId: user.tenantId,
-    whatsappAccountId: account._id,
-    name: input.name.trim(),
-    crmDisplayNameLocked: true,
-    phone,
-    whatsappId,
-    tags: [],
-    ...(assignToCreator ? { assignedUserId: user.userId } : {}),
-  });
+  let contact = mergedExisting;
+  if (contact) {
+    contact.name = input.name.trim();
+    contact.crmDisplayNameLocked = true;
+    contact.phone = phone;
+    if (contact.whatsappId !== whatsappId) {
+      contact.whatsappId = whatsappId;
+    }
+    if (assignToCreator && !contact.assignedUserId) {
+      contact.assignedUserId = user.userId;
+    }
+    await contact.save();
+    await dedupeContactConversations(user.tenantId, contact._id);
+  } else {
+    contact = await Contact.create({
+      tenantId: user.tenantId,
+      whatsappAccountId: account._id,
+      name: input.name.trim(),
+      crmDisplayNameLocked: true,
+      phone,
+      whatsappId,
+      tags: [],
+      ...(assignToCreator ? { assignedUserId: user.userId } : {}),
+    });
+  }
 
   const { conversation } = await getOrCreateContactConversation({
     tenantId: user.tenantId,
