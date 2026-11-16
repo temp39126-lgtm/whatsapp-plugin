@@ -38,6 +38,26 @@ export function useSendMessage() {
   });
 }
 
+export function useForwardMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      conversationId,
+    }: {
+      messageId: string;
+      conversationId: string;
+      sourceConversationId: string;
+    }) =>
+      api.post<MessageDTO>(`/messages/${messageId}/forward`, { conversationId }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.sourceConversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
 export function useTogglePin() {
   const queryClient = useQueryClient();
   return useMutation({

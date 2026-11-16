@@ -9,10 +9,12 @@ import { MessageComposer } from './MessageComposer';
 import { EditMessageDialog } from './EditMessageDialog';
 import { TemplateSendDialog } from './TemplateSendDialog';
 import { PinnedMessagesBar } from './PinnedMessagesBar';
+import { ForwardMessageDialog } from './ForwardMessageDialog';
 import {
   useMessages,
   useSendMessage,
   useSendMediaMessage,
+  useForwardMessage,
   useTogglePin,
   useToggleStar,
   useRetryMessage,
@@ -20,6 +22,7 @@ import {
   useEditMessage,
   usePinnedMessages,
 } from '@/hooks/useMessages';
+import { toastError, toastSuccess } from '@/lib/toast';
 import { canEditMessage, getEditableMessageText } from '@/lib/message-edit';
 import { useMarkConversationRead } from '@/hooks/useConversations';
 import type { ConversationDTO, MessageDTO } from '@/types';
@@ -44,6 +47,7 @@ export function ChatWindow({
   const [editingMessage, setEditingMessage] = useState<MessageDTO | null>(null);
   const [sendError, setSendError] = useState('');
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [forwardingMessage, setForwardingMessage] = useState<MessageDTO | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -57,6 +61,7 @@ export function ChatWindow({
   const retryMessage = useRetryMessage();
   const deleteMessage = useDeleteMessage();
   const editMessage = useEditMessage();
+  const forwardMessage = useForwardMessage();
   const markRead = useMarkConversationRead();
 
   const { data: pinnedMessages = [] } = usePinnedMessages(conversation?._id ?? null);
@@ -273,6 +278,7 @@ export function ChatWindow({
                 }}
                 onRetry={(id) => retryMessage.mutate(id)}
                 onSendTemplate={() => setShowTemplateDialog(true)}
+                onForward={(message) => setForwardingMessage(message)}
               />
             </div>
           ))
@@ -294,6 +300,31 @@ export function ChatWindow({
         open={showTemplateDialog}
         conversationId={conversation?._id ?? ''}
         onClose={() => setShowTemplateDialog(false)}
+      />
+      <ForwardMessageDialog
+        open={Boolean(forwardingMessage)}
+        currentConversationId={conversation._id}
+        isSubmitting={forwardMessage.isPending}
+        onClose={() => setForwardingMessage(null)}
+        onForward={(targetConversationId) => {
+          if (!forwardingMessage) return;
+          forwardMessage.mutate(
+            {
+              messageId: forwardingMessage._id,
+              conversationId: targetConversationId,
+              sourceConversationId: conversation._id,
+            },
+            {
+              onSuccess: () => {
+                setForwardingMessage(null);
+                toastSuccess('Message forwarded');
+              },
+              onError: (error) => {
+                toastError(error instanceof Error ? error.message : 'Failed to forward message');
+              },
+            }
+          );
+        }}
       />
       <EditMessageDialog
         open={Boolean(editingMessage)}

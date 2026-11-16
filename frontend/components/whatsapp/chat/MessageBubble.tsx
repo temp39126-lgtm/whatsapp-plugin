@@ -10,6 +10,8 @@ import { DeliveryStatus } from './DeliveryStatus';
 import { MessageMediaContent } from './MessageMediaContent';
 import { Button } from '@/components/ui/button';
 import type { MessageDTO } from '@/types';
+import { copyMessageToClipboard, getCopyableMessageText } from '@/lib/message-copy';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 interface MessageBubbleProps {
   message: MessageDTO;
@@ -22,6 +24,7 @@ interface MessageBubbleProps {
   onDeleteForEveryone?: (messageId: string) => void;
   onRetry?: (messageId: string) => void;
   onSendTemplate?: (messageId: string) => void;
+  onForward?: (message: MessageDTO) => void;
 }
 
 const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -66,6 +69,7 @@ export function MessageBubble({
   onDeleteForEveryone,
   onRetry,
   onSendTemplate,
+  onForward,
 }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -78,6 +82,8 @@ export function MessageBubble({
     isOutgoing &&
     !isDeletedForEveryone &&
     Date.now() - new Date(message.createdAt).getTime() <= DELETE_FOR_EVERYONE_WINDOW_MS;
+  const canCopy = Boolean(getCopyableMessageText(message));
+  const canForward = !isDeletedForEveryone && message.type !== 'CALL' && Boolean(onForward);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -194,6 +200,41 @@ export function MessageBubble({
                 }}
               >
                 Reply
+              </button>
+            )}
+            {canCopy && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={async () => {
+                  closeMenu();
+                  try {
+                    const copied = await copyMessageToClipboard(message);
+                    if (copied) {
+                      toastSuccess('Message copied');
+                    } else {
+                      toastError('Nothing to copy');
+                    }
+                  } catch {
+                    toastError('Could not copy to clipboard');
+                  }
+                }}
+              >
+                Copy
+              </button>
+            )}
+            {canForward && (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-4 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onForward?.(message);
+                  closeMenu();
+                }}
+              >
+                Forward
               </button>
             )}
             {canEdit && onEdit && (

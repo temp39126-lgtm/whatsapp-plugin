@@ -92,6 +92,20 @@ export async function addReaction(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+export async function forwardMessage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const source = await messageService.getMessageById(req.user!, getParam(req.params.id));
+    const message = await messageService.forwardMessageToConversation(
+      req.user!,
+      source,
+      req.body.conversationId
+    );
+    res.status(201).json(message);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function togglePin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const message = await messageService.getMessageById(req.user!, getParam(req.params.id));

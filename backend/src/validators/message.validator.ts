@@ -9,6 +9,10 @@ export const createMessageSchema = z.object({
   replyToMessageId: z.string().optional(),
 });
 
+export const forwardMessageSchema = z.object({
+  conversationId: z.string().min(1, 'Target conversation is required'),
+});
+
 export const reactionSchema = z.object({
   emoji: z.string().min(1).max(10),
 });

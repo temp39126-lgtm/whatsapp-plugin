@@ -9,6 +9,7 @@ import {
   reactionSchema,
   deleteMessageSchema,
   editMessageSchema,
+  forwardMessageSchema,
 } from '../validators/message.validator';
 import * as conversationController from '../controllers/conversation.controller';
 import * as messageController from '../controllers/message.controller';
@@ -47,6 +48,11 @@ router.post(
   '/messages/:id/reactions',
   validateBody(reactionSchema),
   messageController.addReaction
+);
+router.post(
+  '/messages/:id/forward',
+  validateBody(forwardMessageSchema),
+  messageController.forwardMessage
 );
 router.post('/messages/:id/pin', messageController.togglePin);
 router.post('/messages/:id/star', messageController.toggleStar);

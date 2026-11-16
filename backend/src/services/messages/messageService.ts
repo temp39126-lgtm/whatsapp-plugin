@@ -382,6 +382,82 @@ export async function getStarredMessages(user: AuthUser, conversationId: string)
   });
 }
 
+function extractForwardableText(message: IMessage): string | null {
+  const content = message.content as Record<string, unknown> | null | undefined;
+
+  if (message.type === 'TEXT' && typeof content?.text === 'string') {
+    const text = content.text.trim();
+    return text || null;
+  }
+
+  if (message.type === 'TEMPLATE') {
+    if (typeof content?.preview === 'string' && content.preview.trim()) {
+      return content.preview.trim();
+    }
+    if (typeof content?.text === 'string' && content.text.trim()) {
+      return content.text.trim();
+    }
+    if (typeof content?.templateName === 'string' && content.templateName.trim()) {
+      return `Template: ${content.templateName.trim()}`;
+    }
+    return null;
+  }
+
+  const caption = typeof content?.caption === 'string' ? content.caption.trim() : '';
+  return caption || null;
+}
+
+const FORWARDABLE_MEDIA_TYPES = new Set(['IMAGE', 'VIDEO', 'AUDIO', 'VOICE', 'DOCUMENT', 'STICKER']);
+
+export async function forwardMessageToConversation(
+  user: AuthUser,
+  sourceMessage: IMessage,
+  targetConversationId: string
+): Promise<EnrichedMessage> {
+  if (sourceMessage.deletedForEveryone) {
+    throw new AppError(400, 'Deleted messages cannot be forwarded');
+  }
+  if (sourceMessage.type === 'CALL') {
+    throw new AppError(400, 'Call records cannot be forwarded');
+  }
+
+  const targetConversation = await getAccessibleConversation(user, targetConversationId);
+  if (targetConversation.groupId) {
+    throw new AppError(400, 'Forward is only supported for individual chats');
+  }
+
+  const media = await MessageMedia.findOne({
+    tenantId: user.tenantId,
+    messageId: sourceMessage._id,
+  });
+
+  if (media && FORWARDABLE_MEDIA_TYPES.has(sourceMessage.type)) {
+    const file = await readMediaFile(media.storageKey);
+    const content =
+      typeof sourceMessage.content === 'object' && sourceMessage.content !== null
+        ? { ...(sourceMessage.content as Record<string, unknown>) }
+        : {};
+
+    return createMessage(user, targetConversation, {
+      type: sourceMessage.type,
+      content,
+      mediaBuffer: file.body,
+      mimeType: media.mimeType || file.mimeType,
+      fileName: media.fileName ?? 'media',
+    });
+  }
+
+  const text = extractForwardableText(sourceMessage);
+  if (!text) {
+    throw new AppError(400, 'This message cannot be forwarded');
+  }
+
+  return createMessage(user, targetConversation, {
+    type: 'TEXT',
+    content: { text },
+  });
+}
+
 export async function getMessageById(user: AuthUser, messageId: string): Promise<IMessage> {
   const message = await Message.findOne({ _id: messageId, tenantId: user.tenantId });
   if (!message) throw new AppError(404, 'Message not found');
