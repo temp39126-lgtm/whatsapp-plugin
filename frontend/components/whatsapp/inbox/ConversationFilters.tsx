@@ -73,7 +73,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
   }
 
   return (
-    <div className="space-y-3 border-b p-3">
+    <div className="min-w-0 space-y-3 border-b p-3">
       <div className="flex items-center gap-2">
         <Input
           placeholder="Search conversations..."
@@ -125,7 +125,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
       />
 
       <div
-        className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:thin]"
+        className="-mx-3 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label="Conversation filters"
       >
