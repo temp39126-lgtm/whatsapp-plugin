@@ -6,7 +6,7 @@ import {
   ConversationFilterDialog,
   conversationAdvancedFiltersActive,
 } from '@/components/whatsapp/inbox/ConversationFilterDialog';
-import { useState } from 'react';
+import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -42,7 +42,7 @@ function isAllFiltersActive(filters: Record<string, string | boolean | undefined
 
 const pillClass = (active: boolean) =>
   cn(
-    'shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors',
+    'shrink-0 touch-pan-x whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors',
     active
       ? 'bg-whatsapp text-white shadow-sm'
       : 'bg-muted/90 text-foreground/75 hover:bg-muted'
@@ -61,6 +61,79 @@ function clearAdvancedFilters(filters: Record<string, string | boolean | undefin
   };
 }
 
+/** Keeps filter pills in one swipeable row (touch + mouse drag). */
+function FilterPillScroller({ children }: { children: ReactNode }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ pointerId: -1, startX: 0, scrollLeft: 0, suppressClick: false });
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: scroller.scrollLeft,
+      suppressClick: false,
+    };
+    scroller.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const scroller = scrollerRef.current;
+    const drag = dragRef.current;
+    if (!scroller || drag.pointerId !== event.pointerId) return;
+    if (event.pointerType === 'touch') return;
+
+    const deltaX = event.clientX - drag.startX;
+    if (Math.abs(deltaX) > 4) {
+      drag.suppressClick = true;
+      scroller.scrollLeft = drag.scrollLeft - deltaX;
+    }
+  }
+
+  function endDrag(event: PointerEvent<HTMLDivElement>) {
+    const scroller = scrollerRef.current;
+    if (scroller && dragRef.current.pointerId === event.pointerId) {
+      scroller.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current.pointerId = -1;
+  }
+
+  function onClickCapture(event: MouseEvent) {
+    if (dragRef.current.suppressClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      dragRef.current.suppressClick = false;
+    }
+  }
+
+  return (
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden">
+      <div
+        ref={scrollerRef}
+        className={cn(
+          'flex w-full max-w-full touch-pan-x flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1',
+          'scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden',
+          'cursor-grab active:cursor-grabbing'
+        )}
+        role="tablist"
+        aria-label="Conversation filters"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={onClickCapture}
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent"
+      />
+    </div>
+  );
+}
+
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
   const { canViewAllConversations } = usePermissions();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
@@ -73,7 +146,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
   }
 
   return (
-    <div className="min-w-0 space-y-3 border-b p-3">
+    <div className="w-full min-w-0 max-w-full space-y-3 border-b p-3">
       <div className="flex items-center gap-2">
         <Input
           placeholder="Search conversations..."
@@ -124,11 +197,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         onReset={() => onChange(clearAdvancedFilters(filters))}
       />
 
-      <div
-        className="-mx-3 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label="Conversation filters"
-      >
+      <FilterPillScroller>
         <button type="button" onClick={showAllConversations} className={pillClass(allActive)}>
           All
         </button>
@@ -222,7 +291,7 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             {f.label}
           </button>
         ))}
-      </div>
+      </FilterPillScroller>
     </div>
   );
 }
