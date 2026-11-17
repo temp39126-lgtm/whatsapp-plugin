@@ -1,4 +1,5 @@
 export type InboxFilterParams = {
+  search?: string;
   status?: string;
   assignedUserId?: string;
   unassigned?: boolean;
@@ -18,6 +19,8 @@ export type InboxFilterParams = {
 export function buildInboxHref(filters: InboxFilterParams = {}, conversationId?: string): string {
   const params = new URLSearchParams();
 
+  const search = filters.search?.trim();
+  if (search) params.set('search', search);
   if (filters.status) params.set('status', filters.status);
   if (filters.assignedUserId) params.set('assignedUserId', filters.assignedUserId);
   if (filters.unassigned) params.set('unassigned', 'true');
@@ -43,6 +46,8 @@ export function inboxFiltersFromSearchParams(
 ): Record<string, string | boolean | undefined> {
   const filters: Record<string, string | boolean | undefined> = {};
 
+  const search = searchParams.get('search');
+  if (search) filters.search = search;
   const status = searchParams.get('status');
   if (status) filters.status = status;
   const assignedUserId = searchParams.get('assignedUserId');

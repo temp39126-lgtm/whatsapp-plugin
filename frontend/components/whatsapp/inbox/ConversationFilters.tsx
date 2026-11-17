@@ -63,6 +63,47 @@ function clearAdvancedFilters(filters: Record<string, string | boolean | undefin
   };
 }
 
+type QuickFilterKey = 'unread' | 'active' | 'assigned' | 'unassigned';
+
+function toggleQuickFilter(
+  filters: Record<string, string | boolean | undefined>,
+  key: QuickFilterKey
+): Record<string, string | boolean | undefined> {
+  const next = { ...filters };
+  const turningOn = !Boolean(next[key]);
+
+  if (turningOn) {
+    next[key] = true;
+    if (key === 'assigned') {
+      delete next.unassigned;
+      delete next.assignedUserId;
+    }
+    if (key === 'unassigned') {
+      delete next.assigned;
+      delete next.assignedUserId;
+    }
+  } else {
+    delete next[key];
+  }
+
+  return next;
+}
+
+function clearQuickFilters(filters: Record<string, string | boolean | undefined>) {
+  const next = { ...filters };
+  delete next.unread;
+  delete next.active;
+  delete next.assigned;
+  delete next.unassigned;
+  delete next.assignedUserId;
+  delete next.status;
+  delete next.groups;
+  delete next.mine;
+  delete next.newToday;
+  delete next.assignedByAdmin;
+  return next;
+}
+
 /** Keeps filter pills in one swipeable row (touch + mouse drag). */
 function FilterPillScroller({ children }: { children: ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +157,7 @@ function FilterPillScroller({ children }: { children: ReactNode }) {
   }
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest('button')) return;
     const scroller = scrollerRef.current;
     if (!scroller) return;
     dragRef.current = {
@@ -213,8 +255,12 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
   const assignedUserId = filters.assignedUserId as string | undefined;
 
   function showAllConversations() {
-    onChange(filters.search ? { search: filters.search } : {});
+    onChange(clearQuickFilters(filters));
   }
+
+  const stopPillScrollPropagation = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+  };
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-3 border-b p-3">
@@ -269,31 +315,32 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
       />
 
       <FilterPillScroller>
-        <button type="button" onClick={showAllConversations} className={pillClass(allActive)}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={allActive}
+          onPointerDown={stopPillScrollPropagation}
+          onClick={showAllConversations}
+          className={pillClass(allActive)}
+        >
           All
         </button>
         <button
           type="button"
-          onClick={() =>
-            onChange({
-              ...(filters.search ? { search: filters.search } : {}),
-              ...clearAdvancedFilters(filters),
-              unread: filters.unread ? undefined : true,
-            })
-          }
+          role="tab"
+          aria-pressed={Boolean(filters.unread)}
+          onPointerDown={stopPillScrollPropagation}
+          onClick={() => onChange(toggleQuickFilter(filters, 'unread'))}
           className={pillClass(Boolean(filters.unread))}
         >
           Unread
         </button>
         <button
           type="button"
-          onClick={() =>
-            onChange({
-              ...(filters.search ? { search: filters.search } : {}),
-              ...clearAdvancedFilters(filters),
-              active: filters.active ? undefined : true,
-            })
-          }
+          role="tab"
+          aria-pressed={Boolean(filters.active)}
+          onPointerDown={stopPillScrollPropagation}
+          onClick={() => onChange(toggleQuickFilter(filters, 'active'))}
           className={pillClass(Boolean(filters.active))}
         >
           Active
@@ -302,36 +349,20 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           <>
             <button
               type="button"
-              onClick={() => {
-                const nextAssigned = filters.assigned ? undefined : true;
-                onChange({
-                  ...(filters.search ? { search: filters.search } : {}),
-                  ...(filters.unread ? { unread: true } : {}),
-                  ...(filters.active ? { active: true } : {}),
-                  ...clearAdvancedFilters(filters),
-                  assigned: nextAssigned,
-                  unassigned: undefined,
-                  assignedUserId: undefined,
-                });
-              }}
+              role="tab"
+              aria-pressed={Boolean(filters.assigned || assignedUserId)}
+              onPointerDown={stopPillScrollPropagation}
+              onClick={() => onChange(toggleQuickFilter(filters, 'assigned'))}
               className={pillClass(Boolean(filters.assigned || assignedUserId))}
             >
               Assigned
             </button>
             <button
               type="button"
-              onClick={() => {
-                const nextUnassigned = filters.unassigned ? undefined : true;
-                onChange({
-                  ...(filters.search ? { search: filters.search } : {}),
-                  ...(filters.unread ? { unread: true } : {}),
-                  ...(filters.active ? { active: true } : {}),
-                  ...clearAdvancedFilters(filters),
-                  unassigned: nextUnassigned,
-                  assigned: undefined,
-                  assignedUserId: undefined,
-                });
-              }}
+              role="tab"
+              aria-pressed={Boolean(filters.unassigned && !assignedUserId)}
+              onPointerDown={stopPillScrollPropagation}
+              onClick={() => onChange(toggleQuickFilter(filters, 'unassigned'))}
               className={pillClass(Boolean(filters.unassigned && !assignedUserId))}
             >
               Unassigned

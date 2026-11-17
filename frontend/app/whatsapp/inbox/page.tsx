@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { WhatsAppConnectionStatus } from '@/types';
@@ -15,7 +15,7 @@ import { useConversation, useConversations } from '@/hooks/useConversations';
 import { useOutboundCall } from '@/hooks/useOutboundCall';
 import { onSocketEvent } from '@/lib/socket';
 import { OngoingCallModal } from '@/components/whatsapp/calls/OngoingCallModal';
-import { inboxFiltersFromSearchParams } from '@/lib/inbox-filters';
+import { buildInboxHref, inboxFiltersFromSearchParams, type InboxFilterParams } from '@/lib/inbox-filters';
 import { setActiveConversationId } from '@/lib/notifications';
 
 function InboxLoading() {
@@ -27,11 +27,28 @@ function InboxLoading() {
 }
 
 function InboxPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const urlFilters = inboxFiltersFromSearchParams(searchParams);
 
   const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>(urlFilters);
+
+  const updateFilters = useCallback(
+    (next: Record<string, string | boolean | undefined>) => {
+      setFilters(next);
+      const conversationId = searchParams.get('conversation') ?? undefined;
+      const href = buildInboxHref(
+        {
+          ...(next as InboxFilterParams),
+          search: typeof next.search === 'string' ? next.search : undefined,
+        },
+        conversationId
+      );
+      router.replace(href, { scroll: false });
+    },
+    [router, searchParams]
+  );
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('conversation'));
   const [showDetailsMobile, setShowDetailsMobile] = useState(false);
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
@@ -90,7 +107,7 @@ function InboxPageContent() {
         <div className="border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
         </div>
-        <ConversationFilters filters={filters} onChange={setFilters} />
+        <ConversationFilters filters={filters} onChange={updateFilters} />
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}
