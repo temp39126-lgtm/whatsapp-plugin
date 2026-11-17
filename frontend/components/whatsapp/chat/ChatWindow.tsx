@@ -26,10 +26,11 @@ import {
   useAddReaction,
 } from '@/hooks/useMessages';
 import { toastError, toastSuccess } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import { canEditMessage, getEditableMessageText } from '@/lib/message-edit';
 import { useMarkConversationRead } from '@/hooks/useConversations';
 import type { ConversationDTO, MessageDTO } from '@/types';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import {
   formatSessionTimeRemaining,
   getLastIncomingCustomerMessageAt,
@@ -69,21 +70,24 @@ export function ChatWindow({
   const [filterToDate, setFilterToDate] = useState('');
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const membersRef = useRef<HTMLDivElement>(null);
   const [jumpTargetId, setJumpTargetId] = useState<string | null>(null);
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
   const jumpScrollAttemptsRef = useRef(0);
 
   const hasMessageFilters = Boolean(
     chatSearchQuery.trim() || filterFromDate || filterToDate
   );
 
-  const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null, {
-    anchorMessageId: hasMessageFilters ? null : messageAnchorId,
+  const scrollAnchorId = jumpTargetId ?? messageAnchorId;
+  const { data: messagesData, isLoading, isFetching } = useMessages(conversation?._id ?? null, {
+    anchorMessageId: hasMessageFilters ? null : scrollAnchorId ?? undefined,
     search: chatSearchQuery || undefined,
     fromDate: filterFromDate || undefined,
     toDate: filterToDate || undefined,
-    limit: hasMessageFilters ? 100 : undefined,
+    limit: scrollAnchorId && !hasMessageFilters ? 100 : hasMessageFilters ? 100 : undefined,
   });
   const sendMessage = useSendMessage();
   const sendMediaMessage = useSendMediaMessage();
@@ -134,6 +138,8 @@ export function ChatWindow({
   useEffect(() => {
     if (scrollToMessageId) {
       setJumpTargetId(scrollToMessageId);
+      setMessageAnchorId(scrollToMessageId);
+      setHighlightMessageId(null);
       jumpScrollAttemptsRef.current = 0;
     }
   }, [scrollToMessageId]);
@@ -152,35 +158,52 @@ export function ChatWindow({
 
   const dateFilterActive = Boolean(filterFromDate || filterToDate);
 
-  useEffect(() => {
-    if (!jumpTargetId || isLoading) return;
+  useLayoutEffect(() => {
+    if (!jumpTargetId) return;
 
-    const inList = messages.some((message) => message._id === jumpTargetId);
+    const targetId = String(jumpTargetId);
+    const inList = messages.some((message) => String(message._id) === targetId);
     if (!inList) {
-      if (messageAnchorId !== jumpTargetId) {
-        setMessageAnchorId(jumpTargetId);
+      if (!isFetching) {
+        toastError('Could not load this message in the chat.');
+        setJumpTargetId(null);
+        setMessageAnchorId(null);
+        onScrollToMessageHandled?.();
       }
       return;
     }
 
-    const targetId = jumpTargetId;
+    const resolveNode = (): HTMLDivElement | null => {
+      const refNode = messageRefs.current[targetId];
+      if (refNode) return refNode;
+      return messagesScrollRef.current?.querySelector(
+        `[data-message-id="${targetId}"]`
+      ) as HTMLDivElement | null;
+    };
+
     const tryScroll = () => {
-      const node = messageRefs.current[targetId];
+      const node = resolveNode();
       if (node) {
         node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightMessageId(targetId);
+        window.setTimeout(() => setHighlightMessageId(null), 2000);
         setJumpTargetId(null);
         jumpScrollAttemptsRef.current = 0;
         onScrollToMessageHandled?.();
         return;
       }
       jumpScrollAttemptsRef.current += 1;
-      if (jumpScrollAttemptsRef.current < 30) {
+      if (jumpScrollAttemptsRef.current < 40) {
         requestAnimationFrame(tryScroll);
+      } else {
+        toastError('Could not scroll to this message.');
+        setJumpTargetId(null);
+        onScrollToMessageHandled?.();
       }
     };
 
     tryScroll();
-  }, [jumpTargetId, messages, isLoading, messageAnchorId, onScrollToMessageHandled]);
+  }, [jumpTargetId, messages, isFetching, onScrollToMessageHandled]);
 
   useEffect(() => {
     if (conversation?._id && conversation.unreadCount > 0) {
@@ -427,11 +450,16 @@ export function ChatWindow({
         }}
       />
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-3 py-4 sm:space-y-3 sm:px-4">
-        {isLoading ? (
+      <div
+        ref={messagesScrollRef}
+        className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-3 py-4 sm:space-y-3 sm:px-4"
+      >
+        {isLoading && messages.length === 0 && !jumpTargetId ? (
           <div className="flex justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
           </div>
+        ) : jumpTargetId && messages.length === 0 && isFetching ? (
+          <div className="flex justify-center py-8 text-sm text-muted-foreground">Loading message…</div>
         ) : messages.length === 0 && hasMessageFilters ? (
           <div className="flex justify-center py-10 text-sm text-muted-foreground">
             No messages match your search or filters.
@@ -440,9 +468,14 @@ export function ChatWindow({
           messages.map((message) => (
             <div
               key={message._id}
+              data-message-id={message._id}
               ref={(node) => {
-                messageRefs.current[message._id] = node;
+                messageRefs.current[String(message._id)] = node;
               }}
+              className={cn(
+                'rounded-lg transition-shadow',
+                highlightMessageId === String(message._id) && 'ring-2 ring-whatsapp ring-offset-2'
+              )}
             >
               <MessageBubble
                 message={message}

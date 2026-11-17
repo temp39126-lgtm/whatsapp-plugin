@@ -119,9 +119,14 @@ export async function listMessages(
   const listQuery = buildMessageListQuery(user.tenantId, conversationId, queryOptions);
 
   if (anchorMessageId && !hasQueryFilters) {
+    const { Types } = await import('mongoose');
+    if (!Types.ObjectId.isValid(anchorMessageId)) {
+      throw new AppError(400, 'Invalid message id');
+    }
     const anchor = await Message.findOne({
-      _id: anchorMessageId,
-      ...messageListFilter(user.tenantId, conversationId),
+      _id: new Types.ObjectId(anchorMessageId),
+      tenantId: user.tenantId,
+      conversationId,
     }).lean();
     if (!anchor) {
       throw new AppError(404, 'Message not found in this conversation');
