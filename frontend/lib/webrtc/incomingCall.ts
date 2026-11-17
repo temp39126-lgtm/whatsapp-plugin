@@ -6,6 +6,8 @@ import { waitForMediaConnection } from '@/lib/webrtc/waitForMediaConnection';
 export type IncomingCallSession = {
   createAnswer: () => Promise<WebRtcSession>;
   waitUntilMediaReady: (timeoutMs?: number) => Promise<void>;
+  setMicMuted: (muted: boolean) => void;
+  isMicMuted: () => boolean;
   close: () => void;
 };
 
@@ -74,6 +76,14 @@ export async function createIncomingCallSession(
     },
     waitUntilMediaReady(timeoutMs?: number) {
       return waitForMediaConnection(peerConnection, timeoutMs);
+    },
+    setMicMuted(muted: boolean) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !muted;
+      });
+    },
+    isMicMuted() {
+      return localStream.getAudioTracks().every((track) => !track.enabled);
     },
     close() {
       localStream.getTracks().forEach((track) => track.stop());

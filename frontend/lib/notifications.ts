@@ -134,6 +134,22 @@ export function notifyIncomingMessage(
   flashDocumentTitle('New message');
 }
 
+export function notifyIncomingCall(
+  preferences: NotificationPreferences,
+  params: { callerName?: string; phone?: string }
+): void {
+  const title = params.callerName
+    ? `Incoming call from ${params.callerName}`
+    : 'Incoming WhatsApp call';
+  const body = params.phone ?? 'Open the app to answer.';
+
+  if (preferences.desktopNotifications) {
+    showDesktopNotification(title, { body, tag: 'incoming-whatsapp-call' });
+  }
+
+  flashDocumentTitle('Incoming call');
+}
+
 export function notifyConversationAssigned(
   preferences: NotificationPreferences,
   params: { conversationLabel?: string }

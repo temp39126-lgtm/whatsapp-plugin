@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PhoneOff } from 'lucide-react';
+import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { CallDTO } from '@/types';
 
@@ -15,10 +15,19 @@ interface OngoingCallModalProps {
   call: CallDTO;
   contactName?: string;
   isEnding?: boolean;
+  micMuted?: boolean;
+  onToggleMicMute?: () => void;
   onEnd: () => void;
 }
 
-export function OngoingCallModal({ call, contactName, isEnding, onEnd }: OngoingCallModalProps) {
+export function OngoingCallModal({
+  call,
+  contactName,
+  isEnding,
+  micMuted = false,
+  onToggleMicMute,
+  onEnd,
+}: OngoingCallModalProps) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -61,17 +70,32 @@ export function OngoingCallModal({ call, contactName, isEnding, onEnd }: Ongoing
             {statusLabel} · {formatElapsed(elapsed)}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="destructive"
-          size="lg"
-          className="mt-6 w-full gap-2"
-          disabled={isEnding}
-          onClick={onEnd}
-        >
-          <PhoneOff className="h-5 w-5" />
-          {isEnding ? 'Ending call…' : 'End call'}
-        </Button>
+        <div className="mt-6 flex w-full gap-3">
+          {onToggleMicMute ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="flex-1 gap-2"
+              disabled={isEnding}
+              onClick={onToggleMicMute}
+            >
+              {micMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              {micMuted ? 'Unmute' : 'Mute'}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="destructive"
+            size="lg"
+            className={onToggleMicMute ? 'flex-1 gap-2' : 'w-full gap-2'}
+            disabled={isEnding}
+            onClick={onEnd}
+          >
+            <PhoneOff className="h-5 w-5" />
+            {isEnding ? 'Ending…' : 'End'}
+          </Button>
+        </div>
       </div>
     </div>
   );

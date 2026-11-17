@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, PhoneOff } from 'lucide-react';
+import { Phone, PhoneOff, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PendingIncomingCall } from '@/lib/incoming-call-types';
 
@@ -12,8 +12,10 @@ interface IncomingCallModalProps {
   isDeclining: boolean;
   micStatus: MicStatus;
   isEnablingMic: boolean;
+  ringMuted: boolean;
   error?: string;
   onEnableMicrophone: () => void;
+  onToggleRingMute: () => void;
   onAccept: () => void;
   onDecline: () => void;
 }
@@ -24,8 +26,10 @@ export function IncomingCallModal({
   isDeclining,
   micStatus,
   isEnablingMic,
+  ringMuted,
   error,
   onEnableMicrophone,
+  onToggleRingMute,
   onAccept,
   onDecline,
 }: IncomingCallModalProps) {
@@ -74,6 +78,17 @@ export function IncomingCallModal({
             </Button>
           ) : null}
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-4 gap-2 text-muted-foreground"
+            disabled={isAccepting || isDeclining}
+            onClick={onToggleRingMute}
+          >
+            {ringMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {ringMuted ? 'Ring muted' : 'Mute ring'}
+          </Button>
         </div>
         <div className="mt-6 flex gap-3">
           <Button

@@ -14,6 +14,14 @@ import {
 import { createIncomingCallSession } from '@/lib/webrtc/incomingCall';
 import type { IncomingCallSession } from '@/lib/webrtc/incomingCall';
 import { mapMicrophoneError, prepareMicrophoneAccess } from '@/lib/webrtc/microphone';
+import {
+  setCallRingtoneMuted,
+  startIncomingCallRingtone,
+  stopIncomingCallRingtone,
+} from '@/lib/callRingtone';
+import { notifyIncomingCall } from '@/lib/notifications';
+import { DEFAULT_USER_PREFERENCES } from '@shared/types/preferences';
+import { useUserProfile } from '@/hooks/useProfile';
 import { IncomingCallModal } from './IncomingCallModal';
 import { OngoingCallModal } from './OngoingCallModal';
 
@@ -28,6 +36,7 @@ function normalizeCall(raw: CallDTO): CallDTO {
 
 export function IncomingCallManager() {
   const queryClient = useQueryClient();
+  const { data: profile } = useUserProfile();
   const sessionRef = useRef<IncomingCallSession | null>(null);
   const pendingIdRef = useRef<string | null>(null);
   const activeIdRef = useRef<string | null>(null);
@@ -41,6 +50,8 @@ export function IncomingCallManager() {
   const [error, setError] = useState('');
   const [micStatus, setMicStatus] = useState<'checking' | 'ready' | 'blocked'>('checking');
   const [isEnablingMic, setIsEnablingMic] = useState(false);
+  const [ringMuted, setRingMuted] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
 
   const cleanupSession = useCallback(() => {
     sessionRef.current?.close();
@@ -48,10 +59,13 @@ export function IncomingCallManager() {
   }, []);
 
   const clearPending = useCallback(() => {
+    stopIncomingCallRingtone();
     pendingIdRef.current = null;
     setPending(null);
     setError('');
     setMicStatus('checking');
+    setRingMuted(false);
+    setCallRingtoneMuted(false);
   }, []);
 
   const enableMicrophone = useCallback(async () => {
@@ -72,8 +86,30 @@ export function IncomingCallManager() {
     activeIdRef.current = null;
     setActiveCall(null);
     setContactLabel(undefined);
+    setMicMuted(false);
     cleanupSession();
   }, [cleanupSession]);
+
+  const toggleRingMute = useCallback(() => {
+    const next = !ringMuted;
+    setRingMuted(next);
+    setCallRingtoneMuted(next);
+    if (!next && pending) {
+      const preferences =
+        profile?.preferences.notifications ?? DEFAULT_USER_PREFERENCES.notifications;
+      if (preferences.sound) {
+        startIncomingCallRingtone();
+      }
+    }
+  }, [ringMuted, pending, profile?.preferences.notifications]);
+
+  const toggleMicMute = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const next = !micMuted;
+    session.setMicMuted(next);
+    setMicMuted(next);
+  }, [micMuted]);
 
   const applyPendingPayload = useCallback((payload: IncomingCallSocketPayload) => {
     const call = normalizeCall(payload.call);
@@ -154,6 +190,32 @@ export function IncomingCallManager() {
   }, [pending?.call._id, enableMicrophone, pending]);
 
   useEffect(() => {
+    if (!pending) {
+      stopIncomingCallRingtone();
+      return;
+    }
+
+    setRingMuted(false);
+    setCallRingtoneMuted(false);
+
+    const preferences =
+      profile?.preferences.notifications ?? DEFAULT_USER_PREFERENCES.notifications;
+
+    notifyIncomingCall(preferences, {
+      callerName: pending.contact?.name,
+      phone: pending.contact?.phone,
+    });
+
+    if (preferences.sound) {
+      startIncomingCallRingtone();
+    }
+
+    return () => {
+      stopIncomingCallRingtone();
+    };
+  }, [pending?.call._id, profile?.preferences.notifications, pending]);
+
+  useEffect(() => {
     connectSocket();
     void syncActiveIncoming();
 
@@ -210,6 +272,7 @@ export function IncomingCallManager() {
 
   async function handleAccept() {
     if (!pending?.session) return;
+    stopIncomingCallRingtone();
     setIsAccepting(true);
     setError('');
     try {
@@ -235,6 +298,7 @@ export function IncomingCallManager() {
       activeIdRef.current = call._id;
       setActiveCall(call);
       setContactLabel(pending.contact?.name ?? pending.contact?.phone);
+      setMicMuted(false);
       queryClient.invalidateQueries({ queryKey: ['calls'] });
     } catch (err) {
       cleanupSession();
@@ -265,6 +329,8 @@ export function IncomingCallManager() {
           call={activeCall}
           contactName={contactLabel}
           isEnding={isEnding}
+          micMuted={micMuted}
+          onToggleMicMute={toggleMicMute}
           onEnd={handleEndActive}
         />
       ) : null}
@@ -275,8 +341,10 @@ export function IncomingCallManager() {
           isDeclining={isDeclining}
           micStatus={micStatus}
           isEnablingMic={isEnablingMic}
+          ringMuted={ringMuted}
           error={error}
           onEnableMicrophone={enableMicrophone}
+          onToggleRingMute={toggleRingMute}
           onAccept={handleAccept}
           onDecline={handleDecline}
         />
