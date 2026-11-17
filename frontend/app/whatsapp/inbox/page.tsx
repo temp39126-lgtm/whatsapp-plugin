@@ -8,7 +8,6 @@ import type { WhatsAppConnectionStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { ConversationFilters } from '@/components/whatsapp/inbox/ConversationFilters';
 import { ConversationList } from '@/components/whatsapp/inbox/ConversationList';
-import { WhatsAppOverflowMenu } from '@/components/whatsapp/inbox/WhatsAppOverflowMenu';
 import { CustomerDetailsSheet } from '@/components/whatsapp/inbox/CustomerDetailsSheet';
 import { ChatWindow } from '@/components/whatsapp/chat/ChatWindow';
 import { CustomerDetails } from '@/components/whatsapp/CustomerDetails';
@@ -88,9 +87,8 @@ function InboxPageContent() {
           selectedId ? 'hidden lg:flex' : 'flex flex-1 lg:flex-none'
         )}
       >
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Inbox</h1>
-          <WhatsAppOverflowMenu filters={filters} onFiltersChange={setFilters} />
         </div>
         <ConversationFilters filters={filters} onChange={setFilters} />
         <ConversationList
