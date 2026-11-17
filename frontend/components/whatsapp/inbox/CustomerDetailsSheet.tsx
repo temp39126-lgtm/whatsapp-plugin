@@ -10,6 +10,7 @@ interface CustomerDetailsSheetProps {
   conversation: ConversationDTO | null;
   onClose: () => void;
   onDeleted?: () => void;
+  onJumpToMessage?: (messageId: string) => void;
 }
 
 export function CustomerDetailsSheet({
@@ -17,6 +18,7 @@ export function CustomerDetailsSheet({
   conversation,
   onClose,
   onDeleted,
+  onJumpToMessage,
 }: CustomerDetailsSheetProps) {
   if (!open || !conversation) return null;
 
@@ -38,6 +40,10 @@ export function CustomerDetailsSheet({
         <div className="min-h-0 flex-1 overflow-y-auto">
           <CustomerDetails
             conversation={conversation}
+            onJumpToMessage={(messageId) => {
+              onJumpToMessage?.(messageId);
+              onClose();
+            }}
             onDeleted={() => {
               onDeleted?.();
               onClose();

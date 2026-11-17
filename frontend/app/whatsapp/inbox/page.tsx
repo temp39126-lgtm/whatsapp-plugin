@@ -35,6 +35,7 @@ function InboxPageContent() {
   const [filters, setFilters] = useState<Record<string, string | boolean | undefined>>(urlFilters);
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('conversation'));
   const [showDetailsMobile, setShowDetailsMobile] = useState(false);
+  const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     setFilters(inboxFiltersFromSearchParams(searchParams));
@@ -108,6 +109,8 @@ function InboxPageContent() {
       >
         <ChatWindow
           conversation={selected}
+          scrollToMessageId={scrollToMessageId}
+          onScrollToMessageHandled={() => setScrollToMessageId(null)}
           onBack={selectedId ? () => setSelectedId(null) : undefined}
           onShowDetails={selected ? () => setShowDetailsMobile(true) : undefined}
           onStartCall={
@@ -140,12 +143,14 @@ function InboxPageContent() {
         open={showDetailsMobile}
         conversation={selected}
         onClose={() => setShowDetailsMobile(false)}
+        onJumpToMessage={setScrollToMessageId}
         onDeleted={() => setSelectedId(null)}
       />
 
       <div className="hidden h-full min-h-0 min-w-0 overflow-hidden border-l bg-background xl:block">
         <CustomerDetails
           conversation={selected}
+          onJumpToMessage={setScrollToMessageId}
           onDeleted={() => setSelectedId(null)}
         />
       </div>

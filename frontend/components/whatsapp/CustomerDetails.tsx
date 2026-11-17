@@ -24,10 +24,12 @@ import { useDeleteGroup, useUploadGroupAvatar } from '@/hooks/useGroups';
 import type { ConversationDTO, InternalNoteDTO } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ChatMediaHistory } from '@/components/whatsapp/chat/ChatMediaHistory';
 
 interface CustomerDetailsProps {
   conversation: ConversationDTO | null;
   onDeleted?: () => void;
+  onJumpToMessage?: (messageId: string) => void;
 }
 
 const statuses = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const;
@@ -46,7 +48,7 @@ function selectionChipClass(selected: boolean, selectedClass?: string) {
   );
 }
 
-export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProps) {
+export function CustomerDetails({ conversation, onDeleted, onJumpToMessage }: CustomerDetailsProps) {
   const { isAdmin, canManageTags } = usePermissions();
   const queryClient = useQueryClient();
   const [showMembers, setShowMembers] = useState(true);
@@ -276,6 +278,11 @@ export function CustomerDetails({ conversation, onDeleted }: CustomerDetailsProp
       )}
 
       <div className="space-y-5 p-4">
+        <ChatMediaHistory
+          conversationId={conversation._id}
+          onJumpToMessage={onJumpToMessage}
+        />
+
         <section>
           <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Status

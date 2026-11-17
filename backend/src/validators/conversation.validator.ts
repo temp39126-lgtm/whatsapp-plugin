@@ -33,6 +33,12 @@ export const exportConversationQuerySchema = z.object({
   format: z.enum(['txt', 'zip']).default('zip'),
 });
 
+export const conversationMediaQuerySchema = z.object({
+  category: z.enum(['images', 'videos', 'audio', 'files', 'location']),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(50).optional(),
+});
+
 export const conversationQuerySchema = z.object({
   status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
   assignedUserId: z.string().optional(),

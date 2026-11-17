@@ -7,7 +7,15 @@ export async function listMessages(req: AuthenticatedRequest, res: Response, nex
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 50;
-    const result = await messageService.listMessages(req.user!, getParam(req.params.id), page, limit);
+    const anchorMessageId =
+      typeof req.query.anchorMessageId === 'string' ? req.query.anchorMessageId : undefined;
+    const result = await messageService.listMessages(
+      req.user!,
+      getParam(req.params.id),
+      page,
+      limit,
+      anchorMessageId
+    );
     res.json(result);
   } catch (error) {
     next(error);

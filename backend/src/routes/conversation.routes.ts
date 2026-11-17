@@ -14,6 +14,7 @@ import {
   createNoteSchema,
   conversationQuerySchema,
   exportConversationQuerySchema,
+  conversationMediaQuerySchema,
 } from '../validators/conversation.validator';
 import * as controller from '../controllers/conversation.controller';
 
@@ -23,6 +24,13 @@ router.use(authenticate, tenantAccess);
 
 router.get('/', validateQuery(conversationQuerySchema), controller.listConversations);
 router.post('/read-all', controller.markAllRead);
+router.get('/:id/media/summary', conversationAccess(), controller.getConversationMediaSummary);
+router.get(
+  '/:id/media',
+  conversationAccess(),
+  validateQuery(conversationMediaQuerySchema),
+  controller.listConversationMedia
+);
 router.get('/:id', conversationAccess(), controller.getConversation);
 router.post(
   '/:id/assign',

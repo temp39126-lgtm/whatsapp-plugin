@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, getParam } from '../types';
 import * as conversationService from '../services/conversations/conversationService';
 import * as conversationExportService from '../services/conversations/conversationExportService';
+import * as conversationMediaService from '../services/conversations/conversationMediaService';
 import * as analyticsService from '../services/analytics/analyticsService';
 
 export async function listConversations(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -161,6 +162,41 @@ export async function togglePin(req: AuthenticatedRequest, res: Response, next: 
 export async function markAllRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const result = await conversationService.markAllConversationsRead(req.user!);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getConversationMediaSummary(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const summary = await conversationMediaService.getConversationMediaSummary(
+      req.user!,
+      getParam(req.params.id)
+    );
+    res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listConversationMedia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const query = req.query as { category?: string; page?: string; limit?: string };
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const category = query.category as conversationMediaService.MediaCategory;
+    const result = await conversationMediaService.listConversationMedia(
+      req.user!,
+      getParam(req.params.id),
+      category,
+      page,
+      limit
+    );
     res.json(result);
   } catch (error) {
     next(error);

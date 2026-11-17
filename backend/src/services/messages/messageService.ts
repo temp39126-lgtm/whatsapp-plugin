@@ -54,9 +54,28 @@ export async function listMessages(
   user: AuthUser,
   conversationId: string,
   page = 1,
-  limit = 50
+  limit = 50,
+  anchorMessageId?: string
 ): Promise<ReturnType<typeof paginatedResponse>> {
-  const { skip, limit: lim } = getPagination({ page, limit });
+  const { limit: lim } = getPagination({ page, limit });
+  let resolvedPage = page;
+
+  if (anchorMessageId) {
+    const anchor = await Message.findOne({
+      _id: anchorMessageId,
+      ...messageListFilter(user.tenantId, conversationId),
+    }).lean();
+    if (!anchor) {
+      throw new AppError(404, 'Message not found in this conversation');
+    }
+    const newerCount = await Message.countDocuments({
+      ...messageListFilter(user.tenantId, conversationId),
+      createdAt: { $gt: anchor.createdAt },
+    });
+    resolvedPage = Math.floor(newerCount / lim) + 1;
+  }
+
+  const { skip } = getPagination({ page: resolvedPage, limit: lim });
 
   const messages = await Message.find(messageListFilter(user.tenantId, conversationId))
     .sort({ createdAt: -1 })
@@ -67,7 +86,7 @@ export async function listMessages(
   const enriched = await Promise.all(messages.map((msg) => enrichMessageRecord(msg)));
 
   const total = await Message.countDocuments(messageListFilter(user.tenantId, conversationId));
-  return paginatedResponse(enriched.reverse(), total, page, lim);
+  return paginatedResponse(enriched.reverse(), total, resolvedPage, lim);
 }
 
 export async function createMessage(

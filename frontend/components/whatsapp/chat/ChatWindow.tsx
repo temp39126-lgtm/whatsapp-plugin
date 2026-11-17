@@ -36,6 +36,8 @@ import {
 
 interface ChatWindowProps {
   conversation: ConversationDTO | null;
+  scrollToMessageId?: string | null;
+  onScrollToMessageHandled?: () => void;
   onStartCall?: () => void;
   callDisabled?: boolean;
   onBack?: () => void;
@@ -44,6 +46,8 @@ interface ChatWindowProps {
 
 export function ChatWindow({
   conversation,
+  scrollToMessageId = null,
+  onScrollToMessageHandled,
   onStartCall,
   callDisabled = false,
   onBack,
@@ -55,11 +59,14 @@ export function ChatWindow({
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<MessageDTO | null>(null);
   const [showMembers, setShowMembers] = useState(false);
+  const [messageAnchorId, setMessageAnchorId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const membersRef = useRef<HTMLDivElement>(null);
 
-  const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null);
+  const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null, {
+    anchorMessageId: messageAnchorId,
+  });
   const sendMessage = useSendMessage();
   const sendMediaMessage = useSendMediaMessage();
   const togglePin = useTogglePin();
@@ -96,8 +103,29 @@ export function ChatWindow({
     : contact?.phone;
 
   useEffect(() => {
+    setMessageAnchorId(null);
+  }, [conversation?._id]);
+
+  useEffect(() => {
+    if (scrollToMessageId) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, scrollToMessageId]);
+
+  useEffect(() => {
+    if (!scrollToMessageId) return;
+    const inList = messages.some((message) => message._id === scrollToMessageId);
+    if (!inList) {
+      setMessageAnchorId(scrollToMessageId);
+      return;
+    }
+    requestAnimationFrame(() => {
+      messageRefs.current[scrollToMessageId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+      onScrollToMessageHandled?.();
+    });
+  }, [scrollToMessageId, messages, onScrollToMessageHandled]);
 
   useEffect(() => {
     if (conversation?._id && conversation.unreadCount > 0) {
