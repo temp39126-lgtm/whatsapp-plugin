@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import { normalizeEnvString } from '../utils/envString';
 
 dotenv.config();
+
+const optionalNormalizedString = z
+  .string()
+  .optional()
+  .transform((value) => normalizeEnvString(value));
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
@@ -50,9 +56,9 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
   CACHE_TTL_MS: z.coerce.number().default(60000),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(16),
-  ADMIN_EMAIL: z.string().optional(),
-  ADMIN_PASSWORD: z.string().optional(),
-  ADMIN_NAME: z.string().optional(),
+  ADMIN_EMAIL: optionalNormalizedString,
+  ADMIN_PASSWORD: optionalNormalizedString,
+  ADMIN_NAME: optionalNormalizedString,
   /** When false, POST /auth/signup returns 403 (User role only; Admin still via seed/team). */
   PUBLIC_USER_SIGNUP_ENABLED: z.coerce.boolean().default(false),
   /** Default region for normalizing local mobiles to international whatsappId (IN = prepend 91). */

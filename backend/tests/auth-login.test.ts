@@ -62,6 +62,13 @@ describe('Local auth login service', () => {
     expect(result.user.role).toBe('USER');
   });
 
+  it('returns a clear error when password hash is missing', async () => {
+    await User.updateOne({ email: 'admin@example.com' }, { $unset: { passwordHash: '' } });
+    await expect(loginWithPassword('admin@example.com', 'admin123')).rejects.toMatchObject({
+      statusCode: 503,
+    });
+  });
+
   it('rejects duplicate signup email', async () => {
     await expect(registerUser('Another User', 'admin@example.com', 'password123')).rejects.toBeInstanceOf(
       AppError

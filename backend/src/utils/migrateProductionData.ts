@@ -6,6 +6,8 @@ import { logger } from '../config/logger';
 import { normalizeWhatsAppId } from './phone';
 import { dedupeContactConversations } from '../services/contacts/contactConversationService';
 import { purgeInactiveTeamUsers } from '../services/users/teamUserService';
+import { ensureAdminUserFromEnv } from '../services/auth/authService';
+import { env } from '../config/env';
 
 export async function prepareDatabaseForIndexSync(): Promise<void> {
   await normalizeContactConversationGroupIds();
@@ -14,6 +16,9 @@ export async function prepareDatabaseForIndexSync(): Promise<void> {
 
 export async function migrateProductionData(): Promise<void> {
   await prepareDatabaseForIndexSync();
+  if (env.NODE_ENV === 'production' && env.ADMIN_EMAIL && env.ADMIN_PASSWORD) {
+    await ensureAdminUserFromEnv(env.DEFAULT_TENANT_ID);
+  }
   await migrateDuplicateContacts();
   await dedupeAllContactConversations();
   await purgeInactiveTeamUsers();

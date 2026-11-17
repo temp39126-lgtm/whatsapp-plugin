@@ -38,7 +38,8 @@ async function seed() {
   const forceReseed = process.argv.includes('--force');
   await connectDatabase();
 
-  const tenantId = env.MOCK_TENANT_ID;
+  const tenantId =
+    env.NODE_ENV === 'production' ? env.DEFAULT_TENANT_ID : env.MOCK_TENANT_ID;
   await seedDefaultUsers(tenantId);
 
   if (env.NODE_ENV === 'production') {

@@ -42,19 +42,32 @@ export function signAuthToken(user: AuthUser, tokenVersion = 0): string {
   if (env.JWT_ISSUER) options.issuer = env.JWT_ISSUER;
   if (env.JWT_AUDIENCE) options.audience = env.JWT_AUDIENCE;
 
-  return jwt.sign(
-    {
-      sub: user.userId,
-      tenantId: user.tenantId,
-      role: user.role,
-      permissions: user.permissions,
-      email: user.email,
-      name: user.name,
-      tv: tokenVersion,
-    },
-    env.JWT_SECRET,
-    options
-  );
+  const signingKey =
+    env.JWT_ALGORITHM === 'RS256'
+      ? process.env.JWT_PRIVATE_KEY?.replace(/\\n/g, '\n') ?? env.JWT_SECRET
+      : env.JWT_SECRET;
+
+  try {
+    return jwt.sign(
+      {
+        sub: user.userId,
+        tenantId: user.tenantId,
+        role: user.role,
+        permissions: user.permissions,
+        email: user.email,
+        name: user.name,
+        tv: tokenVersion,
+      },
+      signingKey,
+      options
+    );
+  } catch (error) {
+    logger.error({ error, algorithm: env.JWT_ALGORITHM }, 'JWT signing failed');
+    throw new AppError(
+      503,
+      'Authentication service misconfigured. Check JWT_SECRET and JWT_ALGORITHM on the server.'
+    );
+  }
 }
 
 export function buildAuthResponse(user: AuthUser, tokenVersion = 0) {
@@ -80,7 +93,18 @@ async function startEmailOtpChallenge(params: {
   payload?: { userId?: string; name?: string; passwordHash?: string };
   name?: string;
 }) {
-  const { challengeId, code } = await createOtpChallenge(params);
+  let challengeId: string;
+  let code: string;
+  try {
+    ({ challengeId, code } = await createOtpChallenge(params));
+  } catch (error) {
+    logger.error({ error, email: params.email, purpose: params.purpose }, 'OTP challenge create failed');
+    throw new AppError(
+      503,
+      'Could not start email verification. Try again in a moment or contact your administrator.'
+    );
+  }
+
   const emailSent = await sendOtpChallengeEmail({
     tenantId: params.tenantId,
     email: params.email,
@@ -180,7 +204,26 @@ export async function loginWithPassword(
     throw new AppError(401, 'Invalid email or password');
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
+  const storedHash = user.passwordHash;
+  if (!storedHash || typeof storedHash !== 'string') {
+    logger.error({ userId: user._id.toString() }, 'Login blocked: user missing password hash');
+    throw new AppError(
+      503,
+      'This account is missing a password. Ask an administrator to reset it or sync ADMIN_PASSWORD.'
+    );
+  }
+
+  let valid = false;
+  try {
+    valid = await bcrypt.compare(password, storedHash);
+  } catch (error) {
+    logger.error({ error, userId: user._id.toString() }, 'Login password compare failed');
+    throw new AppError(
+      503,
+      'Account password data is invalid. Restart the backend after setting ADMIN_PASSWORD, or reset your password.'
+    );
+  }
+
   if (!valid) {
     throw new AppError(401, 'Invalid email or password');
   }
@@ -197,7 +240,13 @@ export async function loginWithPassword(
     }
   }
 
-  return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
+  try {
+    return buildAuthResponse(userToAuthUser(user), user.tokenVersion ?? 0);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.error({ error, userId: user._id.toString() }, 'Login token issue failed');
+    throw new AppError(503, 'Could not complete sign-in. Contact your administrator.');
+  }
 }
 
 export async function completeLoginAfterOtp(challenge: {
