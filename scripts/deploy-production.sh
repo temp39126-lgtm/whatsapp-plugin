@@ -44,6 +44,11 @@ if [[ ${#ENCRYPTION_KEY} -lt 64 ]]; then
   exit 1
 fi
 
+if [[ -z "${MONGO_ROOT_USER:-}" ]] || [[ -z "${MONGO_ROOT_PASSWORD:-}" ]]; then
+  echo "ERROR: Set MONGO_ROOT_USER and MONGO_ROOT_PASSWORD in deploy/.env" >&2
+  exit 1
+fi
+
 export APP_URL="https://${DOMAIN}"
 
 echo "Domain:  $DOMAIN"

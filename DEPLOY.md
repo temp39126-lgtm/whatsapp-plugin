@@ -293,6 +293,7 @@ Same-domain Compose + Caddy is simpler and is what this repo ships.
 |---------|----------------|
 | SSL / certificate failed | DNS A record must already point at this server. `dig YOUR-DOMAIN` |
 | Blank page | `docker compose -f docker-compose.prod.yml logs frontend` |
+| **mongodb exited (14)** / `FileStreamFailed` on `diagnostic.data` | **Disk full or read-only** on the Docker volume — run `df -h` on the server; free space; then `cd deploy && docker compose -f docker-compose.prod.yml up -d mongodb`. If still broken after freeing space: `docker compose … logs mongodb --tail 50`. Last resort: remove volume `deploy_mongo_data` (deletes all DB data) and `up` again. Compose disables FTDC metrics when disk is tight — still keep ≥10 GB free. |
 | Backend exits on start | `META_APP_SECRET`, `META_VERIFY_TOKEN`, `JWT_SECRET`, `ENCRYPTION_KEY`; MinIO user must not be `minioadmin` |
 | Cannot log in | `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `deploy/.env` (use double quotes for `%` / `(` in password); **restart backend** to sync the hash; choose **Admin** on the login screen |
 | **Too many requests** (429) on login | Wait 15 min or `docker compose … restart backend`; set `AUTH_RATE_LIMIT_MAX` / `RATE_LIMIT_MAX` in `deploy/.env` (see `.env.production.example`) |
