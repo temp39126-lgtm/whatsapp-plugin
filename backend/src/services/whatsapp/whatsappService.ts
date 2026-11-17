@@ -21,7 +21,6 @@ export const HELLO_WORLD_TEMPLATE_LANGUAGE = 'en';
 export const HELLO_WORLD_TEMPLATE_PREVIEW =
   'Hello There, greetings from Tech2Globe! We help businesses grow through E-commerce, Digital Marketing, Web Development & AI Solutions. As discussed please let us know when we can connect.';
 import {
-  uploadToS3,
   downloadFromUrl,
   generateStorageKey,
   getPresignedUrl,
@@ -246,7 +245,7 @@ async function processMediaMessage(
       account._id.toString(),
       fileName ?? `${mediaId}.bin`
     );
-    await uploadToS3(storageKey, buffer, mimeType || metaMime);
+    await storeMediaFile(storageKey, buffer, mimeType || metaMime);
     await MessageMedia.create({
       tenantId: account.tenantId,
       messageId: message._id,
@@ -259,6 +258,13 @@ async function processMediaMessage(
     });
   } catch (error) {
     logger.error({ error, mediaId }, 'Failed to process incoming media');
+    const content =
+      typeof message.content === 'object' && message.content !== null
+        ? { ...(message.content as Record<string, unknown>) }
+        : {};
+    content.pendingMetaMediaId = mediaId;
+    message.content = content;
+    await message.save();
   }
 }
 
@@ -581,6 +587,24 @@ export async function sendOutgoingMessage(
       const { uploadMediaToMeta } = await import('./metaApi');
       const { metaMediaType, isNativeWhatsAppVoiceMime, normalizeVoiceNoteMimeType } =
         await import('../../utils/mediaType');
+
+      const storageKey = generateStorageKey(
+        account.tenantId,
+        account._id.toString(),
+        params.fileName ?? 'media'
+      );
+      await storeMediaFile(storageKey, params.mediaBuffer, params.mimeType);
+      await MessageMedia.create({
+        tenantId: account.tenantId,
+        messageId: message._id,
+        metaMediaId: `pending-${message._id}`,
+        mediaType: params.type,
+        mimeType: params.mimeType,
+        fileName: params.fileName,
+        fileSize: params.mediaBuffer.length,
+        storageKey,
+      });
+
       const uploadMime =
         params.type === 'VOICE'
           ? normalizeVoiceNoteMimeType(params.mimeType)
@@ -608,22 +632,10 @@ export async function sendOutgoingMessage(
         }
       );
 
-      const storageKey = generateStorageKey(
-        account.tenantId,
-        account._id.toString(),
-        params.fileName ?? 'media'
+      await MessageMedia.updateOne(
+        { messageId: message._id },
+        { metaMediaId: mediaId }
       );
-      await storeMediaFile(storageKey, params.mediaBuffer, params.mimeType);
-      await MessageMedia.create({
-        tenantId: account.tenantId,
-        messageId: message._id,
-        metaMediaId: mediaId,
-        mediaType: params.type,
-        mimeType: params.mimeType,
-        fileName: params.fileName,
-        fileSize: params.mediaBuffer.length,
-        storageKey,
-      });
     } else {
       throw new Error('Unsupported message type');
     }

@@ -94,10 +94,15 @@ export async function readMediaFile(
       body,
       mimeType: response.ContentType ?? 'application/octet-stream',
     };
-  } catch {
+  } catch (s3Error) {
     const filePath = localMediaPath(storageKey);
-    const body = await fs.readFile(filePath);
-    return { body, mimeType: 'application/octet-stream' };
+    try {
+      const body = await fs.readFile(filePath);
+      return { body, mimeType: 'application/octet-stream' };
+    } catch (localError) {
+      logger.warn({ s3Error, localError, storageKey }, 'Media not found in S3 or local storage');
+      throw localError;
+    }
   }
 }
 

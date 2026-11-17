@@ -1,6 +1,6 @@
 import { AuthUser } from '../../types';
 import { Message, IMessage } from '../../models/Message';
-import { MessageMedia } from '../../models/MessageMedia';
+import { MessageMedia, IMessageMedia } from '../../models/MessageMedia';
 import { MessageReaction } from '../../models/MessageReaction';
 import { IConversation } from '../../models/Conversation';
 import { Contact } from '../../models/Contact';
@@ -8,7 +8,15 @@ import { Conversation } from '../../models/Conversation';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { sendOutgoingMessage } from '../whatsapp/whatsappService';
 import { downloadMetaMedia } from '../whatsapp/metaApi';
-import { getMessageMediaPath, readMediaFile } from '../media/mediaService';
+import { decrypt } from '../../utils/encryption';
+import {
+  downloadFromUrl,
+  generateStorageKey,
+  getMessageMediaPath,
+  readMediaFile,
+  storeMediaFile,
+} from '../media/mediaService';
+import { logger } from '../../config/logger';
 import { getAccessibleConversation } from '../rbac/conversationAccess';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
 import { getPagination, paginatedResponse } from '../../utils/pagination';
@@ -579,17 +587,113 @@ export async function getMessageById(user: AuthUser, messageId: string): Promise
   return message;
 }
 
+function isMetaHostedMediaId(metaMediaId: string | undefined): boolean {
+  if (!metaMediaId) return false;
+  return (
+    !metaMediaId.startsWith('pending-') &&
+    !metaMediaId.startsWith('local-') &&
+    !metaMediaId.startsWith('demo-')
+  );
+}
+
+async function refetchMediaFromMeta(
+  message: IMessage,
+  media: IMessageMedia
+): Promise<{ body: Buffer; mimeType: string } | null> {
+  if (!isMetaHostedMediaId(media.metaMediaId)) return null;
+
+  const account = await WhatsAppAccount.findById(
+    (await Conversation.findById(message.conversationId))?.whatsappAccountId
+  );
+  if (!account) return null;
+
+  try {
+    const { url, mimeType: metaMime } = await downloadMetaMedia(media.metaMediaId!, account);
+    const token = account.encryptedAccessToken
+      ? decrypt(account.encryptedAccessToken)
+      : undefined;
+    const body = await downloadFromUrl(url, token);
+    const mimeType = media.mimeType || metaMime || 'application/octet-stream';
+    const storageKey =
+      media.storageKey ||
+      generateStorageKey(account.tenantId, account._id.toString(), media.fileName ?? 'media');
+    await storeMediaFile(storageKey, body, mimeType);
+    await MessageMedia.updateOne(
+      { _id: media._id },
+      { storageKey, fileSize: body.length, mimeType }
+    );
+    return { body, mimeType };
+  } catch (error) {
+    logger.warn({ error, messageId: message._id, metaMediaId: media.metaMediaId }, 'Meta media refetch failed');
+    return null;
+  }
+}
+
+async function recoverPendingIncomingMedia(message: IMessage): Promise<void> {
+  const content = (message.content ?? {}) as { pendingMetaMediaId?: string; voice?: boolean };
+  const pendingMetaMediaId = content.pendingMetaMediaId;
+  if (!pendingMetaMediaId || message.direction !== 'INCOMING') return;
+
+  const conversation = await Conversation.findById(message.conversationId);
+  const account = conversation
+    ? await WhatsAppAccount.findById(conversation.whatsappAccountId)
+    : null;
+  if (!account) return;
+
+  try {
+    const { url, mimeType: metaMime } = await downloadMetaMedia(pendingMetaMediaId, account);
+    const token = account.encryptedAccessToken ? decrypt(account.encryptedAccessToken) : undefined;
+    const buffer = await downloadFromUrl(url, token);
+    const mimeType = metaMime ?? 'application/octet-stream';
+    const storageKey = generateStorageKey(
+      account.tenantId,
+      account._id.toString(),
+      content.voice ? 'voice-note.ogg' : `${pendingMetaMediaId}.bin`
+    );
+    await storeMediaFile(storageKey, buffer, mimeType);
+    await MessageMedia.create({
+      tenantId: account.tenantId,
+      messageId: message._id,
+      metaMediaId: pendingMetaMediaId,
+      mediaType: message.type,
+      mimeType,
+      fileName: content.voice ? 'voice-note.ogg' : undefined,
+      fileSize: buffer.length,
+      storageKey,
+    });
+    const updatedContent = { ...content };
+    delete updatedContent.pendingMetaMediaId;
+    await Message.updateOne({ _id: message._id }, { content: updatedContent });
+  } catch (error) {
+    logger.warn({ error, messageId: message._id }, 'Pending incoming media recovery failed');
+  }
+}
+
 export async function downloadMessageMedia(user: AuthUser, messageId: string) {
   const message = await getMessageById(user, messageId);
   await getAccessibleConversation(user, message.conversationId.toString());
 
-  const media = await MessageMedia.findOne({ messageId: message._id });
-  if (!media) throw new AppError(404, 'Media not found');
+  let media = await MessageMedia.findOne({ messageId: message._id });
+  if (!media) {
+    await recoverPendingIncomingMedia(message);
+    media = await MessageMedia.findOne({ messageId: message._id });
+    if (!media) throw new AppError(404, 'Media not found');
+  }
 
-  const { body, mimeType } = await readMediaFile(media.storageKey);
-  return {
-    body,
-    mimeType: media.mimeType || mimeType,
-    fileName: media.fileName ?? 'download',
-  };
+  try {
+    const { body, mimeType } = await readMediaFile(media.storageKey);
+    return {
+      body,
+      mimeType: media.mimeType || mimeType,
+      fileName: media.fileName ?? 'download',
+    };
+  } catch {
+    const refetched = await refetchMediaFromMeta(message, media);
+    if (!refetched) throw new AppError(404, 'Media not found');
+    return {
+      body: refetched.body,
+      mimeType: refetched.mimeType,
+      fileName: media.fileName ?? 'download',
+    };
+  }
 }
