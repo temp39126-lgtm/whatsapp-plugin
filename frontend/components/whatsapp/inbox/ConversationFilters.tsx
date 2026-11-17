@@ -1,18 +1,15 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Filter, X } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ConversationFilterDialog,
   conversationAdvancedFiltersActive,
 } from '@/components/whatsapp/inbox/ConversationFilterDialog';
 import { useState } from 'react';
-import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { TeamAgentWorkloadDTO } from '@/types';
 
 interface ConversationFiltersProps {
   filters: Record<string, string | boolean | undefined>;
@@ -35,19 +32,21 @@ function isAllFiltersActive(filters: Record<string, string | boolean | undefined
     !filters.mine &&
     !filters.unassigned &&
     !filters.assigned &&
-    !filters.newToday
+    !filters.newToday &&
+    !filters.tagId &&
+    !filters.fromDate &&
+    !filters.toDate &&
+    !filters.hasNotes
   );
 }
 
-function clearAssignmentFilters(filters: Record<string, string | boolean | undefined>) {
-  return {
-    unassigned: undefined,
-    assigned: undefined,
-    assignedUserId: undefined,
-    newToday: undefined,
-    mine: undefined,
-  };
-}
+const pillClass = (active: boolean) =>
+  cn(
+    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+    active
+      ? 'bg-whatsapp text-white shadow-sm'
+      : 'bg-muted/90 text-foreground/75 hover:bg-muted'
+  );
 
 function clearAdvancedFilters(filters: Record<string, string | boolean | undefined>) {
   return {
@@ -68,22 +67,9 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
   const advancedActive = conversationAdvancedFiltersActive(filters);
   const allActive = isAllFiltersActive(filters);
   const assignedUserId = filters.assignedUserId as string | undefined;
-  const unassignedActive = Boolean(filters.unassigned);
-
-  const { data: workload = [] } = useQuery({
-    queryKey: ['team-workload'],
-    queryFn: () => api.get<TeamAgentWorkloadDTO[]>('/team/workload'),
-    enabled: canViewAllConversations && (Boolean(assignedUserId) || unassignedActive),
-  });
-
-  const assigneeLabel = unassignedActive
-    ? 'Unassigned'
-    : assignedUserId
-      ? (workload.find((row) => row._id === assignedUserId)?.name ?? 'Selected user')
-      : undefined;
 
   function showAllConversations() {
-    onChange({ search: filters.search });
+    onChange(filters.search ? { search: filters.search } : {});
   }
 
   return (
@@ -99,13 +85,14 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           type="button"
           variant="ghost"
           size="icon"
-          className={`relative shrink-0 ${
-            advancedActive ? 'bg-whatsapp-light text-whatsapp-dark' : ''
-          }`}
+          className={cn(
+            'relative h-9 w-9 shrink-0 rounded-md border bg-background',
+            advancedActive && 'border-whatsapp/40 bg-whatsapp-light text-whatsapp-dark'
+          )}
           aria-label="Filter conversations"
           onClick={() => setFilterDialogOpen(true)}
         >
-          <Filter className="h-5 w-5" />
+          <Filter className="h-4 w-4" />
           {advancedActive ? (
             <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-whatsapp" />
           ) : null}
@@ -137,57 +124,20 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         onReset={() => onChange(clearAdvancedFilters(filters))}
       />
 
-      {assigneeLabel ? (
-        <div className="flex items-center gap-2 rounded-lg border border-whatsapp/30 bg-whatsapp-light/40 px-3 py-2 text-sm">
-          <span className="min-w-0 flex-1 truncate">
-            Assignee: <span className="font-medium">{assigneeLabel}</span>
-          </span>
-          <button
-            type="button"
-            aria-label="Clear assignee filter"
-            onClick={() =>
-              onChange({
-                ...filters,
-                assignedUserId: undefined,
-                unassigned: undefined,
-                assigned: undefined,
-              })
-            }
-            className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-1">
-        <button
-          type="button"
-          onClick={showAllConversations}
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            allActive
-              ? 'bg-whatsapp text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          )}
-        >
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" onClick={showAllConversations} className={pillClass(allActive)}>
           All
         </button>
         <button
           type="button"
           onClick={() =>
             onChange({
-              ...filters,
-              ...clearAssignmentFilters(filters),
+              ...(filters.search ? { search: filters.search } : {}),
+              ...clearAdvancedFilters(filters),
               unread: filters.unread ? undefined : true,
             })
           }
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            filters.unread
-              ? 'bg-whatsapp text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          )}
+          className={pillClass(Boolean(filters.unread))}
         >
           Unread
         </button>
@@ -195,85 +145,79 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
           type="button"
           onClick={() =>
             onChange({
-              ...filters,
-              ...clearAssignmentFilters(filters),
+              ...(filters.search ? { search: filters.search } : {}),
+              ...clearAdvancedFilters(filters),
               groups: filters.groups ? undefined : true,
             })
           }
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            filters.groups
-              ? 'bg-emerald-700 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          )}
+          className={pillClass(Boolean(filters.groups))}
         >
           Groups
         </button>
       </div>
 
-      {canViewAllConversations && (
-        <div className="flex flex-wrap gap-1">
+      {canViewAllConversations ? (
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const nextAssigned = filters.assigned ? undefined : true;
               onChange({
-                search: filters.search,
-                status: filters.status,
-                unread: filters.unread,
-                groups: filters.groups,
-                assigned: true,
-              })
-            }
-            className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              filters.assigned
-                ? 'bg-whatsapp text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
+                ...(filters.search ? { search: filters.search } : {}),
+                ...(filters.status ? { status: filters.status as string } : {}),
+                ...(filters.unread ? { unread: true } : {}),
+                ...(filters.groups ? { groups: true } : {}),
+                ...clearAdvancedFilters(filters),
+                assigned: nextAssigned,
+                unassigned: undefined,
+                assignedUserId: undefined,
+              });
+            }}
+            className={pillClass(Boolean(filters.assigned || assignedUserId))}
           >
             Assigned
           </button>
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const nextUnassigned = filters.unassigned ? undefined : true;
               onChange({
-                search: filters.search,
-                status: filters.status,
-                unread: filters.unread,
-                groups: filters.groups,
-                unassigned: true,
-              })
-            }
-            className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              filters.unassigned
-                ? 'bg-whatsapp text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
+                ...(filters.search ? { search: filters.search } : {}),
+                ...(filters.status ? { status: filters.status as string } : {}),
+                ...(filters.unread ? { unread: true } : {}),
+                ...(filters.groups ? { groups: true } : {}),
+                ...clearAdvancedFilters(filters),
+                unassigned: nextUnassigned,
+                assigned: undefined,
+                assignedUserId: undefined,
+              });
+            }}
+            className={pillClass(Boolean(filters.unassigned && !assignedUserId))}
           >
             Unassigned
           </button>
         </div>
-      )}
+      ) : null}
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {statusFilters.map((f) => (
           <button
             key={f.key}
             type="button"
             onClick={() =>
               onChange({
-                ...filters,
-                ...clearAssignmentFilters(filters),
+                ...(filters.search ? { search: filters.search } : {}),
+                ...(filters.unread ? { unread: true } : {}),
+                ...(filters.groups ? { groups: true } : {}),
+                ...(filters.assigned ? { assigned: true } : {}),
+                ...(filters.unassigned ? { unassigned: true } : {}),
+                ...(filters.assignedUserId
+                  ? { assignedUserId: filters.assignedUserId as string }
+                  : {}),
                 status: filters.status === f.key ? undefined : f.key,
               })
             }
-            className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              filters.status === f.key
-                ? 'bg-whatsapp text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
+            className={pillClass(filters.status === f.key)}
           >
             {f.label}
           </button>
