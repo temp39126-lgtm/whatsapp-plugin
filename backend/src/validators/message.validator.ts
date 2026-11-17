@@ -17,6 +17,21 @@ export const reactionSchema = z.object({
   emoji: z.string().min(1).max(10),
 });
 
+export const listMessagesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  anchorMessageId: z.string().optional(),
+  search: z.string().max(200).optional(),
+  fromDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  toDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
 export const deleteMessageSchema = z.object({
   scope: z.enum(['me', 'everyone']),
 });

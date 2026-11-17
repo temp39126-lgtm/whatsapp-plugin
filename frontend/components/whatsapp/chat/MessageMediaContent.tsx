@@ -10,6 +10,7 @@ import {
   shouldLoadMessageBlob,
 } from '@/lib/message-media';
 import type { MessageDTO } from '@/types';
+import { HighlightedText } from '@/lib/highlight-text';
 
 function formatFileSize(bytes?: number): string {
   if (!bytes) return '';
@@ -32,7 +33,13 @@ function MediaIcon({ type }: { type: string }) {
   return <FileText className="h-5 w-5 shrink-0 text-whatsapp-dark" />;
 }
 
-export function MessageMediaContent({ message }: { message: MessageDTO }) {
+export function MessageMediaContent({
+  message,
+  highlightQuery,
+}: {
+  message: MessageDTO;
+  highlightQuery?: string;
+}) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [mediaLoadState, setMediaLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [downloaded, setDownloaded] = useState(
@@ -117,7 +124,9 @@ export function MessageMediaContent({ message }: { message: MessageDTO }) {
 
   if (message.type === 'TEXT') {
     return (
-      <p className="whitespace-pre-wrap break-words text-sm">{content.text ?? ''}</p>
+      <p className="whitespace-pre-wrap break-words text-sm">
+        <HighlightedText text={content.text ?? ''} highlight={highlightQuery} />
+      </p>
     );
   }
 

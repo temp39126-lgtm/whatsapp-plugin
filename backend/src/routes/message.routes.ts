@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate';
 import { tenantAccess } from '../middleware/tenantAccess';
 import { conversationAccess } from '../middleware/conversationAccess';
-import { validateBody } from '../middleware/validate';
+import { validateBody, validateQuery } from '../middleware/validate';
 import { uploadMiddleware } from '../middleware/upload';
 import {
   createMessageSchema,
@@ -10,6 +10,7 @@ import {
   deleteMessageSchema,
   editMessageSchema,
   forwardMessageSchema,
+  listMessagesQuerySchema,
 } from '../validators/message.validator';
 import * as conversationController from '../controllers/conversation.controller';
 import * as messageController from '../controllers/message.controller';
@@ -28,7 +29,12 @@ router.post(
   conversationAccess(),
   messageController.sendApprovedTemplate
 );
-router.get('/conversations/:id/messages', conversationAccess(), messageController.listMessages);
+router.get(
+  '/conversations/:id/messages',
+  conversationAccess(),
+  validateQuery(listMessagesQuerySchema),
+  messageController.listMessages
+);
 router.post(
   '/conversations/:id/messages',
   conversationAccess(),

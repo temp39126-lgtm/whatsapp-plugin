@@ -31,6 +31,7 @@ interface MessageBubbleProps {
   onRetry?: (messageId: string) => void;
   onSendTemplate?: (messageId: string) => void;
   onForward?: (message: MessageDTO) => void;
+  highlightQuery?: string;
 }
 
 const DELETE_FOR_EVERYONE_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -88,6 +89,7 @@ export function MessageBubble({
   onRetry,
   onSendTemplate,
   onForward,
+  highlightQuery,
 }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -196,7 +198,7 @@ export function MessageBubble({
     return (
       <div className="flex w-full justify-center py-1">
         <div className="rounded-full border bg-muted/80 px-3 py-1.5 shadow-sm">
-          <MessageMediaContent message={message} />
+          <MessageMediaContent message={message} highlightQuery={highlightQuery} />
         </div>
       </div>
     );
@@ -399,7 +401,7 @@ export function MessageBubble({
           {isDeletedForEveryone ? (
             <p className="text-sm">This message was deleted</p>
           ) : (
-            <MessageMediaContent message={message} />
+            <MessageMediaContent message={message} highlightQuery={highlightQuery} />
           )}
 
           <div className="mt-1 flex items-center justify-end gap-1">

@@ -4,16 +4,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { MessageDTO, PaginatedResponse } from '@/types';
 
-export function useMessages(
-  conversationId: string | null,
-  options?: { anchorMessageId?: string | null }
-) {
+export type MessageListOptions = {
+  anchorMessageId?: string | null;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+};
+
+export function useMessages(conversationId: string | null, options?: MessageListOptions) {
   const anchorMessageId = options?.anchorMessageId ?? undefined;
+  const search = options?.search?.trim() || undefined;
+  const fromDate = options?.fromDate || undefined;
+  const toDate = options?.toDate || undefined;
+  const limit = options?.limit;
   return useQuery({
-    queryKey: ['messages', conversationId, anchorMessageId ?? 'default'],
+    queryKey: ['messages', conversationId, anchorMessageId, search, fromDate, toDate, limit],
     queryFn: () =>
       api.get<PaginatedResponse<MessageDTO>>(`/conversations/${conversationId}/messages`, {
         ...(anchorMessageId ? { anchorMessageId } : {}),
+        ...(search ? { search } : {}),
+        ...(fromDate ? { fromDate } : {}),
+        ...(toDate ? { toDate } : {}),
+        ...(limit ? { limit } : {}),
       }),
     enabled: !!conversationId,
     refetchInterval: false,

@@ -1,6 +1,8 @@
 'use client';
 
-import { ArrowLeft, PanelRightOpen, Phone } from 'lucide-react';
+import { ArrowLeft, Filter, PanelRightOpen, Phone, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ChatMessageFilterDialog } from '@/components/whatsapp/chat/ChatMessageFilterDialog';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/whatsapp/shared/ProfileAvatar';
 import { ChatConversationMenu } from '@/components/whatsapp/chat/ChatConversationMenu';
@@ -60,12 +62,26 @@ export function ChatWindow({
   const [forwardingMessage, setForwardingMessage] = useState<MessageDTO | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [messageAnchorId, setMessageAnchorId] = useState<string | null>(null);
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatSearchInput, setChatSearchInput] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const membersRef = useRef<HTMLDivElement>(null);
 
+  const hasMessageFilters = Boolean(
+    chatSearchQuery.trim() || filterFromDate || filterToDate
+  );
+
   const { data: messagesData, isLoading } = useMessages(conversation?._id ?? null, {
-    anchorMessageId: messageAnchorId,
+    anchorMessageId: hasMessageFilters ? null : messageAnchorId,
+    search: chatSearchQuery || undefined,
+    fromDate: filterFromDate || undefined,
+    toDate: filterToDate || undefined,
+    limit: hasMessageFilters ? 100 : undefined,
   });
   const sendMessage = useSendMessage();
   const sendMediaMessage = useSendMediaMessage();
@@ -104,12 +120,26 @@ export function ChatWindow({
 
   useEffect(() => {
     setMessageAnchorId(null);
+    setShowChatSearch(false);
+    setChatSearchInput('');
+    setChatSearchQuery('');
+    setFilterFromDate('');
+    setFilterToDate('');
   }, [conversation?._id]);
 
   useEffect(() => {
-    if (scrollToMessageId) return;
+    const timer = window.setTimeout(() => {
+      setChatSearchQuery(chatSearchInput);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [chatSearchInput]);
+
+  useEffect(() => {
+    if (scrollToMessageId || hasMessageFilters) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, scrollToMessageId]);
+  }, [messages, scrollToMessageId, hasMessageFilters]);
+
+  const dateFilterActive = Boolean(filterFromDate || filterToDate);
 
   useEffect(() => {
     if (!scrollToMessageId) return;
@@ -261,6 +291,26 @@ export function ChatWindow({
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={showChatSearch ? 'Close chat search' : 'Search in chat'}
+            aria-pressed={showChatSearch}
+            className={showChatSearch ? 'bg-whatsapp-light text-whatsapp-dark' : undefined}
+            onClick={() => setShowChatSearch((current) => !current)}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Filter messages by date"
+            aria-pressed={dateFilterActive}
+            className={dateFilterActive ? 'bg-whatsapp-light text-whatsapp-dark' : undefined}
+            onClick={() => setShowFilterDialog(true)}
+          >
+            <Filter className="h-5 w-5" />
+          </Button>
           {onShowDetails && (
             <Button
               variant="ghost"
@@ -288,6 +338,63 @@ export function ChatWindow({
         </div>
       </header>
 
+      {showChatSearch ? (
+        <div className="flex shrink-0 items-center gap-2 border-b bg-background px-3 py-2 sm:px-4">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <Input
+            value={chatSearchInput}
+            onChange={(event) => setChatSearchInput(event.target.value)}
+            placeholder="Search in this chat"
+            className="h-9 border-0 bg-muted/50 shadow-none focus-visible:ring-whatsapp"
+            autoFocus
+          />
+          {chatSearchInput ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-label="Clear search"
+              onClick={() => {
+                setChatSearchInput('');
+                setChatSearchQuery('');
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {hasMessageFilters ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-amber-50 px-3 py-2 text-xs text-amber-950 sm:px-4">
+          <span>
+            {chatSearchQuery ? `Search: "${chatSearchQuery}"` : null}
+            {chatSearchQuery && dateFilterActive ? ' · ' : null}
+            {dateFilterActive
+              ? `Dates: ${filterFromDate || '…'} → ${filterToDate || '…'}`
+              : null}
+            {messagesData?.pagination.total != null
+              ? ` (${messagesData.pagination.total} message${messagesData.pagination.total === 1 ? '' : 's'})`
+              : null}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              setChatSearchInput('');
+              setChatSearchQuery('');
+              setFilterFromDate('');
+              setFilterToDate('');
+            }}
+          >
+            Clear all
+          </Button>
+        </div>
+      ) : null}
+
       <PinnedMessagesBar
         messages={pinnedMessages}
         onSelect={(messageId) => {
@@ -300,6 +407,10 @@ export function ChatWindow({
           <div className="flex justify-center py-8">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-whatsapp border-t-transparent" />
           </div>
+        ) : messages.length === 0 && hasMessageFilters ? (
+          <div className="flex justify-center py-10 text-sm text-muted-foreground">
+            No messages match your search or filters.
+          </div>
         ) : (
           messages.map((message) => (
             <div
@@ -310,6 +421,7 @@ export function ChatWindow({
             >
               <MessageBubble
                 message={message}
+                highlightQuery={chatSearchQuery || undefined}
                 quotedMessage={
                   message.replyToMessageId
                     ? messagesById.get(message.replyToMessageId) ?? null
@@ -394,6 +506,21 @@ export function ChatWindow({
           );
         }}
       />
+      <ChatMessageFilterDialog
+        open={showFilterDialog}
+        fromDate={filterFromDate}
+        toDate={filterToDate}
+        onClose={() => setShowFilterDialog(false)}
+        onApply={(from, to) => {
+          setFilterFromDate(from);
+          setFilterToDate(to);
+        }}
+        onReset={() => {
+          setFilterFromDate('');
+          setFilterToDate('');
+        }}
+      />
+
       <EditMessageDialog
         open={Boolean(editingMessage)}
         initialText={editingMessage ? getEditableMessageText(editingMessage) : ''}

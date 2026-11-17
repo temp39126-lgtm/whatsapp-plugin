@@ -50,17 +50,75 @@ function messageListFilter(tenantId: string, conversationId: string) {
   };
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseDateBoundary(date: string, endOfDay: boolean): Date {
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (endOfDay) {
+    parsed.setUTCHours(23, 59, 59, 999);
+  }
+  return parsed;
+}
+
+type ListMessageQueryOptions = {
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+function buildMessageListQuery(
+  tenantId: string,
+  conversationId: string,
+  options?: ListMessageQueryOptions
+) {
+  const filter: Record<string, unknown> = { ...messageListFilter(tenantId, conversationId) };
+
+  if (options?.fromDate || options?.toDate) {
+    const createdAt: Record<string, Date> = {};
+    if (options.fromDate) {
+      createdAt.$gte = parseDateBoundary(options.fromDate, false);
+    }
+    if (options.toDate) {
+      createdAt.$lte = parseDateBoundary(options.toDate, true);
+    }
+    filter.createdAt = createdAt;
+  }
+
+  const search = options?.search?.trim();
+  if (search) {
+    const pattern = escapeRegex(search);
+    filter.$and = [
+      {
+        $or: [
+          { type: 'TEXT', 'content.text': { $regex: pattern, $options: 'i' } },
+          { 'content.caption': { $regex: pattern, $options: 'i' } },
+          { 'content.fileName': { $regex: pattern, $options: 'i' } },
+        ],
+      },
+    ];
+  }
+
+  return filter;
+}
+
 export async function listMessages(
   user: AuthUser,
   conversationId: string,
   page = 1,
   limit = 50,
-  anchorMessageId?: string
+  anchorMessageId?: string,
+  queryOptions?: ListMessageQueryOptions
 ): Promise<ReturnType<typeof paginatedResponse>> {
-  const { limit: lim } = getPagination({ page, limit });
+  const hasQueryFilters = Boolean(
+    queryOptions?.search?.trim() || queryOptions?.fromDate || queryOptions?.toDate
+  );
+  const { limit: lim } = getPagination({ page, limit: hasQueryFilters ? Math.max(limit, 100) : limit });
   let resolvedPage = page;
+  const listQuery = buildMessageListQuery(user.tenantId, conversationId, queryOptions);
 
-  if (anchorMessageId) {
+  if (anchorMessageId && !hasQueryFilters) {
     const anchor = await Message.findOne({
       _id: anchorMessageId,
       ...messageListFilter(user.tenantId, conversationId),
@@ -77,15 +135,11 @@ export async function listMessages(
 
   const { skip } = getPagination({ page: resolvedPage, limit: lim });
 
-  const messages = await Message.find(messageListFilter(user.tenantId, conversationId))
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(lim)
-    .lean();
+  const messages = await Message.find(listQuery).sort({ createdAt: -1 }).skip(skip).limit(lim).lean();
 
   const enriched = await Promise.all(messages.map((msg) => enrichMessageRecord(msg)));
 
-  const total = await Message.countDocuments(messageListFilter(user.tenantId, conversationId));
+  const total = await Message.countDocuments(listQuery);
   return paginatedResponse(enriched.reverse(), total, resolvedPage, lim);
 }
 

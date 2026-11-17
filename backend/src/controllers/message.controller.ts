@@ -7,14 +7,19 @@ export async function listMessages(req: AuthenticatedRequest, res: Response, nex
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 50;
-    const anchorMessageId =
-      typeof req.query.anchorMessageId === 'string' ? req.query.anchorMessageId : undefined;
+    const query = req.query as Record<string, string | undefined>;
+    const anchorMessageId = query.anchorMessageId;
     const result = await messageService.listMessages(
       req.user!,
       getParam(req.params.id),
       page,
       limit,
-      anchorMessageId
+      anchorMessageId,
+      {
+        search: query.search,
+        fromDate: query.fromDate,
+        toDate: query.toDate,
+      }
     );
     res.json(result);
   } catch (error) {
