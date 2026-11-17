@@ -292,6 +292,7 @@ Same-domain Compose + Caddy is simpler and is what this repo ships.
 | Problem | What to check |
 |---------|----------------|
 | SSL / certificate failed | DNS A record must already point at this server. `dig YOUR-DOMAIN` |
+| **502 Bad Gateway** (host **nginx**) | Nginx is up but nothing answers on the upstream. Run `cd deploy && docker compose -f docker-compose.prod.yml ps` — **frontend** must be `running` and **mongodb** `healthy` so **backend** can start. Test: `curl -sf http://127.0.0.1:3004/` and `curl -sf http://127.0.0.1:5001/api/health`. Point nginx `proxy_pass` at **127.0.0.1:3004** (see `deploy/nginx.example.conf`). |
 | Blank page | `docker compose -f docker-compose.prod.yml logs frontend` |
 | **mongodb exited (14)** / `FileStreamFailed` on `diagnostic.data` | **Disk full or read-only** on the Docker volume — run `df -h` on the server; free space; then `cd deploy && docker compose -f docker-compose.prod.yml up -d mongodb`. If still broken after freeing space: `docker compose … logs mongodb --tail 50`. Last resort: remove volume `deploy_mongo_data` (deletes all DB data) and `up` again. Compose disables FTDC metrics when disk is tight — still keep ≥10 GB free. |
 | Backend exits on start | `META_APP_SECRET`, `META_VERIFY_TOKEN`, `JWT_SECRET`, `ENCRYPTION_KEY`; MinIO user must not be `minioadmin` |
