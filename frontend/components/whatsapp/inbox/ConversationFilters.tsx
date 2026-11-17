@@ -16,18 +16,12 @@ interface ConversationFiltersProps {
   onChange: (filters: Record<string, string | boolean | undefined>) => void;
 }
 
-const statusFilters = [
-  { key: 'OPEN', label: 'Open' },
-  { key: 'PENDING', label: 'Pending' },
-  { key: 'RESOLVED', label: 'Resolved' },
-  { key: 'CLOSED', label: 'Closed' },
-];
-
 function isAllFiltersActive(filters: Record<string, string | boolean | undefined>) {
   return (
     !filters.status &&
     !filters.assignedUserId &&
     !filters.unread &&
+    !filters.active &&
     !filters.groups &&
     !filters.mine &&
     !filters.unassigned &&
@@ -108,11 +102,11 @@ function FilterPillScroller({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="relative w-full min-w-0 max-w-full overflow-hidden">
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-muted/25 px-1.5 py-1.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))]">
       <div
         ref={scrollerRef}
         className={cn(
-          'flex w-full max-w-full touch-pan-x flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1',
+          'flex w-full max-w-full touch-pan-x flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain',
           'scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden',
           'cursor-grab active:cursor-grabbing'
         )}
@@ -220,12 +214,12 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             onChange({
               ...(filters.search ? { search: filters.search } : {}),
               ...clearAdvancedFilters(filters),
-              groups: filters.groups ? undefined : true,
+              active: filters.active ? undefined : true,
             })
           }
-          className={pillClass(Boolean(filters.groups))}
+          className={pillClass(Boolean(filters.active))}
         >
-          Groups
+          Active
         </button>
         {canViewAllConversations ? (
           <>
@@ -235,9 +229,8 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
                 const nextAssigned = filters.assigned ? undefined : true;
                 onChange({
                   ...(filters.search ? { search: filters.search } : {}),
-                  ...(filters.status ? { status: filters.status as string } : {}),
                   ...(filters.unread ? { unread: true } : {}),
-                  ...(filters.groups ? { groups: true } : {}),
+                  ...(filters.active ? { active: true } : {}),
                   ...clearAdvancedFilters(filters),
                   assigned: nextAssigned,
                   unassigned: undefined,
@@ -254,9 +247,8 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
                 const nextUnassigned = filters.unassigned ? undefined : true;
                 onChange({
                   ...(filters.search ? { search: filters.search } : {}),
-                  ...(filters.status ? { status: filters.status as string } : {}),
                   ...(filters.unread ? { unread: true } : {}),
-                  ...(filters.groups ? { groups: true } : {}),
+                  ...(filters.active ? { active: true } : {}),
                   ...clearAdvancedFilters(filters),
                   unassigned: nextUnassigned,
                   assigned: undefined,
@@ -269,28 +261,6 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
             </button>
           </>
         ) : null}
-        {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() =>
-              onChange({
-                ...(filters.search ? { search: filters.search } : {}),
-                ...(filters.unread ? { unread: true } : {}),
-                ...(filters.groups ? { groups: true } : {}),
-                ...(filters.assigned ? { assigned: true } : {}),
-                ...(filters.unassigned ? { unassigned: true } : {}),
-                ...(filters.assignedUserId
-                  ? { assignedUserId: filters.assignedUserId as string }
-                  : {}),
-                status: filters.status === f.key ? undefined : f.key,
-              })
-            }
-            className={pillClass(filters.status === f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
       </FilterPillScroller>
     </div>
   );

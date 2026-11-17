@@ -27,6 +27,8 @@ const MAX_PINNED_CHATS = 3;
 
 interface ConversationFilters {
   status?: string;
+  /** Open + pending conversations (excludes resolved/closed). */
+  active?: boolean;
   assignedUserId?: string;
   unassigned?: boolean;
   assigned?: boolean;
@@ -315,7 +317,11 @@ export async function listConversations(
 
   const query: Record<string, unknown> = {};
 
-  if (filters.status) query.status = filters.status;
+  if (filters.active) {
+    query.status = { $in: ['OPEN', 'PENDING'] };
+  } else if (filters.status) {
+    query.status = filters.status;
+  }
   if (filters.priority) query.priority = filters.priority;
   if (filters.unassigned) {
     query.$or = [{ assignedUserId: { $exists: false } }, { assignedUserId: null }];

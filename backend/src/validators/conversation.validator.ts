@@ -46,6 +46,7 @@ export const conversationQuerySchema = z.object({
   assigned: z.coerce.boolean().optional(),
   newToday: z.coerce.boolean().optional(),
   unread: z.coerce.boolean().optional(),
+  active: z.coerce.boolean().optional(),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
   tagId: z.string().optional(),
   search: z.string().optional(),

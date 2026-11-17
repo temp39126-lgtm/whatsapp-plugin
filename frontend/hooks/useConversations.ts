@@ -11,6 +11,7 @@ interface ConversationFilters {
   assigned?: boolean;
   newToday?: boolean;
   unread?: boolean;
+  active?: boolean;
   priority?: string;
   search?: string;
   mine?: boolean;

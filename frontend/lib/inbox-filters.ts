@@ -6,6 +6,7 @@ export type InboxFilterParams = {
   assignedByAdmin?: boolean;
   newToday?: boolean;
   unread?: boolean;
+  active?: boolean;
   mine?: boolean;
   groups?: boolean;
   tagId?: string;
@@ -24,6 +25,7 @@ export function buildInboxHref(filters: InboxFilterParams = {}, conversationId?:
   if (filters.assignedByAdmin) params.set('assignedByAdmin', 'true');
   if (filters.newToday) params.set('newToday', 'true');
   if (filters.unread) params.set('unread', 'true');
+  if (filters.active) params.set('active', 'true');
   if (filters.mine) params.set('mine', 'true');
   if (filters.groups) params.set('groups', 'true');
   if (filters.tagId) params.set('tagId', filters.tagId);
@@ -50,6 +52,7 @@ export function inboxFiltersFromSearchParams(
   if (searchParams.get('assignedByAdmin') === 'true') filters.assignedByAdmin = true;
   if (searchParams.get('newToday') === 'true') filters.newToday = true;
   if (searchParams.get('unread') === 'true') filters.unread = true;
+  if (searchParams.get('active') === 'true') filters.active = true;
   if (searchParams.get('mine') === 'true') filters.mine = true;
   if (searchParams.get('groups') === 'true') filters.groups = true;
   const tagId = searchParams.get('tagId');
