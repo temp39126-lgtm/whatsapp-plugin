@@ -42,7 +42,7 @@ function isAllFiltersActive(filters: Record<string, string | boolean | undefined
 
 const pillClass = (active: boolean) =>
   cn(
-    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+    'shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors',
     active
       ? 'bg-whatsapp text-white shadow-sm'
       : 'bg-muted/90 text-foreground/75 hover:bg-muted'
@@ -124,7 +124,11 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         onReset={() => onChange(clearAdvancedFilters(filters))}
       />
 
-      <div className="flex flex-wrap gap-1.5">
+      <div
+        className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:thin]"
+        role="tablist"
+        aria-label="Conversation filters"
+      >
         <button type="button" onClick={showAllConversations} className={pillClass(allActive)}>
           All
         </button>
@@ -154,52 +158,48 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
         >
           Groups
         </button>
-      </div>
-
-      {canViewAllConversations ? (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              const nextAssigned = filters.assigned ? undefined : true;
-              onChange({
-                ...(filters.search ? { search: filters.search } : {}),
-                ...(filters.status ? { status: filters.status as string } : {}),
-                ...(filters.unread ? { unread: true } : {}),
-                ...(filters.groups ? { groups: true } : {}),
-                ...clearAdvancedFilters(filters),
-                assigned: nextAssigned,
-                unassigned: undefined,
-                assignedUserId: undefined,
-              });
-            }}
-            className={pillClass(Boolean(filters.assigned || assignedUserId))}
-          >
-            Assigned
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const nextUnassigned = filters.unassigned ? undefined : true;
-              onChange({
-                ...(filters.search ? { search: filters.search } : {}),
-                ...(filters.status ? { status: filters.status as string } : {}),
-                ...(filters.unread ? { unread: true } : {}),
-                ...(filters.groups ? { groups: true } : {}),
-                ...clearAdvancedFilters(filters),
-                unassigned: nextUnassigned,
-                assigned: undefined,
-                assignedUserId: undefined,
-              });
-            }}
-            className={pillClass(Boolean(filters.unassigned && !assignedUserId))}
-          >
-            Unassigned
-          </button>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-1.5">
+        {canViewAllConversations ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                const nextAssigned = filters.assigned ? undefined : true;
+                onChange({
+                  ...(filters.search ? { search: filters.search } : {}),
+                  ...(filters.status ? { status: filters.status as string } : {}),
+                  ...(filters.unread ? { unread: true } : {}),
+                  ...(filters.groups ? { groups: true } : {}),
+                  ...clearAdvancedFilters(filters),
+                  assigned: nextAssigned,
+                  unassigned: undefined,
+                  assignedUserId: undefined,
+                });
+              }}
+              className={pillClass(Boolean(filters.assigned || assignedUserId))}
+            >
+              Assigned
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextUnassigned = filters.unassigned ? undefined : true;
+                onChange({
+                  ...(filters.search ? { search: filters.search } : {}),
+                  ...(filters.status ? { status: filters.status as string } : {}),
+                  ...(filters.unread ? { unread: true } : {}),
+                  ...(filters.groups ? { groups: true } : {}),
+                  ...clearAdvancedFilters(filters),
+                  unassigned: nextUnassigned,
+                  assigned: undefined,
+                  assignedUserId: undefined,
+                });
+              }}
+              className={pillClass(Boolean(filters.unassigned && !assignedUserId))}
+            >
+              Unassigned
+            </button>
+          </>
+        ) : null}
         {statusFilters.map((f) => (
           <button
             key={f.key}
