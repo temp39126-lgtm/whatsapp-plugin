@@ -6,7 +6,15 @@ import {
   ConversationFilterDialog,
   conversationAdvancedFiltersActive,
 } from '@/components/whatsapp/inbox/ConversationFilterDialog';
-import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -58,7 +66,54 @@ function clearAdvancedFilters(filters: Record<string, string | boolean | undefin
 /** Keeps filter pills in one swipeable row (touch + mouse drag). */
 function FilterPillScroller({ children }: { children: ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ pointerId: -1, startX: 0, scrollLeft: 0, suppressClick: false });
+  const [scrollThumb, setScrollThumb] = useState({ canScroll: false, leftPct: 0, widthPct: 100 });
+
+  const syncScrollThumb = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const { scrollWidth, clientWidth, scrollLeft } = scroller;
+    if (scrollWidth <= clientWidth + 2) {
+      setScrollThumb({ canScroll: false, leftPct: 0, widthPct: 100 });
+      return;
+    }
+    const widthPct = Math.max(18, (clientWidth / scrollWidth) * 100);
+    const maxScroll = scrollWidth - clientWidth;
+    const leftPct =
+      maxScroll > 0 ? (scrollLeft / maxScroll) * (100 - widthPct) : 0;
+    setScrollThumb({ canScroll: true, leftPct, widthPct });
+  }, []);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    syncScrollThumb();
+    const observer = new ResizeObserver(syncScrollThumb);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, [children, syncScrollThumb]);
+
+  function scrollFromTrackClientX(clientX: number) {
+    const scroller = scrollerRef.current;
+    const track = trackRef.current;
+    if (!scroller || !track || !scrollThumb.canScroll) return;
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+    scroller.scrollLeft = ratio * maxScroll;
+  }
+
+  function onTrackPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!scrollThumb.canScroll) return;
+    scrollFromTrackClientX(event.clientX);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onTrackPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    scrollFromTrackClientX(event.clientX);
+  }
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     const scroller = scrollerRef.current;
@@ -102,16 +157,17 @@ function FilterPillScroller({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-muted/25 px-1.5 py-1.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))]">
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-muted/20 px-1.5 pb-2 pt-1.5">
       <div
         ref={scrollerRef}
         className={cn(
-          'flex w-full max-w-full touch-pan-x flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain',
+          'flex w-full max-w-full touch-pan-x flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1',
           'scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden',
           'cursor-grab active:cursor-grabbing'
         )}
         role="tablist"
         aria-label="Conversation filters"
+        onScroll={syncScrollThumb}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -122,8 +178,29 @@ function FilterPillScroller({ children }: { children: ReactNode }) {
       </div>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent"
+        className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-muted/20 to-transparent"
       />
+      <div
+        ref={trackRef}
+        role="presentation"
+        className={cn(
+          'relative mt-0.5 h-1 w-full rounded-full bg-whatsapp/15',
+          scrollThumb.canScroll ? 'cursor-pointer touch-pan-x' : ''
+        )}
+        onPointerDown={onTrackPointerDown}
+        onPointerMove={onTrackPointerMove}
+      >
+        <div
+          className={cn(
+            'absolute top-0 h-1 rounded-full bg-whatsapp transition-[left] duration-75',
+            scrollThumb.canScroll ? 'min-w-[2.5rem]' : 'w-full'
+          )}
+          style={{
+            left: scrollThumb.canScroll ? `${scrollThumb.leftPct}%` : 0,
+            width: `${scrollThumb.widthPct}%`,
+          }}
+        />
+      </div>
     </div>
   );
 }
