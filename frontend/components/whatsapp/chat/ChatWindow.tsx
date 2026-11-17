@@ -71,6 +71,8 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const membersRef = useRef<HTMLDivElement>(null);
+  const [jumpTargetId, setJumpTargetId] = useState<string | null>(null);
+  const jumpScrollAttemptsRef = useRef(0);
 
   const hasMessageFilters = Boolean(
     chatSearchQuery.trim() || filterFromDate || filterToDate
@@ -120,12 +122,21 @@ export function ChatWindow({
 
   useEffect(() => {
     setMessageAnchorId(null);
+    setJumpTargetId(null);
+    jumpScrollAttemptsRef.current = 0;
     setShowChatSearch(false);
     setChatSearchInput('');
     setChatSearchQuery('');
     setFilterFromDate('');
     setFilterToDate('');
   }, [conversation?._id]);
+
+  useEffect(() => {
+    if (scrollToMessageId) {
+      setJumpTargetId(scrollToMessageId);
+      jumpScrollAttemptsRef.current = 0;
+    }
+  }, [scrollToMessageId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -135,27 +146,41 @@ export function ChatWindow({
   }, [chatSearchInput]);
 
   useEffect(() => {
-    if (scrollToMessageId || hasMessageFilters) return;
+    if (jumpTargetId || messageAnchorId || scrollToMessageId || hasMessageFilters) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, scrollToMessageId, hasMessageFilters]);
+  }, [messages, scrollToMessageId, hasMessageFilters, jumpTargetId, messageAnchorId]);
 
   const dateFilterActive = Boolean(filterFromDate || filterToDate);
 
   useEffect(() => {
-    if (!scrollToMessageId) return;
-    const inList = messages.some((message) => message._id === scrollToMessageId);
+    if (!jumpTargetId || isLoading) return;
+
+    const inList = messages.some((message) => message._id === jumpTargetId);
     if (!inList) {
-      setMessageAnchorId(scrollToMessageId);
+      if (messageAnchorId !== jumpTargetId) {
+        setMessageAnchorId(jumpTargetId);
+      }
       return;
     }
-    requestAnimationFrame(() => {
-      messageRefs.current[scrollToMessageId]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-      onScrollToMessageHandled?.();
-    });
-  }, [scrollToMessageId, messages, onScrollToMessageHandled]);
+
+    const targetId = jumpTargetId;
+    const tryScroll = () => {
+      const node = messageRefs.current[targetId];
+      if (node) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setJumpTargetId(null);
+        jumpScrollAttemptsRef.current = 0;
+        onScrollToMessageHandled?.();
+        return;
+      }
+      jumpScrollAttemptsRef.current += 1;
+      if (jumpScrollAttemptsRef.current < 30) {
+        requestAnimationFrame(tryScroll);
+      }
+    };
+
+    tryScroll();
+  }, [jumpTargetId, messages, isLoading, messageAnchorId, onScrollToMessageHandled]);
 
   useEffect(() => {
     if (conversation?._id && conversation.unreadCount > 0) {
