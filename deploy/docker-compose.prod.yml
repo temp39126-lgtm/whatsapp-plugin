@@ -14,16 +14,8 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "mongosh",
-          "--username",
-          "$$MONGO_INITDB_ROOT_USERNAME",
-          "--password",
-          "$$MONGO_INITDB_ROOT_PASSWORD",
-          "--authenticationDatabase",
-          "admin",
-          "--eval",
-          "db.adminCommand({ ping: 1 })",
+          "CMD-SHELL",
+          "mongosh -u \"$$MONGO_INITDB_ROOT_USERNAME\" -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'db.adminCommand({ ping: 1 })' || exit 1",
         ]
       interval: 10s
       timeout: 10s
