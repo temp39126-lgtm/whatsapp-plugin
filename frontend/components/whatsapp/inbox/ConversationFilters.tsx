@@ -1,7 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  ConversationFilterDialog,
+  conversationAdvancedFiltersActive,
+} from '@/components/whatsapp/inbox/ConversationFilterDialog';
+import { useState } from 'react';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
@@ -43,8 +49,23 @@ function clearAssignmentFilters(filters: Record<string, string | boolean | undef
   };
 }
 
+function clearAdvancedFilters(filters: Record<string, string | boolean | undefined>) {
+  return {
+    ...filters,
+    assignedUserId: undefined,
+    unassigned: undefined,
+    assigned: undefined,
+    tagId: undefined,
+    fromDate: undefined,
+    toDate: undefined,
+    hasNotes: undefined,
+  };
+}
+
 export function ConversationFilters({ filters, onChange }: ConversationFiltersProps) {
   const { canViewAllConversations } = usePermissions();
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const advancedActive = conversationAdvancedFiltersActive(filters);
   const allActive = isAllFiltersActive(filters);
   const assignedUserId = filters.assignedUserId as string | undefined;
   const unassignedActive = Boolean(filters.unassigned);
@@ -67,11 +88,53 @@ export function ConversationFilters({ filters, onChange }: ConversationFiltersPr
 
   return (
     <div className="space-y-3 border-b p-3">
-      <Input
-        placeholder="Search conversations..."
-        value={(filters.search as string) || ''}
-        onChange={(e) => onChange({ ...filters, search: e.target.value })}
-        className="h-9"
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Search conversations..."
+          value={(filters.search as string) || ''}
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+          className="h-9 min-w-0 flex-1"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={`relative shrink-0 ${
+            advancedActive ? 'bg-whatsapp-light text-whatsapp-dark' : ''
+          }`}
+          aria-label="Filter conversations"
+          onClick={() => setFilterDialogOpen(true)}
+        >
+          <Filter className="h-5 w-5" />
+          {advancedActive ? (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-whatsapp" />
+          ) : null}
+        </Button>
+      </div>
+
+      <ConversationFilterDialog
+        open={filterDialogOpen}
+        active={{
+          assignedUserId: filters.assignedUserId as string | undefined,
+          unassigned: Boolean(filters.unassigned),
+          tagId: filters.tagId as string | undefined,
+          fromDate: filters.fromDate as string | undefined,
+          toDate: filters.toDate as string | undefined,
+          hasNotes: Boolean(filters.hasNotes),
+        }}
+        onClose={() => setFilterDialogOpen(false)}
+        onApply={(draft) =>
+          onChange({
+            ...clearAdvancedFilters(filters),
+            assignedUserId: draft.assignedUserId,
+            unassigned: draft.unassigned,
+            tagId: draft.tagId,
+            fromDate: draft.fromDate,
+            toDate: draft.toDate,
+            hasNotes: draft.hasNotes,
+          })
+        }
+        onReset={() => onChange(clearAdvancedFilters(filters))}
       />
 
       {assigneeLabel ? (

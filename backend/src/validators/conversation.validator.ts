@@ -47,10 +47,20 @@ export const conversationQuerySchema = z.object({
   newToday: z.coerce.boolean().optional(),
   unread: z.coerce.boolean().optional(),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
+  tagId: z.string().optional(),
   search: z.string().optional(),
   mine: z.coerce.boolean().optional(),
   groups: z.coerce.boolean().optional(),
   assignedByAdmin: z.coerce.boolean().optional(),
+  hasNotes: z.coerce.boolean().optional(),
+  fromDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  toDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   page: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
 });

@@ -8,6 +8,10 @@ export type InboxFilterParams = {
   unread?: boolean;
   mine?: boolean;
   groups?: boolean;
+  tagId?: string;
+  fromDate?: string;
+  toDate?: string;
+  hasNotes?: boolean;
 };
 
 export function buildInboxHref(filters: InboxFilterParams = {}, conversationId?: string): string {
@@ -22,6 +26,10 @@ export function buildInboxHref(filters: InboxFilterParams = {}, conversationId?:
   if (filters.unread) params.set('unread', 'true');
   if (filters.mine) params.set('mine', 'true');
   if (filters.groups) params.set('groups', 'true');
+  if (filters.tagId) params.set('tagId', filters.tagId);
+  if (filters.fromDate) params.set('fromDate', filters.fromDate);
+  if (filters.toDate) params.set('toDate', filters.toDate);
+  if (filters.hasNotes) params.set('hasNotes', 'true');
   if (conversationId) params.set('conversation', conversationId);
 
   const query = params.toString();
@@ -44,6 +52,13 @@ export function inboxFiltersFromSearchParams(
   if (searchParams.get('unread') === 'true') filters.unread = true;
   if (searchParams.get('mine') === 'true') filters.mine = true;
   if (searchParams.get('groups') === 'true') filters.groups = true;
+  const tagId = searchParams.get('tagId');
+  if (tagId) filters.tagId = tagId;
+  const fromDate = searchParams.get('fromDate');
+  if (fromDate) filters.fromDate = fromDate;
+  const toDate = searchParams.get('toDate');
+  if (toDate) filters.toDate = toDate;
+  if (searchParams.get('hasNotes') === 'true') filters.hasNotes = true;
 
   return filters;
 }

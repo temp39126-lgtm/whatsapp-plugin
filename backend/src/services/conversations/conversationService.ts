@@ -20,6 +20,8 @@ import { saveConversationWithVersion } from './conversationLock';
 import { escapeRegExp } from '../../utils/regex';
 import { assertActiveTenantUser } from '../users/assigneeValidation';
 import { ConversationRead } from '../../models/ConversationRead';
+import { InternalNote } from '../../models/InternalNote';
+import mongoose from 'mongoose';
 
 const MAX_PINNED_CHATS = 3;
 
@@ -31,11 +33,14 @@ interface ConversationFilters {
   newToday?: boolean;
   unread?: boolean;
   priority?: string;
-  tag?: string;
+  tagId?: string;
   search?: string;
   mine?: boolean;
   groups?: boolean;
   assignedByAdmin?: boolean;
+  hasNotes?: boolean;
+  fromDate?: string;
+  toDate?: string;
 }
 
 type PopulatedGroupMember = {
@@ -325,6 +330,33 @@ export async function listConversations(
   if (filters.assignedUserId) query.assignedUserId = filters.assignedUserId;
   if (filters.unread) query.unreadCount = { $gt: 0 };
   if (filters.groups) query.groupId = { $exists: true, $ne: null };
+
+  if (filters.tagId) {
+    if (!mongoose.Types.ObjectId.isValid(filters.tagId)) {
+      throw new AppError(400, 'Invalid tag');
+    }
+    query.tags = filters.tagId;
+  }
+
+  if (filters.fromDate || filters.toDate) {
+    const lastMessageAt: Record<string, Date> = {};
+    if (filters.fromDate) {
+      lastMessageAt.$gte = new Date(`${filters.fromDate}T00:00:00.000Z`);
+    }
+    if (filters.toDate) {
+      const end = new Date(`${filters.toDate}T00:00:00.000Z`);
+      end.setUTCHours(23, 59, 59, 999);
+      lastMessageAt.$lte = end;
+    }
+    query.lastMessageAt = lastMessageAt;
+  }
+
+  if (filters.hasNotes) {
+    const conversationIds = await InternalNote.distinct('conversationId', {
+      tenantId: user.tenantId,
+    });
+    query._id = { $in: conversationIds };
+  }
 
   if (filters.assignedByAdmin) {
     const targetUserId =
