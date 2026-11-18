@@ -144,6 +144,8 @@ function InboxPageContent() {
         <OngoingCallModal
           call={outboundCall.activeCall}
           contactName={selected?.contact?.name ?? 'Contact'}
+          micMuted={outboundCall.micMuted}
+          onToggleMicMute={outboundCall.toggleMicMute}
           onEnd={() => outboundCall.endCall(outboundCall.activeCall!._id)}
         />
       ) : null}

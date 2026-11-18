@@ -9,6 +9,8 @@ export type WebRtcSession = {
 export type OutboundCallSession = {
   createOffer: () => Promise<WebRtcSession>;
   applyAnswer: (session: WebRtcSession) => Promise<void>;
+  setMicMuted: (muted: boolean) => void;
+  isMicMuted: () => boolean;
   close: () => void;
 };
 
@@ -80,6 +82,14 @@ export async function createOutboundCallSession(): Promise<OutboundCallSession> 
         type: 'answer',
         sdp: session.sdp,
       });
+    },
+    setMicMuted(muted: boolean) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !muted;
+      });
+    },
+    isMicMuted() {
+      return localStream.getAudioTracks().every((track) => !track.enabled);
     },
     close() {
       localStream.getTracks().forEach((track) => track.stop());

@@ -13,11 +13,13 @@ export function useOutboundCall() {
   const [activeCall, setActiveCall] = useState<CallDTO | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState('');
+  const [micMuted, setMicMuted] = useState(false);
 
   const cleanup = useCallback(() => {
     sessionRef.current?.close();
     sessionRef.current = null;
     setActiveCall(null);
+    setMicMuted(false);
   }, []);
 
   const endServerCall = useCallback(async (call: CallDTO | null) => {
@@ -92,13 +94,23 @@ export function useOutboundCall() {
     [cleanup]
   );
 
+  const toggleMicMute = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const next = !micMuted;
+    session.setMicMuted(next);
+    setMicMuted(next);
+  }, [micMuted]);
+
   return {
     activeCall,
     isStarting,
     error,
+    micMuted,
     startCall,
     endCall,
     cleanup,
     setError,
+    toggleMicMute,
   };
 }
