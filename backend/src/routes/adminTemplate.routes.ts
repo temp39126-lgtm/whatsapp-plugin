@@ -5,6 +5,7 @@ import { requireRole } from '../middleware/requireRole';
 import { validateBody } from '../middleware/validate';
 import {
   createAdminTemplateSchema,
+  setTemplateVisibilitySchema,
   updateAdminTemplateSchema,
 } from '../validators/template.admin.validator';
 import * as controller from '../controllers/adminTemplate.controller';
@@ -15,6 +16,11 @@ router.use(authenticate, tenantAccess, requireRole('ADMIN'));
 
 router.get('/', controller.listTemplates);
 router.post('/', validateBody(createAdminTemplateSchema), controller.createTemplate);
+router.post(
+  '/visibility',
+  validateBody(setTemplateVisibilitySchema),
+  controller.setTemplateVisibility
+);
 router.put('/:id', validateBody(updateAdminTemplateSchema), controller.updateTemplate);
 router.delete('/:id', controller.deleteTemplate);
 

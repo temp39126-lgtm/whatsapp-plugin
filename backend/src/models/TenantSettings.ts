@@ -18,6 +18,8 @@ export interface ITenantNotificationSettings {
 export interface ITenantSettings extends Document {
   tenantId: string;
   notifications: ITenantNotificationSettings;
+  /** CRM-only: `name::language` keys hidden from agents and default admin list */
+  hiddenWhatsAppTemplates: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,7 @@ const tenantSettingsSchema = new Schema<ITenantSettings>(
       adminAlertEmail: { type: String, default: defaultNotifications.adminAlertEmail },
       dailyDigestEnabled: { type: Boolean, default: defaultNotifications.dailyDigestEnabled },
     },
+    hiddenWhatsAppTemplates: { type: [String], default: [] },
   },
   { timestamps: true }
 );

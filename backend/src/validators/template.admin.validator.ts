@@ -40,6 +40,12 @@ export const updateAdminTemplateSchema = z.object({
   buttons: createAdminTemplateSchema.shape.buttons,
 });
 
+export const setTemplateVisibilitySchema = z.object({
+  name: templateNameSchema,
+  language: z.string().trim().min(2).max(10),
+  hidden: z.boolean(),
+});
+
 export const deleteAdminTemplateSchema = z.object({
   name: templateNameSchema,
   language: z.string().trim().min(2).max(10),

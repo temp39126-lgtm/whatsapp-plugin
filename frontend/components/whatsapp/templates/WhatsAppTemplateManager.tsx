@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   useAdminTemplates,
   useCreateAdminTemplate,
   useDeleteAdminTemplate,
+  useSetAdminTemplateVisibility,
   useUpdateAdminTemplate,
   type AdminWhatsAppTemplate,
   type TemplateFormInput,
@@ -29,6 +30,7 @@ function canDeleteTemplate(status: string): boolean {
 export function WhatsAppTemplateManager() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [visibilityFilter, setVisibilityFilter] = useState<'VISIBLE' | 'HIDDEN' | 'ALL'>('VISIBLE');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<AdminWhatsAppTemplate | null>(null);
@@ -39,12 +41,16 @@ export function WhatsAppTemplateManager() {
   const createMutation = useCreateAdminTemplate();
   const updateMutation = useUpdateAdminTemplate();
   const deleteMutation = useDeleteAdminTemplate();
+  const visibilityMutation = useSetAdminTemplateVisibility();
 
   const templates = data?.data ?? [];
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return templates.filter((template) => {
+      const isHidden = Boolean(template.hidden);
+      if (visibilityFilter === 'VISIBLE' && isHidden) return false;
+      if (visibilityFilter === 'HIDDEN' && !isHidden) return false;
       if (statusFilter !== 'ALL' && template.status.toUpperCase() !== statusFilter) {
         return false;
       }
@@ -55,7 +61,7 @@ export function WhatsAppTemplateManager() {
         (template.bodyPreview ?? '').toLowerCase().includes(query)
       );
     });
-  }, [templates, search, statusFilter]);
+  }, [templates, search, statusFilter, visibilityFilter]);
 
   const statuses = useMemo(() => {
     const set = new Set(templates.map((t) => t.status.toUpperCase()));
@@ -101,6 +107,27 @@ export function WhatsAppTemplateManager() {
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Request failed');
     }
+  }
+
+  function handleToggleVisibility(template: AdminWhatsAppTemplate) {
+    const nextHidden = !template.hidden;
+    setError(null);
+    visibilityMutation.mutate(
+      { name: template.name, language: template.language, hidden: nextHidden },
+      {
+        onSuccess: () => {
+          setMessage(
+            nextHidden
+              ? `Hidden "${template.name}" (${template.language}) from the inbox template picker.`
+              : `Unhidden "${template.name}" (${template.language}) — agents can send it again.`
+          );
+        },
+        onError: (visibilityError) => {
+          setMessage('');
+          setError(visibilityError instanceof Error ? visibilityError.message : 'Could not update visibility');
+        },
+      }
+    );
   }
 
   function handleDelete(template: AdminWhatsAppTemplate) {
@@ -193,12 +220,25 @@ export function WhatsAppTemplateManager() {
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter by approval status"
         >
           {statuses.map((status) => (
             <option key={status} value={status}>
               {status === 'ALL' ? 'All statuses' : status}
             </option>
           ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          value={visibilityFilter}
+          onChange={(e) =>
+            setVisibilityFilter(e.target.value as 'VISIBLE' | 'HIDDEN' | 'ALL')
+          }
+          aria-label="Filter by visibility"
+        >
+          <option value="VISIBLE">Visible in CRM</option>
+          <option value="HIDDEN">Hidden</option>
+          <option value="ALL">All templates</option>
         </select>
       </div>
 
@@ -229,8 +269,18 @@ export function WhatsAppTemplateManager() {
             </thead>
             <tbody className="divide-y">
               {filtered.map((template) => (
-                <tr key={`${template.id}-${template.language}`} className="bg-background">
-                  <td className="px-4 py-3 font-mono text-xs sm:text-sm">{template.name}</td>
+                <tr
+                  key={`${template.id}-${template.language}`}
+                  className={`bg-background ${template.hidden ? 'opacity-70' : ''}`}
+                >
+                  <td className="px-4 py-3 font-mono text-xs sm:text-sm">
+                    {template.name}
+                    {template.hidden ? (
+                      <span className="ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Hidden
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3">{template.language}</td>
                   <td className="px-4 py-3">{template.category ?? '—'}</td>
                   <td className="px-4 py-3">
@@ -248,6 +298,29 @@ export function WhatsAppTemplateManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={
+                          template.hidden
+                            ? `Show ${template.name} in inbox`
+                            : `Hide ${template.name} from inbox`
+                        }
+                        disabled={visibilityMutation.isPending}
+                        title={
+                          template.hidden
+                            ? 'Unhide — show in inbox template picker'
+                            : 'Hide from inbox (keeps template in Meta)'
+                        }
+                        onClick={() => handleToggleVisibility(template)}
+                      >
+                        {template.hidden ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button
                         type="button"
                         variant="ghost"

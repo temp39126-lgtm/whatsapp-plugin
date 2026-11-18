@@ -34,6 +34,19 @@ export async function updateTemplate(req: AuthenticatedRequest, res: Response, n
   }
 }
 
+export async function setTemplateVisibility(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await adminTemplateService.setAdminTemplateVisibility(req.user!, req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function deleteTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const parsed = deleteAdminTemplateSchema.safeParse({

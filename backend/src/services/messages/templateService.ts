@@ -6,6 +6,7 @@ import { Message } from '../../models/Message';
 import { Conversation } from '../../models/Conversation';
 import { fetchAllMessageTemplates, sendTemplateMessage, MetaApiError } from '../whatsapp/metaApi';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
+import { getHiddenTemplateKeySet, isTemplateHidden } from './hiddenTemplateService';
 
 interface WhatsAppTemplate {
   name: string;
@@ -61,8 +62,11 @@ export async function getApprovedTemplates(
     'name,status,language,category,components'
   );
 
+  const hiddenKeys = await getHiddenTemplateKeySet(user.tenantId);
+
   return templates
     .filter((template) => template.status === 'APPROVED')
+    .filter((template) => !isTemplateHidden(hiddenKeys, template.name, template.language))
     .map((template) => ({
       name: template.name,
       language: template.language,
@@ -101,6 +105,11 @@ export async function sendApprovedTemplate(
     account,
     'name,status,language,category,components'
   );
+
+  const hiddenKeys = await getHiddenTemplateKeySet(user.tenantId);
+  if (isTemplateHidden(hiddenKeys, templateName, languageCode)) {
+    throw new AppError(400, 'This template is hidden and cannot be sent from the inbox');
+  }
 
   const approvedTemplate = templates.find(
     (template) =>

@@ -12,6 +12,7 @@ export type AdminWhatsAppTemplate = {
   components: Array<Record<string, unknown>>;
   rejectedReason?: string;
   bodyPreview?: string;
+  hidden?: boolean;
 };
 
 export type TemplateFormInput = {
@@ -48,6 +49,18 @@ export function useUpdateAdminTemplate() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Omit<TemplateFormInput, 'name' | 'language'> & { category?: TemplateFormInput['category'] } }) =>
       api.put<AdminWhatsAppTemplate>(`/templates/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] });
+    },
+  });
+}
+
+export function useSetAdminTemplateVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; language: string; hidden: boolean }) =>
+      api.post<{ hidden: boolean }>('/templates/visibility', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
       queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] });

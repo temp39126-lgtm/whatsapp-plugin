@@ -2,6 +2,11 @@ import { AuthUser, AppError } from '../../types';
 import { WhatsAppAccount } from '../../models/WhatsAppAccount';
 import { metaDelete, fetchAllMessageTemplates, metaJsonPost } from '../whatsapp/metaApi';
 import { metaFailureToAppError } from '../whatsapp/metaErrors';
+import {
+  getHiddenTemplateKeySet,
+  isTemplateHidden,
+  setTemplateHidden,
+} from './hiddenTemplateService';
 
 export type AdminTemplateDTO = {
   id: string;
@@ -12,6 +17,7 @@ export type AdminTemplateDTO = {
   components: Array<Record<string, unknown>>;
   rejectedReason?: string;
   bodyPreview?: string;
+  hidden?: boolean;
 };
 
 type MetaTemplateRecord = {
@@ -57,7 +63,7 @@ function normalizeRejectedReason(value?: string): string | undefined {
   return trimmed;
 }
 
-function mapTemplate(record: MetaTemplateRecord): AdminTemplateDTO {
+function mapTemplate(record: MetaTemplateRecord, hiddenKeys: Set<string>): AdminTemplateDTO {
   return {
     id: String(record.id ?? ''),
     name: record.name,
@@ -67,6 +73,7 @@ function mapTemplate(record: MetaTemplateRecord): AdminTemplateDTO {
     components: record.components ?? [],
     rejectedReason: normalizeRejectedReason(record.rejected_reason),
     bodyPreview: bodyPreviewFromComponents(record.components),
+    hidden: isTemplateHidden(hiddenKeys, record.name, record.language),
   };
 }
 
@@ -119,13 +126,16 @@ export async function listAdminTemplates(user: AuthUser): Promise<AdminTemplateD
   const account = await getConnectedAccount(user.tenantId);
 
   try {
-    const records = await fetchAllMessageTemplates<MetaTemplateRecord>(
-      account.businessAccountId,
-      account,
-      'id,name,status,language,category,components,rejected_reason'
-    );
+    const [records, hiddenKeys] = await Promise.all([
+      fetchAllMessageTemplates<MetaTemplateRecord>(
+        account.businessAccountId,
+        account,
+        'id,name,status,language,category,components,rejected_reason'
+      ),
+      getHiddenTemplateKeySet(user.tenantId),
+    ]);
 
-    return records.map(mapTemplate).sort((a, b) => a.name.localeCompare(b.name));
+    return records.map((record) => mapTemplate(record, hiddenKeys)).sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     metaFailureToAppError(error, 'Meta template request failed');
   }
@@ -213,6 +223,14 @@ export async function updateAdminTemplate(
   return updated;
 }
 
+export async function setAdminTemplateVisibility(
+  user: AuthUser,
+  input: { name: string; language: string; hidden: boolean }
+): Promise<{ hidden: boolean }> {
+  await setTemplateHidden(user.tenantId, input.name, input.language, input.hidden);
+  return { hidden: input.hidden };
+}
+
 export async function deleteAdminTemplate(
   user: AuthUser,
   input: { name: string; language: string; templateId?: string }
@@ -226,6 +244,7 @@ export async function deleteAdminTemplate(
 
   try {
     await metaDelete(`/${account.businessAccountId}/message_templates`, account, query);
+    await setTemplateHidden(user.tenantId, input.name, input.language, false);
   } catch (error) {
     metaFailureToAppError(error, 'Meta template request failed');
   }
