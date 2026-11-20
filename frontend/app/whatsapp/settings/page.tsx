@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Bell,
@@ -55,6 +55,7 @@ const VALID_PANELS: SettingsPanel[] = [
 
 export default function SettingsPage() {
   const { isAdmin, canManageSettings, canManageTeam } = usePermissions();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [panel, setPanel] = useState<SettingsPanel>('home');
   const [avatarVersion, setAvatarVersion] = useState(0);
@@ -183,7 +184,7 @@ export default function SettingsPage() {
             icon={UserPlus}
             title="Create user"
             subtitle="Add a team member and set permissions"
-            onClick={() => setPanel('team')}
+            onClick={() => router.push('/whatsapp/team/new')}
           />
         )}
         {!isAdmin && (
