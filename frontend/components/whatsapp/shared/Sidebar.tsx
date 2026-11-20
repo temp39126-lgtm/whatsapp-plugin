@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -54,6 +54,8 @@ const navItems: Array<{
   },
   { href: '/whatsapp/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'USER'] },
 ];
+
+const DASHBOARD_HREFS = new Set(['/whatsapp/admin', '/whatsapp/user']);
 
 function useCollapsedSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -148,20 +150,19 @@ export function Sidebar() {
 
         <nav className="flex flex-1 flex-col gap-1 px-2">
           {filteredItems.map((item) => (
-            <SidebarNavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-              showTooltip={showTooltips}
-            />
+            <Fragment key={item.href}>
+              <SidebarNavLink
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                showTooltip={showTooltips}
+              />
+              {canManageTeamUsers && DASHBOARD_HREFS.has(item.href) ? (
+                <SidebarStaffSection pathname={pathname} showLabels={!showTooltips} />
+              ) : null}
+            </Fragment>
           ))}
-          {canManageTeamUsers ? (
-            <div className="mt-1 pt-1">
-              <SidebarStaffSection pathname={pathname} showLabels={!showTooltips} />
-            </div>
-          ) : null}
         </nav>
 
         <SidebarNotifications collapsed={showTooltips} />
