@@ -11,6 +11,7 @@ import {
 } from '@/lib/message-media';
 import type { MessageDTO } from '@/types';
 import { HighlightedText } from '@/lib/highlight-text';
+import { ChatMediaLightbox } from '@/components/whatsapp/chat/ChatMediaLightbox';
 
 function formatFileSize(bytes?: number): string {
   if (!bytes) return '';
@@ -47,6 +48,7 @@ export function MessageMediaContent({
       typeof window !== 'undefined' &&
       sessionStorage.getItem(`chat-downloaded:${message._id}`) === '1'
   );
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const content = (message.content && typeof message.content === 'object'
     ? message.content
     : {}) as {
@@ -172,14 +174,30 @@ export function MessageMediaContent({
   }
 
   if (showAsImage) {
+    const imageAlt = caption || fileName;
     return (
       <div className="space-y-2">
         {blobUrl ? (
-          <img
-            src={blobUrl}
-            alt={caption || fileName}
-            className="block max-h-[min(70vh,32rem)] w-auto max-w-full rounded-md object-contain"
-          />
+          <>
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              className="block w-full cursor-zoom-in rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-whatsapp/50"
+              aria-label="View full image"
+            >
+              <img
+                src={blobUrl}
+                alt={imageAlt}
+                className="block max-h-[min(70vh,32rem)] w-auto max-w-full rounded-md object-contain"
+              />
+            </button>
+            <ChatMediaLightbox
+              open={lightboxOpen}
+              src={blobUrl}
+              alt={imageAlt}
+              onClose={() => setLightboxOpen(false)}
+            />
+          </>
         ) : mediaLoadState === 'loading' ? (
           <div className="flex min-h-[8rem] min-w-[10rem] items-center justify-center rounded-md bg-black/5 text-xs text-muted-foreground">
             Loading image…
