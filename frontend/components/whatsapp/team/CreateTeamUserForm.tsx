@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff, UserCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,6 @@ import { Input } from '@/components/ui/input';
 import type { TeamUserDTO } from '@/types';
 import type { Permission } from '@shared/constants/permissions';
 import { TeamUserPermissionPicker } from '@/components/whatsapp/team/TeamUserPermissionPicker';
-import {
-  TEAM_USER_ROLE_PRESETS,
-  permissionsForPreset,
-  type TeamUserRolePresetId,
-} from '@/lib/team-user-role-presets';
 import { cn } from '@/lib/utils';
 
 type CreateTeamUserFormProps = {
@@ -78,24 +73,9 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rolePreset, setRolePreset] = useState<TeamUserRolePresetId>('agent');
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [active, setActive] = useState(true);
   const [message, setMessage] = useState('');
-
-  const isCustomRole = rolePreset === 'custom';
-
-  const effectivePermissions = useMemo(() => {
-    if (isCustomRole) return permissions;
-    return permissionsForPreset(rolePreset);
-  }, [isCustomRole, permissions, rolePreset]);
-
-  function handleRoleChange(next: TeamUserRolePresetId) {
-    setRolePreset(next);
-    if (next !== 'custom') {
-      setPermissions(permissionsForPreset(next));
-    }
-  }
 
   const createUser = useMutation({
     mutationFn: (payload: {
@@ -110,7 +90,6 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
       setName('');
       setEmail('');
       setPassword('');
-      setRolePreset('agent');
       setPermissions([]);
       setActive(true);
       const emailNote =
@@ -142,7 +121,7 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
       name: name.trim(),
       email: email.trim(),
       password,
-      permissions: effectivePermissions,
+      permissions,
     });
   }
 
@@ -153,7 +132,7 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
       <div
         className={cn(
           pageLayout
-            ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:items-start'
+            ? 'grid gap-6 xl:grid-cols-2 xl:items-start'
             : 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'
         )}
       >
@@ -191,28 +170,6 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
               <h2 className="text-lg font-semibold">User Settings</h2>
 
               <div className="mt-5 space-y-5">
-                <div>
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium">User Role</p>
-                      <p className="text-xs text-muted-foreground">Assign permissions based on role</p>
-                    </div>
-                  </div>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-whatsapp/40"
-                    value={rolePreset}
-                    onChange={(event) =>
-                      handleRoleChange(event.target.value as TeamUserRolePresetId)
-                    }
-                  >
-                    {TEAM_USER_ROLE_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.label} — {preset.description}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-3">
                   <div>
                     <p className="text-sm font-medium">Active Status</p>
@@ -222,11 +179,9 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
                 </div>
               </div>
 
-              {isCustomRole ? (
-                <div className="mt-5">
-                  <TeamUserPermissionPicker value={permissions} onChange={setPermissions} />
-                </div>
-              ) : null}
+              <div className="mt-5">
+                <TeamUserPermissionPicker value={permissions} onChange={setPermissions} />
+              </div>
             </section>
           </>
         ) : (
