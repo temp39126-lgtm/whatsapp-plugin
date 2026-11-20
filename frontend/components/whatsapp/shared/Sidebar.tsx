@@ -142,13 +142,13 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className="flex h-full w-16 flex-col bg-whatsapp p-2 lg:w-56">
-        <div className="flex items-center justify-center gap-2 px-3 py-5 lg:justify-start">
+      <aside className="flex h-full w-14 flex-col bg-whatsapp p-1.5 sm:w-16 lg:w-56 lg:p-2">
+        <div className="flex shrink-0 items-center justify-center gap-2 px-2 py-3 lg:justify-start lg:px-3 lg:py-5">
           <MessageSquare className="h-6 w-6 shrink-0 text-white" />
           <span className="hidden text-sm font-semibold text-white lg:block">WhatsApp CRM</span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-2">
+        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 lg:gap-1 lg:px-2">
           {filteredItems.map((item) => (
             <Fragment key={item.href}>
               <SidebarNavLink
@@ -165,10 +165,12 @@ export function Sidebar() {
           ))}
         </nav>
 
-        <SidebarNotifications collapsed={showTooltips} />
+        <div className="mt-auto shrink-0">
+          <SidebarNotifications collapsed={showTooltips} />
+        </div>
 
         {user && (
-          <div className="mt-auto border-t border-white/10 pt-4">
+          <div className="shrink-0 border-t border-white/10 pt-2 lg:pt-4">
             <div className="hidden px-2 lg:block">
               <p className="truncate text-sm font-medium text-white">{user.name}</p>
               <p className="text-xs text-white/60">{isAdmin ? 'Admin' : 'User'}</p>

@@ -287,7 +287,7 @@ export function ChatWindow({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-chat-bg">
-      <header className="relative flex shrink-0 items-center gap-2 border-b bg-background px-3 py-2.5 sm:px-4">
+      <header className="relative flex shrink-0 items-center gap-1 border-b bg-background px-2 py-2 sm:gap-2 sm:px-4 sm:py-2.5">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {onBack && (
             <Button
@@ -306,18 +306,18 @@ export function ChatWindow({
             size="sm"
             isGroup={isGroup}
           />
-          <div className="min-w-0" ref={membersRef}>
-            <h2 className="truncate font-medium">{headerName}</h2>
+          <div className="min-w-0 flex-1" ref={membersRef}>
+            <h2 className="truncate text-sm font-medium sm:text-base">{headerName}</h2>
             {isGroup ? (
               <button
                 type="button"
                 onClick={() => setShowMembers((current) => !current)}
-                className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                className="hidden truncate text-xs text-muted-foreground hover:text-foreground hover:underline sm:block"
               >
                 {headerSubtitle} · tap to view members
               </button>
             ) : (
-              <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">{headerSubtitle}</p>
             )}
 
             {isGroup && showMembers && group?.members && (
@@ -338,23 +338,29 @@ export function ChatWindow({
             )}
           </div>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
           <Button
             variant="ghost"
             size="icon"
             aria-label={showChatSearch ? 'Close chat search' : 'Search in chat'}
             aria-pressed={showChatSearch}
-            className={showChatSearch ? 'bg-whatsapp-light text-whatsapp-dark' : undefined}
+            className={cn(
+              'h-9 w-9 sm:h-10 sm:w-10',
+              showChatSearch ? 'bg-whatsapp-light text-whatsapp-dark' : undefined
+            )}
             onClick={() => setShowChatSearch((current) => !current)}
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             aria-label="Filter messages by date"
             aria-pressed={dateFilterActive}
-            className={dateFilterActive ? 'bg-whatsapp-light text-whatsapp-dark' : undefined}
+            className={cn(
+              'hidden h-9 w-9 sm:inline-flex sm:h-10 sm:w-10',
+              dateFilterActive ? 'bg-whatsapp-light text-whatsapp-dark' : undefined
+            )}
             onClick={() => setShowFilterDialog(true)}
           >
             <Filter className="h-5 w-5" />
@@ -364,10 +370,10 @@ export function ChatWindow({
               variant="ghost"
               size="icon"
               onClick={onShowDetails}
-              className="xl:hidden"
+              className="h-9 w-9 xl:hidden sm:h-10 sm:w-10"
               aria-label="View contact details"
             >
-              <PanelRightOpen className="h-5 w-5" />
+              <PanelRightOpen className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           )}
           <Button
@@ -376,8 +382,9 @@ export function ChatWindow({
             onClick={onStartCall}
             disabled={!onStartCall || callDisabled}
             title={onStartCall ? 'Start voice call' : 'Voice calling unavailable'}
+            className="h-9 w-9 sm:h-10 sm:w-10"
           >
-            <Phone className="h-5 w-5" />
+            <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <ChatConversationMenu
             conversationId={conversation._id}

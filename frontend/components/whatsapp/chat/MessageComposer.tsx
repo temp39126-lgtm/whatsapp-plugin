@@ -235,15 +235,18 @@ export function MessageComposer({
   };
 
   return (
-    <div className="border-t bg-background p-3 shrink-0">
+    <div className="shrink-0 border-t bg-background p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-3">
       {requiresTemplate ? (
         <div
-          className="mb-2 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-2 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between sm:px-3"
           role="status"
         >
           <p className="text-xs leading-relaxed sm:text-sm">
-            The 24-hour WhatsApp messaging window is closed. Send an approved template to message
-            this customer (free text and media will fail).
+            <span className="sm:hidden">24h window closed — use Send template. Text and media won&apos;t deliver.</span>
+            <span className="hidden sm:inline">
+              The 24-hour WhatsApp messaging window is closed. Send an approved template to message
+              this customer (free text and media will fail).
+            </span>
           </p>
           {onOpenTemplates ? (
             <Button
@@ -409,7 +412,7 @@ export function MessageComposer({
           ) : null}
         </div>
       ) : (
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-1 sm:gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -436,13 +439,13 @@ export function MessageComposer({
               onPaste={handlePaste}
               placeholder={
                 requiresTemplate
-                  ? 'Use Send template above to message this customer'
+                  ? 'Template required'
                   : selectedFile
-                    ? 'Add a caption (optional)...'
+                    ? 'Caption (optional)'
                     : 'Type a message...'
               }
               disabled={composerBlocked}
-              className="pr-10"
+              className="min-w-0 pr-9 text-sm sm:pr-10"
             />
             <button
               ref={emojiButtonRef}
