@@ -35,38 +35,6 @@ function FormField({
   );
 }
 
-function ActiveToggle({
-  checked,
-  onChange,
-  disabled,
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-        checked ? 'bg-whatsapp' : 'bg-muted-foreground/30',
-        disabled && 'cursor-not-allowed opacity-60'
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-          checked ? 'translate-x-5' : 'translate-x-0.5'
-        )}
-      />
-    </button>
-  );
-}
-
 export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -74,7 +42,6 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [active, setActive] = useState(true);
   const [message, setMessage] = useState('');
 
   const createUser = useMutation({
@@ -91,7 +58,6 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
       setEmail('');
       setPassword('');
       setPermissions([]);
-      setActive(true);
       const emailNote =
         user.welcomeEmailSent === true
           ? `A welcome email with login details was sent to ${user.email}.`
@@ -111,11 +77,6 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
   function handleCreateUser(event: React.FormEvent) {
     event.preventDefault();
     setMessage('');
-
-    if (!active) {
-      setMessage('Turn on Active to create this account.');
-      return;
-    }
 
     createUser.mutate({
       name: name.trim(),
@@ -168,17 +129,9 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
 
             <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
               <h2 className="text-lg font-semibold">User Settings</h2>
-
-              <div className="mt-5 space-y-5">
-                <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Active Status</p>
-                    <p className="text-xs text-muted-foreground">Allow access to this account</p>
-                  </div>
-                  <ActiveToggle checked={active} onChange={setActive} />
-                </div>
-              </div>
-
+              <p className="mt-1 text-xs text-muted-foreground">
+                New accounts are created active and can sign in immediately.
+              </p>
               <div className="mt-5">
                 <TeamUserPermissionPicker value={permissions} onChange={setPermissions} />
               </div>
@@ -228,9 +181,7 @@ export function CreateTeamUserForm({ layout = 'embedded' }: CreateTeamUserFormPr
         <p
           className={cn(
             'text-sm',
-            createUser.isError || message.startsWith('Turn on')
-              ? 'text-red-600'
-              : 'text-whatsapp-dark'
+            createUser.isError ? 'text-red-600' : 'text-whatsapp-dark'
           )}
         >
           {message}
