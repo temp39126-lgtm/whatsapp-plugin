@@ -9,6 +9,7 @@ import {
   X,
   Image as ImageIcon,
   FileText,
+  Film,
   Mic,
   Trash2,
   Pause,
@@ -22,6 +23,7 @@ import {
   type VoiceNoteRecorder,
 } from '@/lib/voiceNote/recorder';
 import { isInternalMediaUrl } from '@/lib/message-copy';
+import { composeMediaPreviewKind } from '@/lib/compose-media-preview';
 import { toastError } from '@/lib/toast';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -56,6 +58,7 @@ export function MessageComposer({
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [composePreviewUrl, setComposePreviewUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingPaused, setRecordingPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -82,8 +85,7 @@ export function MessageComposer({
       const file = item.getAsFile();
       if (!file || !onSendMedia) continue;
       event.preventDefault();
-      void onSendMedia(file, text.trim() || undefined, replyTo?._id);
-      setText('');
+      setSelectedFile(file);
       return;
     }
   };
@@ -143,13 +145,34 @@ export function MessageComposer({
     };
   }, []);
 
+  const clearSelectedFile = useCallback(() => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setComposePreviewUrl(null);
+      return;
+    }
+    const kind = composeMediaPreviewKind(selectedFile);
+    if (kind === 'file') {
+      setComposePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setComposePreviewUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFile]);
+
   const handleSend = () => {
     if (selectedFile && onSendMedia) {
       onSendMedia(selectedFile, text.trim() || undefined, replyTo?._id);
-      setSelectedFile(null);
+      clearSelectedFile();
       setText('');
       onCancelReply?.();
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -257,27 +280,49 @@ export function MessageComposer({
         </div>
       )}
 
-      {selectedFile && (
-        <div className="mb-2 flex items-center justify-between rounded border border-whatsapp/30 bg-whatsapp-light px-3 py-2 text-sm">
-          <div className="flex items-center gap-2 truncate">
-            {selectedFile.type.startsWith('image/') ? (
-              <ImageIcon className="h-4 w-4 shrink-0 text-whatsapp-dark" />
-            ) : (
-              <FileText className="h-4 w-4 shrink-0 text-whatsapp-dark" />
-            )}
-            <span className="truncate">{selectedFile.name}</span>
+      {selectedFile ? (
+        <div className="mb-2 overflow-hidden rounded-lg border border-whatsapp/30 bg-whatsapp-light/40">
+          {composeMediaPreviewKind(selectedFile) === 'image' && composePreviewUrl ? (
+            <div className="relative bg-black/5">
+              <img
+                src={composePreviewUrl}
+                alt={selectedFile.name}
+                className="mx-auto block max-h-[min(45vh,22rem)] w-auto max-w-full object-contain"
+              />
+            </div>
+          ) : composeMediaPreviewKind(selectedFile) === 'video' && composePreviewUrl ? (
+            <div className="relative bg-black">
+              <video
+                src={composePreviewUrl}
+                controls
+                playsInline
+                preload="metadata"
+                className="mx-auto block max-h-[min(45vh,22rem)] w-auto max-w-full bg-black"
+              />
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between gap-2 border-t border-whatsapp/20 bg-whatsapp-light px-3 py-2 text-sm">
+            <div className="flex min-w-0 items-center gap-2">
+              {composeMediaPreviewKind(selectedFile) === 'image' ? (
+                <ImageIcon className="h-4 w-4 shrink-0 text-whatsapp-dark" />
+              ) : composeMediaPreviewKind(selectedFile) === 'video' ? (
+                <Film className="h-4 w-4 shrink-0 text-whatsapp-dark" />
+              ) : (
+                <FileText className="h-4 w-4 shrink-0 text-whatsapp-dark" />
+              )}
+              <span className="truncate font-medium">{selectedFile.name}</span>
+            </div>
+            <button
+              type="button"
+              onClick={clearSelectedFile}
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+              aria-label="Remove attachment"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setSelectedFile(null);
-              if (fileInputRef.current) fileInputRef.current.value = '';
-            }}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
-      )}
+      ) : null}
 
       {voiceError ? (
         <p className="mb-2 text-sm text-destructive" role="alert">
