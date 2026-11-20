@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { SidebarNotifications } from '@/components/whatsapp/shared/SidebarNotifications';
+import { SidebarStaffSection } from '@/components/whatsapp/shared/SidebarStaffSection';
 
 const navItems: Array<{
   href: string;
@@ -110,6 +111,8 @@ export function Sidebar() {
   const { user, isAdmin, logout } = useAuth();
   const showTooltips = useCollapsedSidebar();
 
+  const canManageTeamUsers = !!user && (isAdmin || hasPermission(user, 'manage_team'));
+
   const filteredItems = navItems.filter((item) => {
     if (!user) return false;
     if (item.href === '/whatsapp/admin') {
@@ -154,6 +157,11 @@ export function Sidebar() {
               showTooltip={showTooltips}
             />
           ))}
+          {canManageTeamUsers ? (
+            <div className="mt-1 pt-1">
+              <SidebarStaffSection pathname={pathname} showLabels={!showTooltips} />
+            </div>
+          ) : null}
         </nav>
 
         <SidebarNotifications collapsed={showTooltips} />

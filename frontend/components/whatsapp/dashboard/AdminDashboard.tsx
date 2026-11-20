@@ -157,7 +157,7 @@ export function AdminDashboard() {
               </p>
             </div>
             <Link
-              href="/whatsapp/settings?panel=team"
+              href="/whatsapp/team/new"
               className="text-sm text-whatsapp-dark hover:underline"
             >
               Add user
