@@ -24,6 +24,7 @@ import {
   downloadFromUrl,
   generateStorageKey,
   getPresignedUrl,
+  readMediaFile,
   storeMediaFile,
 } from '../media/mediaService';
 import { emitToAuthorizedUsers } from '../realtime/socketService';
@@ -643,17 +644,144 @@ export async function sendOutgoingMessage(
     message.metaMessageId = metaResponse.messages[0].id;
     return finalizeMessage('SENT');
   } catch (error) {
-    message.status = 'FAILED';
-
     if (error instanceof MetaApiError) {
       message.errorCode = error.code;
       message.errorTitle = error.title;
       message.errorMessage = error.message;
       message.errorDetails = error.details;
+    } else if (error instanceof Error) {
+      message.errorMessage = error.message;
     }
 
+    return finalizeMessage('FAILED');
+  }
+}
+
+export async function resendFailedMessage(
+  account: IWhatsAppAccount,
+  conversation: IConversation,
+  contact: IContact,
+  message: IMessage
+): Promise<IMessage> {
+  if (message.status !== 'FAILED' || message.direction !== 'OUTGOING') {
+    throw new Error('Message is not a failed outgoing send');
+  }
+
+  message.status = 'SENDING';
+  message.errorCode = undefined;
+  message.errorTitle = undefined;
+  message.errorMessage = undefined;
+  message.errorDetails = undefined;
+  await message.save();
+
+  let replyToMetaMessageId: string | undefined;
+  if (message.replyToMessageId) {
+    const replyMsg = await Message.findById(message.replyToMessageId);
+    replyToMetaMessageId = replyMsg?.metaMessageId;
+  }
+
+  const preview =
+    message.type === 'TEXT'
+      ? (message.content as { text: string }).text
+      : message.type === 'VOICE'
+        ? '[VOICE]'
+        : `[${message.type}]`;
+
+  async function finalizeResend(status: IMessage['status'], metaMessageId?: string) {
+    message.status = status;
+    if (metaMessageId) message.metaMessageId = metaMessageId;
     await message.save();
-    throw error;
+
+    await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'message.updated', {
+      messageId: message._id.toString(),
+      conversationId: conversation._id.toString(),
+      status: message.status,
+    });
+
+    if (status === 'SENT') {
+      await Conversation.findByIdAndUpdate(conversation._id, {
+        lastMessage: preview,
+        lastMessageAt: new Date(),
+      });
+      await emitToAuthorizedUsers(account.tenantId, conversation._id.toString(), 'conversation.updated', {
+        conversationId: conversation._id.toString(),
+        lastMessage: preview,
+      });
+    }
+
+    return message;
+  }
+
+  if (isDemoWhatsAppAccount(account)) {
+    return finalizeResend('READ', `demo-out-${message._id}`);
+  }
+
+  try {
+    let metaResponse: { messages: Array<{ id: string }> };
+
+    if (message.type === 'TEXT') {
+      metaResponse = await sendTextMessage(
+        account.phoneNumberId,
+        contact.whatsappId,
+        (message.content as { text: string }).text,
+        replyToMetaMessageId,
+        account
+      );
+    } else {
+      const media = await MessageMedia.findOne({ messageId: message._id });
+      if (!media?.storageKey) {
+        throw new MetaApiError({
+          message: 'Original media is missing from storage. Send a new file.',
+          title: 'Media unavailable',
+        });
+      }
+
+      const { body: mediaBuffer } = await readMediaFile(media.storageKey);
+      const mimeType = media.mimeType ?? 'application/octet-stream';
+      const { uploadMediaToMeta } = await import('./metaApi');
+      const { metaMediaType, isNativeWhatsAppVoiceMime, normalizeVoiceNoteMimeType } =
+        await import('../../utils/mediaType');
+
+      const uploadMime =
+        message.type === 'VOICE'
+          ? normalizeVoiceNoteMimeType(mimeType)
+          : mimeType;
+      const { id: mediaId } = await uploadMediaToMeta(
+        account.phoneNumberId,
+        mediaBuffer,
+        uploadMime,
+        account,
+        media.fileName
+      );
+      const sendAsNativeVoice =
+        message.type === 'VOICE' && isNativeWhatsAppVoiceMime(mimeType);
+      metaResponse = await sendMediaMessage(
+        account.phoneNumberId,
+        contact.whatsappId,
+        metaMediaType(message.type),
+        mediaId,
+        (message.content as { caption?: string }).caption,
+        account,
+        {
+          voice: sendAsNativeVoice,
+          replyToMessageId: replyToMetaMessageId,
+        }
+      );
+
+      await MessageMedia.updateOne({ messageId: message._id }, { metaMediaId: mediaId });
+    }
+
+    return finalizeResend('SENT', metaResponse.messages[0].id);
+  } catch (error) {
+    if (error instanceof MetaApiError) {
+      message.errorCode = error.code;
+      message.errorTitle = error.title;
+      message.errorMessage = error.message;
+      message.errorDetails = error.details;
+    } else if (error instanceof Error) {
+      message.errorMessage = error.message;
+    }
+    return finalizeResend('FAILED');
   }
 }
 

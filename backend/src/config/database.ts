@@ -7,7 +7,10 @@ import { prepareDatabaseForIndexSync } from '../utils/migrateProductionData';
 export async function connectDatabase(): Promise<void> {
   mongoose.set('strictQuery', true);
 
-  await mongoose.connect(env.MONGODB_URI);
+  await mongoose.connect(env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 15_000,
+    maxPoolSize: 10,
+  });
   logger.info('Connected to MongoDB');
 
   if (env.NODE_ENV !== 'test') {

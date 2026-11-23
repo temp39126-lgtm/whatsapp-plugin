@@ -244,6 +244,15 @@ export function ChatWindow({
     );
   }
 
+  const whatsAppDeliveryError = (message: MessageDTO) => {
+    if (message.status !== 'FAILED') return null;
+    return (
+      message.errorTitle ||
+      message.errorMessage ||
+      'Message could not be delivered. Check Meta Cloud API in Settings.'
+    );
+  };
+
   const handleSend = (text: string, replyToMessageId?: string) => {
     setSendError('');
     sendMessage.mutate(
@@ -256,7 +265,11 @@ export function ChatWindow({
         onError: (error) => {
           setSendError(error instanceof Error ? error.message : 'Failed to send message');
         },
-        onSuccess: () => setReplyTo(null),
+        onSuccess: (data) => {
+          setReplyTo(null);
+          const deliveryError = whatsAppDeliveryError(data);
+          if (deliveryError) setSendError(deliveryError);
+        },
       }
     );
   };
@@ -280,7 +293,11 @@ export function ChatWindow({
         onError: (error) => {
           setSendError(error instanceof Error ? error.message : 'Failed to send media');
         },
-        onSuccess: () => setReplyTo(null),
+        onSuccess: (data) => {
+          setReplyTo(null);
+          const deliveryError = whatsAppDeliveryError(data);
+          if (deliveryError) setSendError(deliveryError);
+        },
       }
     );
   };

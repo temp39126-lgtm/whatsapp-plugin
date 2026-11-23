@@ -443,10 +443,17 @@ export async function retryMessage(
     message.conversationId.toString()
   );
 
-  return createMessage(user, conversation, {
-    type: message.type,
-    content: message.content,
-  });
+  const [account, contact] = await Promise.all([
+    WhatsAppAccount.findById(conversation.whatsappAccountId),
+    Contact.findById(conversation.contactId),
+  ]);
+  if (!account || !contact) {
+    throw new AppError(404, 'Account or contact not found');
+  }
+
+  const { resendFailedMessage } = await import('../whatsapp/whatsappService');
+  const updated = await resendFailedMessage(account, conversation, contact, message);
+  return enrichMessageRecord(updated.toObject());
 }
 
 export async function getPinnedMessages(user: AuthUser, conversationId: string) {

@@ -63,9 +63,11 @@ class ApiClient {
         message = error.error || error.message || message;
       } catch {
         message =
-          response.status >= 502
-            ? 'API unreachable (tunnel or server down). Refresh the page or ask your admin to restart the backend tunnel.'
-            : raw.slice(0, 200) || message;
+          response.status === 503
+            ? 'Server database is unavailable. Ask your admin to restart MongoDB and the backend.'
+            : response.status >= 502
+              ? 'API unreachable (tunnel or server down). Refresh the page or ask your admin to restart the backend tunnel.'
+              : raw.slice(0, 200) || message;
       }
       message = normalizeApiErrorMessage(message);
       throw new Error(message);

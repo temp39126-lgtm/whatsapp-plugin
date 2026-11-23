@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -55,7 +56,13 @@ app.use(mongoSanitize({ replaceWith: '_' }));
 app.use(pinoHttp({ logger }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const dbConnected = mongoose.connection.readyState === 1;
+  const payload = {
+    status: dbConnected ? 'ok' : 'degraded',
+    db: dbConnected,
+    timestamp: new Date().toISOString(),
+  };
+  res.status(dbConnected ? 200 : 503).json(payload);
 });
 
 app.use('/api', globalApiRateLimiter);
