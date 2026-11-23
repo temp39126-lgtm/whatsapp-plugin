@@ -22,6 +22,33 @@ export class MetaApiError extends Error {
   }
 }
 
+export const META_TOKEN_INVALID_USER_MESSAGE =
+  'WhatsApp access token is invalid or expired. Open Settings → Meta Cloud API and save a new permanent System User token from Meta Business Manager.';
+
+export function metaErrorFromResponseText(errorText: string): MetaApiError | null {
+  try {
+    const jsonStart = errorText.indexOf('{');
+    const raw = jsonStart >= 0 ? errorText.slice(jsonStart) : errorText;
+    const payload = JSON.parse(raw) as {
+      error?: {
+        code?: number;
+        message?: string;
+        type?: string;
+        error_data?: { details?: string };
+      };
+    };
+    if (!payload.error) return null;
+    return new MetaApiError({
+      code: payload.error.code,
+      title: payload.error.type,
+      message: payload.error.message || 'Meta API request failed',
+      details: payload.error.error_data?.details,
+    });
+  } catch {
+    return null;
+  }
+}
+
 function getBaseUrl(account?: IWhatsAppAccount): string {
   const version = account?.metaApiVersion || env.META_API_VERSION;
   return `https://graph.facebook.com/${version}`;
@@ -149,6 +176,8 @@ export async function uploadMediaToMeta(
 
   if (!response.ok) {
     const error = await response.text();
+    const metaErr = metaErrorFromResponseText(error);
+    if (metaErr) throw metaErr;
     throw new Error(`Meta media upload failed: ${error}`);
   }
 

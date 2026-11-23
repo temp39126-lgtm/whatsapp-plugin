@@ -13,6 +13,7 @@ import {
   sendTemplateMessage,
   downloadMetaMedia,
   markMessageAsRead,
+  META_TOKEN_INVALID_USER_MESSAGE,
   MetaApiError,
 } from './metaApi';
 
@@ -647,7 +648,8 @@ export async function sendOutgoingMessage(
     if (error instanceof MetaApiError) {
       message.errorCode = error.code;
       message.errorTitle = error.title;
-      message.errorMessage = error.message;
+      message.errorMessage =
+        error.code === 190 ? META_TOKEN_INVALID_USER_MESSAGE : error.message;
       message.errorDetails = error.details;
     } else if (error instanceof Error) {
       message.errorMessage = error.message;
@@ -776,7 +778,8 @@ export async function resendFailedMessage(
     if (error instanceof MetaApiError) {
       message.errorCode = error.code;
       message.errorTitle = error.title;
-      message.errorMessage = error.message;
+      message.errorMessage =
+        error.code === 190 ? META_TOKEN_INVALID_USER_MESSAGE : error.message;
       message.errorDetails = error.details;
     } else if (error instanceof Error) {
       message.errorMessage = error.message;

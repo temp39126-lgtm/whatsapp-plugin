@@ -1,13 +1,10 @@
 import { AppError } from '../../types';
-import { MetaApiError } from './metaApi';
+import { META_TOKEN_INVALID_USER_MESSAGE, MetaApiError } from './metaApi';
 
 export function metaFailureToAppError(error: unknown, fallbackMessage: string): never {
   if (error instanceof MetaApiError) {
     if (error.code === 190) {
-      throw new AppError(
-        502,
-        'Invalid WhatsApp access token. Open Settings → Meta Cloud API and save a valid permanent token from Meta Business Manager.'
-      );
+      throw new AppError(502, META_TOKEN_INVALID_USER_MESSAGE);
     }
     if (error.code === 100) {
       throw new AppError(
@@ -25,10 +22,7 @@ export function metaFailureToAppError(error: unknown, fallbackMessage: string): 
         error?: { code?: number; message?: string };
       };
       if (payload.error?.code === 190) {
-        throw new AppError(
-          502,
-          'Invalid WhatsApp access token. Open Settings → Meta Cloud API and save a valid permanent token from Meta Business Manager.'
-        );
+        throw new AppError(502, META_TOKEN_INVALID_USER_MESSAGE);
       }
       if (payload.error?.code === 100) {
         throw new AppError(
