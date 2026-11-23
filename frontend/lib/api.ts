@@ -129,8 +129,14 @@ export function getWhatsAppMediaUrl(messageId: string): string {
 }
 
 export function resolveMediaUrl(pathOrUrl: string): string {
-  if (pathOrUrl.startsWith('http') || pathOrUrl.startsWith('/')) return pathOrUrl;
-  return `${getApiOrigin()}${pathOrUrl}`;
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+    return pathOrUrl;
+  }
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  if (typeof window === 'undefined') {
+    return path;
+  }
+  return `${getApiOrigin()}${path}`;
 }
 
 export function getContactAvatarUrl(contactId: string): string {

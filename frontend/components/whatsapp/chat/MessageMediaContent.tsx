@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, Download, Check, Film, Music, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth';
 import { getWhatsAppMediaUrl, resolveMediaUrl } from '@/lib/api';
@@ -34,6 +34,92 @@ function MediaIcon({ type }: { type: string }) {
   return <FileText className="h-5 w-5 shrink-0 text-whatsapp-dark" />;
 }
 
+function VoiceMessagePlayer({
+  mediaPath,
+  fileName,
+  caption,
+  messageId,
+}: {
+  mediaPath: string;
+  fileName: string;
+  caption?: string;
+  messageId: string;
+}) {
+  const [retryToken, setRetryToken] = useState(0);
+  const [playbackError, setPlaybackError] = useState(false);
+
+  const streamUrl = useMemo(() => {
+    const base = resolveMediaUrl(mediaPath);
+    if (!retryToken) return base;
+    const separator = base.includes('?') ? '&' : '?';
+    return `${base}${separator}retry=${retryToken}`;
+  }, [mediaPath, retryToken]);
+
+  const downloadVoice = useCallback(async () => {
+    try {
+      const response = await fetch(resolveMediaUrl(mediaPath), {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!response.ok) return;
+      const mime =
+        response.headers.get('content-type')?.split(';')[0]?.trim() || 'audio/ogg';
+      const blob = await response.blob();
+      const typed = blob.type ? blob : new Blob([blob], { type: mime });
+      const url = URL.createObjectURL(typed);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      sessionStorage.setItem(`chat-downloaded:${messageId}`, '1');
+    } catch {
+      /* ignore */
+    }
+  }, [fileName, mediaPath, messageId]);
+
+  return (
+    <div className="min-w-[12rem] max-w-sm space-y-2">
+      {!playbackError ? (
+        <audio
+          key={streamUrl}
+          controls
+          preload="metadata"
+          className="h-10 w-full min-w-[12rem]"
+          src={streamUrl}
+          onError={() => setPlaybackError(true)}
+          onLoadedData={() => setPlaybackError(false)}
+        >
+          <track kind="captions" />
+        </audio>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-black/10 bg-white/70 px-3 py-2">
+          <Music className="h-4 w-4 shrink-0 text-whatsapp-dark" aria-hidden="true" />
+          <span className="text-sm text-muted-foreground">Couldn&apos;t play audio</span>
+          <button
+            type="button"
+            className="text-sm font-medium text-whatsapp-dark hover:underline"
+            onClick={() => {
+              setPlaybackError(false);
+              setRetryToken((token) => token + 1);
+            }}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            className="text-sm font-medium text-whatsapp-dark hover:underline"
+            onClick={() => void downloadVoice()}
+          >
+            Download
+          </button>
+        </div>
+      )}
+      {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
+    </div>
+  );
+}
+
 export function MessageMediaContent({
   message,
   highlightQuery,
@@ -60,7 +146,8 @@ export function MessageMediaContent({
   };
   const showAsImage = isDisplayableImageMessage(message);
   const showAsVideo = isDisplayableVideoMessage(message);
-  const needsBlob = shouldLoadMessageBlob(message);
+  const isVoiceMessage = message.type === 'VOICE' || message.type === 'AUDIO';
+  const needsBlob = shouldLoadMessageBlob(message) && !isVoiceMessage;
 
   const fileName =
     message.media?.fileName ?? content.fileName ?? defaultMediaLabel(message.type);
@@ -140,23 +227,15 @@ export function MessageMediaContent({
     );
   }
 
-  if (message.type === 'VOICE' || message.type === 'AUDIO') {
-    if (mediaLoadState === 'loading') {
-      return <p className="text-sm text-muted-foreground">Loading voice message…</p>;
-    }
-    if (blobUrl) {
-      return (
-        <div className="space-y-2">
-          <audio controls src={blobUrl} className="max-w-full" preload="metadata">
-            <track kind="captions" />
-          </audio>
-          {caption ? <p className="whitespace-pre-wrap break-words text-sm">{caption}</p> : null}
-        </div>
-      );
-    }
-    if (mediaLoadState === 'error') {
-      return <p className="text-sm text-muted-foreground">Voice message unavailable. Try download below.</p>;
-    }
+  if (isVoiceMessage) {
+    return (
+      <VoiceMessagePlayer
+        mediaPath={mediaPath}
+        fileName={fileName}
+        caption={caption}
+        messageId={message._id}
+      />
+    );
   }
 
   if (message.type === 'TEMPLATE') {

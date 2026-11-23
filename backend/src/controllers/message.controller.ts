@@ -171,11 +171,26 @@ export async function deleteMessage(req: AuthenticatedRequest, res: Response, ne
   }
 }
 
+function normalizeInlineAudioMimeType(mimeType: string, fileName: string): string {
+  const lower = mimeType.toLowerCase();
+  if (lower.includes('ogg') || lower.includes('opus') || fileName.toLowerCase().endsWith('.ogg')) {
+    return 'audio/ogg';
+  }
+  if (lower.includes('mpeg') || lower.includes('mp3') || fileName.toLowerCase().endsWith('.mp3')) {
+    return 'audio/mpeg';
+  }
+  if (lower.startsWith('audio/')) return mimeType;
+  return mimeType || 'application/octet-stream';
+}
+
 export async function downloadMedia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const media = await messageService.downloadMessageMedia(req.user!, getParam(req.params.id));
-    res.setHeader('Content-Type', media.mimeType);
+    const mimeType = normalizeInlineAudioMimeType(media.mimeType, media.fileName);
+    res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${media.fileName.replace(/"/g, '')}"`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(media.body);
   } catch (error) {
     next(error);

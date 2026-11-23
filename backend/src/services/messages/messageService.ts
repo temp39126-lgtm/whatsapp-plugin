@@ -680,20 +680,42 @@ export async function downloadMessageMedia(user: AuthUser, messageId: string) {
     if (!media) throw new AppError(404, 'Media not found');
   }
 
-  try {
+  async function readStoredMedia() {
+    if (!media?.storageKey) {
+      throw new Error('Missing storage key');
+    }
     const { body, mimeType } = await readMediaFile(media.storageKey);
     return {
       body,
       mimeType: media.mimeType || mimeType,
       fileName: media.fileName ?? 'download',
     };
+  }
+
+  try {
+    return await readStoredMedia();
   } catch {
-    const refetched = await refetchMediaFromMeta(message, media);
-    if (!refetched) throw new AppError(404, 'Media not found');
-    return {
-      body: refetched.body,
-      mimeType: refetched.mimeType,
-      fileName: media.fileName ?? 'download',
-    };
+    await recoverPendingIncomingMedia(message);
+    media = await MessageMedia.findOne({ messageId: message._id });
+    if (media?.storageKey) {
+      try {
+        return await readStoredMedia();
+      } catch {
+        /* try Meta below */
+      }
+    }
+
+    if (media) {
+      const refetched = await refetchMediaFromMeta(message, media);
+      if (refetched) {
+        return {
+          body: refetched.body,
+          mimeType: refetched.mimeType,
+          fileName: media.fileName ?? 'download',
+        };
+      }
+    }
+
+    throw new AppError(404, 'Media not found');
   }
 }
