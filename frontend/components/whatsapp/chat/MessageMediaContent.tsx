@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FileText, Download, Check, Film, Music, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth';
 import { getWhatsAppMediaUrl, resolveMediaUrl } from '@/lib/api';
@@ -34,39 +34,84 @@ function MediaIcon({ type }: { type: string }) {
   return <FileText className="h-5 w-5 shrink-0 text-whatsapp-dark" />;
 }
 
+function voicePlaybackMimeType(fileName: string, mimeType?: string): string {
+  const fromMeta = mimeType?.split(';')[0]?.trim();
+  if (fromMeta?.startsWith('audio/')) return fromMeta;
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.mp3')) return 'audio/mpeg';
+  if (lower.endsWith('.ogg') || lower.endsWith('.opus')) return 'audio/ogg';
+  return 'audio/ogg';
+}
+
+async function fetchAuthedMediaBlob(
+  mediaPath: string,
+  fallbackMime: string,
+  retryToken: number
+): Promise<Blob | null> {
+  const base = resolveMediaUrl(mediaPath);
+  const separator = base.includes('?') ? '&' : '?';
+  const url = retryToken ? `${base}${separator}retry=${retryToken}` : base;
+  const response = await fetch(url, {
+    headers: getAuthHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) return null;
+  const mime =
+    response.headers.get('content-type')?.split(';')[0]?.trim() || fallbackMime;
+  const blob = await response.blob();
+  return blob.type ? blob : new Blob([blob], { type: mime });
+}
+
 function VoiceMessagePlayer({
   mediaPath,
   fileName,
   caption,
   messageId,
+  mimeType,
 }: {
   mediaPath: string;
   fileName: string;
   caption?: string;
   messageId: string;
+  mimeType?: string;
 }) {
   const [retryToken, setRetryToken] = useState(0);
-  const [playbackError, setPlaybackError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const fallbackMime = voicePlaybackMimeType(fileName, mimeType);
 
-  const streamUrl = useMemo(() => {
-    const base = resolveMediaUrl(mediaPath);
-    if (!retryToken) return base;
-    const separator = base.includes('?') ? '&' : '?';
-    return `${base}${separator}retry=${retryToken}`;
-  }, [mediaPath, retryToken]);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    setLoadState('loading');
+    setBlobUrl(null);
+
+    fetchAuthedMediaBlob(mediaPath, fallbackMime, retryToken)
+      .then((blob) => {
+        if (cancelled) return;
+        if (!blob) {
+          setLoadState('error');
+          return;
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+        setLoadState('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState('error');
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [mediaPath, fallbackMime, retryToken]);
 
   const downloadVoice = useCallback(async () => {
     try {
-      const response = await fetch(resolveMediaUrl(mediaPath), {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!response.ok) return;
-      const mime =
-        response.headers.get('content-type')?.split(';')[0]?.trim() || 'audio/ogg';
-      const blob = await response.blob();
-      const typed = blob.type ? blob : new Blob([blob], { type: mime });
-      const url = URL.createObjectURL(typed);
+      const blob = await fetchAuthedMediaBlob(mediaPath, fallbackMime, retryToken);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = fileName;
@@ -76,19 +121,20 @@ function VoiceMessagePlayer({
     } catch {
       /* ignore */
     }
-  }, [fileName, mediaPath, messageId]);
+  }, [fileName, fallbackMime, mediaPath, messageId, retryToken]);
 
   return (
     <div className="min-w-[12rem] max-w-sm space-y-2">
-      {!playbackError ? (
+      {loadState === 'loading' ? (
+        <p className="text-sm text-muted-foreground">Loading voice message…</p>
+      ) : loadState === 'ready' && blobUrl ? (
         <audio
-          key={streamUrl}
+          key={blobUrl}
           controls
           preload="metadata"
           className="h-10 w-full min-w-[12rem]"
-          src={streamUrl}
-          onError={() => setPlaybackError(true)}
-          onLoadedData={() => setPlaybackError(false)}
+          src={blobUrl}
+          onError={() => setLoadState('error')}
         >
           <track kind="captions" />
         </audio>
@@ -99,10 +145,7 @@ function VoiceMessagePlayer({
           <button
             type="button"
             className="text-sm font-medium text-whatsapp-dark hover:underline"
-            onClick={() => {
-              setPlaybackError(false);
-              setRetryToken((token) => token + 1);
-            }}
+            onClick={() => setRetryToken((token) => token + 1)}
           >
             Retry
           </button>
@@ -234,6 +277,7 @@ export function MessageMediaContent({
         fileName={fileName}
         caption={caption}
         messageId={message._id}
+        mimeType={message.media?.mimeType}
       />
     );
   }
